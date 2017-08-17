@@ -14,5 +14,5 @@ def index():
   # ]
   # for old_path in old_module_paths:
   #   sys.path.insert(0, old_path)
-  migrate.upgradeall()
+  migrate.downgradeall()
   return "HEHE migration successful"
