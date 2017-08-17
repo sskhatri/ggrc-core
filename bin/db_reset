@@ -43,4 +43,4 @@ if [[ -f "$DUMP_FILE" ]]; then
   mysql -uroot -proot -h$HOST $DB_NAME < $DUMP_FILE
 fi
 
-db_migrate
+#db_migrate
