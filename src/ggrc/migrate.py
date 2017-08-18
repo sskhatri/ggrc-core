@@ -10,6 +10,9 @@ from alembic.script import ScriptDirectory
 from ggrc import settings
 import ggrc.app
 from ggrc.extensions import get_extension_module, get_extension_modules
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 # Monkey-patch Alembic classes to enable configuration-per-module
@@ -50,7 +53,10 @@ def get_extension_migrations_dir(module):
 
 def get_base_migrations_dir():
   import ggrc
-  return get_extension_migrations_dir(ggrc)
+  obj = get_extension_migrations_dir(ggrc)
+  logger.info('get_extension_migrations_dir(ggrc) : {}'.format(obj))
+  print('get_extension_migrations_dir(ggrc) : {}'.format(obj))
+  return obj
 
 def get_base_config_file():
   return os.path.join(get_base_migrations_dir(), 'alembic.ini')
@@ -99,6 +105,8 @@ def upgradeall(config=None):
   for module_name in all_extensions():
     print("Upgrading {}".format(module_name))
     config = make_extension_config(module_name)
+    logger.info('Config : {}'.format(config))
+    print('Config : {}'.format(config))
     command.upgrade(config, 'head')
 
 
