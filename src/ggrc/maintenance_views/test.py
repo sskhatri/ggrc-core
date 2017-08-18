@@ -2,7 +2,11 @@ from ggrc.maintenance import app
 from ggrc import migrate
 import sys
 import os
-import logging
+from logging import getLogger
+logger = getLogger(__name__)
+
+
+logger.info('HEHE inside maintenance/test')
 
 @app.route('/maintenance/test')
 def index():
@@ -18,4 +22,4 @@ def index():
   logging.info('Inside maintenance/test hehe..')
   migrate.upgradeall()
   logging.info('Migration test successful hehe..')
-  return "HEHE migration successful"
+  return "...HEHE migration successful....."
