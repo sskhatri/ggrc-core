@@ -19,7 +19,7 @@ def index():
   # ]
   # for old_path in old_module_paths:
   #   sys.path.insert(0, old_path)
-  logging.info('Inside maintenance/test hehe..')
+  logger.info('Inside maintenance/test hehe..')
   migrate.upgradeall()
-  logging.info('Migration test successful hehe..')
+  logger.info('Migration test successful hehe..')
   return "...HEHE migration successful....."
