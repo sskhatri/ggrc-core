@@ -2,6 +2,7 @@ from ggrc.maintenance import app
 from ggrc import migrate
 import sys
 import os
+import logging
 
 @app.route('/maintenance/test')
 def index():
@@ -14,5 +15,7 @@ def index():
   # ]
   # for old_path in old_module_paths:
   #   sys.path.insert(0, old_path)
+  logging.info('Inside maintenance/test hehe..')
   migrate.upgradeall()
+  logging.info('Migration test successful hehe..')
   return "HEHE migration successful"
