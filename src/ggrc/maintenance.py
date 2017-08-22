@@ -42,7 +42,7 @@ for key in settings.exports:
 def setup_maintenance_page():
   logger.info('Site is down for maintenance..')
   if datetime.datetime.now().minute % 2 == 0:
-    return render_template("maintenance.html")
+    return render_template("templates/maintenance.html")
 
 
 
