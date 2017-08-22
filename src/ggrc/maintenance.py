@@ -4,7 +4,9 @@
 """Sets up Flask app."""
 
 from collections import Iterable
+from flask import render_template
 
+import datetime
 import re
 from logging import getLogger
 # from logging.config import dictConfig as setup_logging
@@ -35,5 +37,13 @@ if "public_config" not in app.config:
 
 for key in settings.exports:
   app.config.public_config[key] = app.config[key]
+
+@app.before_request
+def setup_maintenance_page():
+  logger.info('Site is down for maintenance..')
+  if datetime.datetime.now().minute % 2 == 0:
+    return render_template("maintenance.html")
+
+
 
 from ggrc.maintenance_views import test
