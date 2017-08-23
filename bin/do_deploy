@@ -16,8 +16,7 @@ ACCOUNT="$2"
 KEY_FILE="$3"
 
 ENV_OVERRIDE_FILE=${ENV_OVERRIDE_FILE:-"override.sh"}
-VERSION=${VERSION_NUMBER:-"dryrun"}
-
+VERSION=${VERSION_NUMBER:-"1"}
 
 write_visible_message () {
   message=${1:-}
@@ -43,8 +42,10 @@ source "$ENV_OVERRIDE_FILE"
 export GGRC_SETTINGS_MODULE="$SETTINGS_MODULE"
 
 write_visible_message "Before db_migrate"
-if ["$DRY_RUN" = false]
+if [${DRY_RUN:-false} = true]
 then
+  VERSION="dryrun"
+else
   db_migrate
 fi
 write_visible_message "After db_migrate"
