@@ -43,7 +43,7 @@ source "$ENV_OVERRIDE_FILE"
 export GGRC_SETTINGS_MODULE="$SETTINGS_MODULE"
 
 write_visible_message "Before db_migrate"
-if ["$DRY_RUN" != true]
+if ["$DRY_RUN" = false]
 then
   db_migrate
 fi
