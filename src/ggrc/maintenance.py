@@ -30,7 +30,7 @@ logger = getLogger(__name__)
 
 logger.info('HEHE inside maintenance.py')
 
-app = Flask('ggrc_test', instance_relative_config=True)  # noqa: valid constant name
+app = Flask('ggrc', instance_relative_config=True)  # noqa: valid constant name
 app.config.from_object(settings)
 if "public_config" not in app.config:
   app.config.public_config = {}
@@ -41,8 +41,7 @@ for key in settings.exports:
 @app.before_request
 def setup_maintenance_page():
   logger.info('Site is down for maintenance..')
-  if datetime.datetime.now().minute % 2 == 0:
-    return render_template("templates/maintenance.html")
+  return render_template("maintenance.html")
 
 
 

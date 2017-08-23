@@ -5,6 +5,8 @@
 set -o nounset
 set -o errexit
 
+echo "Inside db_migrate"
+
 SCRIPTPATH=$( cd "$(dirname "$0")" ; pwd -P )
 
 cd "${SCRIPTPATH}/../src"
