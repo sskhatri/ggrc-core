@@ -100,6 +100,8 @@ main () {
 
   docker exec -i "${PROJECT}_cleandev_1" su root -c "
     export ENV_OVERRIDE_FILE=$ENV_OVERRIDE_FILE
+    export VERSION_NUMBER=$VERSION_NUMBER
+    export DRY_RUN=$DRY_RUN
     /vagrant/bin/do_deploy $SETTINGS_FILE $ACCOUNT $KEY_FILE
   " ; rc=$?
 
