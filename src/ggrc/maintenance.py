@@ -6,6 +6,7 @@
 from collections import Iterable
 from flask import render_template
 
+from ggrc import db
 import datetime
 import re
 from logging import getLogger
@@ -38,9 +39,16 @@ if "public_config" not in app.config:
 for key in settings.exports:
   app.config.public_config[key] = app.config[key]
 
+# Configure Flask-SQLAlchemy for app
+db.app = app
+db.init_app(app)
+
+
 @app.before_request
 def setup_maintenance_page():
+  from ggrc.models.maintenance import Maintenance
   logger.info('Site is down for maintenance..')
+  logger.info('ID : {0}, run_db_migrate : {1},  run_reindex : {2}'.format(Maintenance.id, Maintenance.run_db_migrate, Maintenance.run_reindex))
   return render_template("maintenance.html")
 
 

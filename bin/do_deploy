@@ -16,7 +16,6 @@ ACCOUNT="$2"
 KEY_FILE="$3"
 
 ENV_OVERRIDE_FILE=${ENV_OVERRIDE_FILE:-"override.sh"}
-VERSION=${VERSION_NUMBER:-"1"}
 
 write_visible_message () {
   message=${1:-}
@@ -47,6 +46,7 @@ then
   VERSION="dryrun"
 else
   db_migrate
+  VERSION=${VERSION_NUMBER:-"1"}
 fi
 write_visible_message "After db_migrate"
 
