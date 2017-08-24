@@ -55,9 +55,4 @@ write_visible_message 'Authenticating'
 gcloud auth activate-service-account "$ACCOUNT" --key-file="$KEY_FILE"
 
 write_visible_message "Deploying src/app.yaml into version $VERSION"
-if ["$DRY_RUN" = true]
-then
-  gcloud app deploy src/app.yaml --version="$VERSION" --no-stop-previous-version
-else
-  gcloud app deploy src/app.yaml --version="$VERSION"
-fi
+gcloud app deploy src/app.yaml --version="$VERSION"

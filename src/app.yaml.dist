@@ -5,6 +5,7 @@
 
 runtime: python27
 api_version: 1
+service: {SERVICE_NAME}
 threadsafe: true
 instance_class: {INSTANCE_CLASS}
 
