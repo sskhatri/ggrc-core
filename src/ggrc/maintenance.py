@@ -47,8 +47,10 @@ db.init_app(app)
 @app.before_request
 def setup_maintenance_page():
   from ggrc.models.maintenance import Maintenance
+  sess = db.session
+  result = sess.query(Maintenance).get(1)
   logger.info('Site is down for maintenance..')
-  logger.info('ID : {0}, run_db_migrate : {1},  run_reindex : {2}'.format(Maintenance.id, Maintenance.run_db_migrate, Maintenance.run_reindex))
+  logger.info('ID : {0}, run_db_migrate : {1},  run_revision_refresh : {2}'.format(result.id, result.run_db_migrate, result.run_revision_refresh))
   return render_template("maintenance.html")
 
 
