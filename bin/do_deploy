@@ -43,7 +43,7 @@ export GGRC_SETTINGS_MODULE="$SETTINGS_MODULE"
 DRY_RUN=${DRY_RUN:-false}
 VERSION=${VERSION_NUMBER:-"1"}
 
-if [$DRY_RUN = false]
+if ["$DRY_RUN" = false]
 then
   db_migrate
 fi
@@ -55,9 +55,9 @@ write_visible_message 'Authenticating'
 gcloud auth activate-service-account "$ACCOUNT" --key-file="$KEY_FILE"
 
 write_visible_message "Deploying src/app.yaml into version $VERSION"
-if [$DRY_RUN = true]
+if ["$DRY_RUN" = true]
 then
-  gcloud app deploy src/app.yaml --version="dryrun" --no-stop-previous-version
+  gcloud app deploy src/app.yaml --version="$VERSION" --no-stop-previous-version
 else
   gcloud app deploy src/app.yaml --version="$VERSION"
 fi
