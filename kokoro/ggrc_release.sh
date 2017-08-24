@@ -69,14 +69,8 @@ APPENGINE_EMAIL="$APPENGINE_EMAIL"
 AUTHORIZED_DOMAINS="$AUTHORIZED_DOMAINS"
 VERSION_NUMBER="$VERSION_NUMBER"
 DRY_RUN="$DRY_RUN"
+SERVICE_NAME="test-deployment"
 EOL
-
-if [ "${DRY_RUN:-false}" = true ]
-then
-  echo 'SERVICE_NAME="test-deployment"' >> "$SETTINGS_FILE"
-else
-  echo 'SERVICE_NAME="default"' >> "$SETTINGS_FILE"
-fi
 
 cat >"$OVERRIDE_FILE" <<EOF
 #!/usr/bin/env bash
