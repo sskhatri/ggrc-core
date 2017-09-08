@@ -8,3 +8,6 @@ set -o errexit
 #sudo /etc/init.d/apparmor stop
 #sudo /etc/init.d/apparmor teardown
 #sudo update-rc.d -f apparmor remove
+
+echo "Mysql status"
+status mysql
