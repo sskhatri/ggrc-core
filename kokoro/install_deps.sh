@@ -10,4 +10,4 @@ set -o errexit
 #sudo update-rc.d -f apparmor remove
 
 echo "Mysql status"
-status mysql
+sudo service mysql stop
