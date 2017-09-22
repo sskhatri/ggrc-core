@@ -1,26 +1,39 @@
 <html>
+<title>Admin maintenance dashboard</title>
 <body>
-
 <div style="margin-left:30%;width:500px;">
   <div>
-    <h1>Maintenance operations</h1>
+    <h1>Admin maintenance dashboard</h1>
     <hr>
   </div>
   <div>
     <div style="float:right;">
-      <a href="/maintenance/index">Refresh page</a>
+      <input type='button' value="Refresh page" onclick="window.location='/maintenance/index';">
     </div>
     <br>
-    <div>
-      <form action='/maintenance/migrate' method='POST'>
+    <br>
+    <div style="float:right;">
+      <form action='/maintenance/turnoff_maintenance_mode' method='POST'>
           <p>
-              <input type="submit" value="Run migrations">
+              <input type="submit" value="Turn off maintenance mode">
           </p>
       </form>
     </div>
+    <br>
+    <br>
+    <br>
+    <hr>
+    <br>
+    <div>Operations :</div>
+    ---------------
     <div>
-      Migration status : {{ migration_status }}
+      <form action='/maintenance/migrate' method='POST'>
+          <p>
+              <input type="submit" value="Run migrations">  Status : {{ migration_status }}
+          </p>
+      </form>
     </div>
+
   </div>
 </div>
 

@@ -74,6 +74,7 @@ def setup_user_timezone_offset():
 
 @app.before_request
 def check_if_under_maintenance():
+  """Check if the site is in maintenance mode."""
   from ggrc.models.maintenance import Maintenance
   sess = db.session
   try:
@@ -89,6 +90,7 @@ def check_if_under_maintenance():
 
 @app.route('/maintenance_')
 def maintenance_():
+  """Render a maintenance page while on maintenance mode."""
   return render_template("maintenance/maintenance.html")
 
 def setup_error_handlers(app_):

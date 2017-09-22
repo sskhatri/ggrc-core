@@ -21,6 +21,7 @@ import sqlalchemy
 logger = getLogger(__name__)
 
 def login_required(func):
+  """Decorator that will require user to login."""
   if not users.get_current_user():
     return flask_login.login_required(func)
   else:
@@ -29,6 +30,7 @@ def login_required(func):
 @maintenance_app.route('/maintenance/index')
 @login_required
 def index():
+  """Renders admin maintenance dashboard."""
   context = {'migration_status': 'Not started'}
   if session.get('migration_started'):
     try:
@@ -43,7 +45,8 @@ def index():
 
   return render_template("maintenance/trigger.html", **context)
   
-def run_db_migrate():
+def run_migration():
+  """Triggers a deferred task for migration."""
   try:
     sess = db.session
     db_row = sess.query(Maintenance).get(1)
@@ -65,8 +68,9 @@ def run_db_migrate():
   deferred.defer(migrate.migrate, _queue='ggrc')
   session['migration_started'] = True
 
-@maintenance_app.route('/maintenance/migrate', methods=['GET','POST'])
-def run_migration():
+@maintenance_app.route('/maintenance/migrate', methods=['POST'])
+def authenticate():
+  """Authenticates user and allows to run migration."""
   if "access_token" in request.form:
     if hasattr(settings, 'ACCESS_TOKEN'):
       if request.form.get("access_token") == settings.ACCESS_TOKEN:
@@ -89,3 +93,23 @@ def run_migration():
       logger.info(msg)
       return msg
     return redirect(url_for('index'))
+
+@maintenance_app.route('/maintenance/turnoff_maintenance_mode', methods=['POST'])
+def turn_off_maintenance_mode():
+  """Authenticated users are allowed to turn off maintenance mode manually."""
+  gae_user = users.get_current_user()
+  if gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS:
+    sess = db.session
+    db_row = sess.query(Maintenance).get(1)
+
+    # Set the db flag before running migrations
+    if db_row:
+      db_row.under_maintenance=False
+      sess.add(db_row)
+      sess.commit()
+  else:
+    msg = "User not authorized"
+    logger.info(msg)
+    return msg
+
+  return redirect(url_for('index'))
