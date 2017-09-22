@@ -67,10 +67,9 @@ def run_db_migrate():
 
 @maintenance_app.route('/maintenance/migrate', methods=['GET','POST'])
 def run_migration():
-  access_token = request.form.get("access_token")
-  if access_token:
+  if "access_token" in request.form:
     if hasattr(settings, 'ACCESS_TOKEN'):
-      if access_token == settings.ACCESS_TOKEN:
+      if request.form.get("access_token") == settings.ACCESS_TOKEN:
         run_db_migrate()
       else:
         msg = "Invalid access token"
