@@ -1,12 +1,13 @@
 import os
 import re
 import sys
+import flask_login
 
 from ggrc.maintenance import maintenance_app
 from ggrc import db
 from ggrc import migrate
 from ggrc import settings
-from ggrc.login import login_required
+from google.appengine.api import users
 from google.appengine.ext import deferred
 from logging import getLogger
 from ggrc.models.maintenance import Maintenance
@@ -18,6 +19,12 @@ from flask import url_for
 import sqlalchemy
 
 logger = getLogger(__name__)
+
+def login_required(func):
+  if not users.get_current_user():
+    return flask_login.login_required(func)
+  else:
+    return func
 
 @maintenance_app.route('/maintenance/index')
 @login_required
@@ -70,7 +77,6 @@ def run_migration():
       logger.info(msg)
       return msg
   else:
-    from google.appengine.api import users
     gae_user = users.get_current_user()
     logger.info('Currently logged in user : {}'.format(gae_user.email()))
     if gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS or gae_user.email() in ['skhatri@google.com']:
