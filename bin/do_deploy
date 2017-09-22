@@ -55,5 +55,5 @@ yes | gcloud app deploy src/app.yaml --version="$VERSION"
 
 if [ -z "${AUTHORIZED_DOMAINS}" ]
 then
-  curl --data "access_token=${ACCESS_TOKEN}" https://${APPENGINE_INSTANCE}.appspot.com/maintenance/migrate
+  curl --data "access_token=${ACCESS_TOKEN}" https://${VERSION}-dot-${APPENGINE_INSTANCE}.appspot.com/maintenance/migrate
 fi

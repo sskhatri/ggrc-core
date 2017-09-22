@@ -62,7 +62,7 @@ def run_db_migrate():
     if not re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""", e.message):
       raise
 
-  deferred.defer(migrate.upgradeall, _queue='ggrc')
+  deferred.defer(migrate.migrate, _queue='ggrc')
   session['migration_started'] = True
 
 @maintenance_app.route('/maintenance/migrate', methods=['GET','POST'])
@@ -72,14 +72,18 @@ def run_migration():
     if hasattr(settings, 'ACCESS_TOKEN'):
       if access_token == settings.ACCESS_TOKEN:
         run_db_migrate()
+      else:
+        msg = "Invalid access token"
+        logger.info(msg)
+        return msg  
     else:
-      msg = "ACCESS_TOKEN not found in settings"
+      msg = "Access token not found in settings"
       logger.info(msg)
       return msg
   else:
     gae_user = users.get_current_user()
-    logger.info('Currently logged in user : {}'.format(gae_user.email()))
-    if gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS or gae_user.email() in ['skhatri@google.com']:
+    #logger.info('Currently logged in user : {}'.format(gae_user.email()))
+    if gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS:
       run_db_migrate()
     else:
       msg = "User not authorized"

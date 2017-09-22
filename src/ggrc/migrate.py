@@ -119,15 +119,21 @@ def upgradeall(config=None):
       logger.info("Upgrading {}".format(module_name))
       config = make_extension_config(module_name)
       command.upgrade(config, 'head')
+
     if db_row:
       db_row.is_migration_complete=True
+
   finally:
     # Unset db flag after running migrations
-    memcache.flush_all()
     if db_row:
       db_row.under_maintenance=False
       sess.commit()
 
+def migrate():
+  '''Upgrade all modules and clear entire memcache.'''
+  upgradeall()
+  # flushes out memcache entirely
+  memcache.flush_all()
 
 def downgradeall(config=None, drop_versions_table=False):
   '''Downgrade all modules'''
