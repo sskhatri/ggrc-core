@@ -1,0 +1,28 @@
+<html>
+<body>
+
+<div style="margin-left:30%;width:500px;">
+  <div>
+    <h1>Maintenance operations</h1>
+    <hr>
+  </div>
+  <div>
+    <div style="float:right;">
+      <a href="/maintenance/index">Refresh page</a>
+    </div>
+    <br>
+    <div>
+      <form action='/maintenance/migrate' method='POST'>
+          <p>
+              <input type="submit" value="Run migrations">
+          </p>
+      </form>
+    </div>
+    <div>
+      Migration status : {{ migration_status }}
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
