@@ -1,7 +1,6 @@
 import os
 import re
 import sys
-import flask_login
 
 from ggrc.maintenance import maintenance_app
 from ggrc import db
@@ -20,15 +19,7 @@ import sqlalchemy
 
 logger = getLogger(__name__)
 
-def login_required(func):
-  """Decorator that will require user to login."""
-  if not users.get_current_user():
-    return flask_login.login_required(func)
-  else:
-    return func
-
 @maintenance_app.route('/maintenance/index')
-@login_required
 def index():
   """Renders admin maintenance dashboard."""
   context = {'migration_status': 'Not started'}
@@ -73,6 +64,7 @@ def authenticate():
     if hasattr(settings, 'ACCESS_TOKEN'):
       if request.form.get("access_token") == settings.ACCESS_TOKEN:
         run_migration()
+        return "Migration is running in background."
       else:
         msg = "Invalid access token"
         logger.info(msg)
@@ -84,7 +76,7 @@ def authenticate():
   else:
     gae_user = users.get_current_user()
     #logger.info('Currently logged in user : {}'.format(gae_user.email()))
-    if gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS  or gae_user.email() in ['skhatri@google.com']:
+    if gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS:
       run_migration()
     else:
       msg = "User not authorized"

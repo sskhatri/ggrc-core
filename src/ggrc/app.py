@@ -84,7 +84,6 @@ def check_if_under_maintenance():
       db_row = None
     else:
       raise
-  #logger.info('Request method : {}'.format(request.method))
   if db_row and db_row.under_maintenance and request.path != url_for('maintenance_'):
     return redirect(url_for('maintenance_'))
 
