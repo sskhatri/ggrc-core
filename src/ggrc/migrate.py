@@ -2,15 +2,24 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import os.path
+import re
+import sqlalchemy
 import sys
+
 from alembic import command, util, autogenerate as autogen
 from alembic.config import Config, CommandLine
 from alembic.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
+from ggrc import db
 from ggrc import settings
 import ggrc.app
 from ggrc.extensions import get_extension_module, get_extension_modules
+from ggrc.models.maintenance import Maintenance
+from logging import getLogger
+from google.appengine.api import memcache
 
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 # Monkey-patch Alembic classes to enable configuration-per-module
 
@@ -96,11 +105,35 @@ def all_extensions():
 
 def upgradeall(config=None):
   '''Upgrade all modules'''
-  for module_name in all_extensions():
-    print("Upgrading {}".format(module_name))
-    config = make_extension_config(module_name)
-    command.upgrade(config, 'head')
+  sess = db.session
+  try:
+    db_row = sess.query(Maintenance).get(1)
+  except sqlalchemy.exc.ProgrammingError as e:
+    if re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""", e.message):
+      db_row = None
+    else:
+      raise
 
+  try:
+    for module_name in all_extensions():
+      logger.info("Upgrading {}".format(module_name))
+      config = make_extension_config(module_name)
+      command.upgrade(config, 'head')
+
+    if db_row:
+      db_row.is_migration_complete=True
+
+  finally:
+    # Unset db flag after running migrations
+    if db_row:
+      db_row.under_maintenance=False
+      sess.commit()
+
+def migrate():
+  '''Upgrade all modules and clear entire memcache.'''
+  upgradeall()
+  # flushes out memcache entirely
+  memcache.flush_all()
 
 def downgradeall(config=None, drop_versions_table=False):
   '''Downgrade all modules'''
