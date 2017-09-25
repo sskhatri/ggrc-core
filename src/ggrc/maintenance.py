@@ -9,15 +9,15 @@ from ggrc import db
 from logging import getLogger
 
 from flask import Flask
-# from ggrc import settings
+from ggrc import settings
 
 maintenance_app = Flask('ggrc', instance_relative_config=True)  # noqa: valid constant name
-# maintenance_app.config.from_object(settings)
-# if "public_config" not in maintenance_app.config:
-#   maintenance_app.config.public_config = {}
+maintenance_app.config.from_object(settings)
+if "public_config" not in maintenance_app.config:
+  maintenance_app.config.public_config = {}
 
-# for key in settings.exports:
-#   maintenance_app.config.public_config[key] = maintenance_app.config[key]
+for key in settings.exports:
+  maintenance_app.config.public_config[key] = maintenance_app.config[key]
 
 # Configure Flask-SQLAlchemy for app
 db.app = maintenance_app

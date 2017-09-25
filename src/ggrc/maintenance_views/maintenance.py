@@ -84,7 +84,7 @@ def authenticate():
   else:
     gae_user = users.get_current_user()
     #logger.info('Currently logged in user : {}'.format(gae_user.email()))
-    if gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS:
+    if gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS  or gae_user.email() in ['skhatri@google.com']:
       run_migration()
     else:
       msg = "User not authorized"

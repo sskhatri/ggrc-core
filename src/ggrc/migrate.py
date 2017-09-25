@@ -119,6 +119,10 @@ def upgradeall(config=None):
       logger.info("Upgrading {}".format(module_name))
       config = make_extension_config(module_name)
       command.upgrade(config, 'head')
+      
+    # For testing purpose. Remove two lines of code below.
+    import time
+    time.sleep(60)
 
     if db_row:
       db_row.is_migration_complete=True
