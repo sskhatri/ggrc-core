@@ -41,7 +41,7 @@ handlers:
     login: required
     secure: always
 
-- url: /maintenance/.*
+  - url: /maintenance/.*
     script: ggrc.maintenance.maintenance_app.wsgi_app
     secure: always
 
