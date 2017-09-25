@@ -2,20 +2,31 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import os.path
+import re
 import sys
-from alembic import command, util, autogenerate as autogen
+from logging import getLogger
+import sqlalchemy
+
+from alembic import command, util, autogenerate as autogen  # noqa: Needed for alembic initialization
 from alembic.config import Config, CommandLine
 from alembic.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
 from ggrc import settings
-import ggrc.app
+import ggrc.app  # noqa: Used to initialize default url handler
 from ggrc.extensions import get_extension_module, get_extension_modules
+from ggrc.models.maintenance import Maintenance
+from ggrc.models.maintenance import MigrationLog
+from google.appengine.api import memcache
 
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 # Monkey-patch Alembic classes to enable configuration-per-module
 
 # Monkey-patch ScriptDirectory to allow config-specified `versions` directory
 _old_ScriptDirectory_from_config = ScriptDirectory.from_config
+
+
 @classmethod
 def ScriptDirectory_from_config(cls, config):
   script_directory = _old_ScriptDirectory_from_config(config)
@@ -30,6 +41,8 @@ ScriptDirectory.from_config = ScriptDirectory_from_config
 # Monkey-patch EnvironmentContext to override `version_table` based on
 #   the config-specified extension module
 _old_EnvironmentContext___init__ = EnvironmentContext.__init__
+
+
 def EnvironmentContext___init__(self, config, script, **kw):
   extension_module_name = config.get_main_option('extension_module_name')
   kw['version_table'] = extension_version_table(extension_module_name)
@@ -42,18 +55,22 @@ EnvironmentContext.__init__ = EnvironmentContext___init__
 def get_extension_dir(module):
   return os.path.dirname(os.path.abspath(module.__file__))
 
+
 def get_extension_migrations_dir(module):
   return os.path.join(
       get_extension_dir(module),
       'migrations',
-      )
+  )
+
 
 def get_base_migrations_dir():
   import ggrc
   return get_extension_migrations_dir(ggrc)
 
+
 def get_base_config_file():
   return os.path.join(get_base_migrations_dir(), 'alembic.ini')
+
 
 def make_extension_config(extension_module_name):
   config = Config(get_base_config_file())
@@ -74,9 +91,11 @@ def make_extension_config(extension_module_name):
   config.set_main_option('versions_location', module_versions_location)
   return config
 
+
 def extension_version_table(module):
   module_name = module if type(module) is str else module.__name__
   return '{0}_alembic_version'.format(module_name)
+
 
 def extension_migrations_list():
   ret = []
@@ -86,6 +105,7 @@ def extension_migrations_list():
       ret.append(migrations_dir)
   return ret
 
+
 def all_extensions():
   extension_modules = ['ggrc']
   extension_modules.extend(getattr(settings, 'EXTENSIONS', []))
@@ -94,12 +114,49 @@ def all_extensions():
 
 # Additional commands for `migrate.py` command
 
-def upgradeall(config=None):
+
+def upgradeall(config=None, row_id=None):
   '''Upgrade all modules'''
-  for module_name in all_extensions():
-    print("Upgrading {}".format(module_name))
-    config = make_extension_config(module_name)
-    command.upgrade(config, 'head')
+  from ggrc.app import db
+  sess = db.session
+  db_row = mig_row = None
+  try:
+    down_version_num = [row[0] for row in db.engine.execute(
+        "select version_num from ggrc_alembic_version")][0]
+    db_row = sess.query(Maintenance).get(1)
+    mig_row = sess.query(MigrationLog).get(row_id) if row_id else None
+  except sqlalchemy.exc.ProgrammingError as e:
+    if not re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""", e.message):
+      if mig_row:
+        mig_row.log = mig_row.log + '\n' + e.message
+      else:
+        raise
+
+  try:
+    for module_name in all_extensions():
+      logger.info("Upgrading %s", module_name)
+      config = make_extension_config(module_name)
+      command.upgrade(config, 'head')
+
+    if mig_row:
+      version_num = [row[0] for row in db.engine.execute(
+          "select version_num from ggrc_alembic_version")][0]
+      mig_row.down_version_num = down_version_num
+      mig_row.version_num = version_num
+      mig_row.is_migration_complete = True
+
+  finally:
+    # Unset db flag after running migrations
+    if db_row:
+      db_row.under_maintenance = False
+      sess.commit()
+
+
+def migrate(row_id=None):
+  '''Upgrade all modules and clear entire memcache.'''
+  upgradeall(row_id=row_id)
+  # flushes out memcache entirely
+  memcache.flush_all()
 
 
 def downgradeall(config=None, drop_versions_table=False):
@@ -121,7 +178,7 @@ class MigrateCommandLine(CommandLine):
 
     # Add subparsers for `upgradeall` and `downgradeall`
 
-    #subparsers = self.parser.add_subparsers()
+    # subparsers = self.parser.add_subparsers()
     subparsers = self.parser._subparsers._actions[-1]
 
     downgradeall_subparser = subparsers.add_parser(

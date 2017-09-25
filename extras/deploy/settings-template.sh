@@ -31,3 +31,4 @@ DATABASE_URI="mysql+mysqldb://root@/${DB_NAME}?unix_socket=/cloudsql/${DB_INSTAN
 SCALING=$(printf "basic_scaling:\\n  max_instances: ${MAX_INSTANCES}\\n  idle_timeout: 10m\\n")
 # example for manual scaling:
 # SCALING=$(printf "manual_scaling:\\n  instances: ${MAX_INSTANCES}\\n")
+ACCESS_TOKEN=""
