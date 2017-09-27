@@ -6,10 +6,16 @@
 from collections import Iterable
 
 import re
+
 from logging import getLogger
 from logging.config import dictConfig as setup_logging
+import sqlalchemy
 
 from flask import Flask
+from flask import redirect
+from flask import render_template
+from flask import request
+from flask import url_for
 from flask.ext.sqlalchemy import get_debug_queries
 from flask.ext.sqlalchemy import SQLAlchemy
 from tabulate import tabulate
@@ -62,9 +68,33 @@ def setup_user_timezone_offset():
   It will setup from request header `X-UserTimezoneOffset`
   offset will be sent in minutes.
   """
-  from flask import request
   from flask import g
   g.user_timezone_offset = request.headers.get("X-UserTimezoneOffset")
+
+
+@app.before_request
+def check_if_under_maintenance():
+  """Check if the site is in maintenance mode."""
+  from ggrc.models.maintenance import Maintenance
+  sess = db.session
+  try:
+    db_row = sess.query(Maintenance).get(1)
+  except sqlalchemy.exc.ProgrammingError as e:
+    if re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""", e.message):
+      db_row = None
+    else:
+      raise
+  condition = (db_row and
+               db_row.under_maintenance and
+               request.path != url_for('maintenance_'))
+  if condition:
+    return redirect(url_for('maintenance_'))
+
+
+@app.route('/maintenance_')
+def maintenance_():
+  """Render a maintenance page while on maintenance mode."""
+  return render_template("maintenance/maintenance.html")
 
 
 def setup_error_handlers(app_):

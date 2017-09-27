@@ -84,6 +84,8 @@ exports = ['VERSION', 'MAX_INSTANCES']
 AUTHORIZED_DOMAINS = {
     d.strip() for d in os.environ.get('AUTHORIZED_DOMAINS', "").split(",")}
 
+ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN', '')
+
 JINJA2 = jinja2.Environment(loader=jinja2.PackageLoader('ggrc', 'templates'))
 EMAIL_DIGEST = JINJA2.get_template("notifications/email_digest.html")
 EMAIL_DAILY = JINJA2.get_template("notifications/view_daily_digest.html")
