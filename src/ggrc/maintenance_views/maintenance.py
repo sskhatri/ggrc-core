@@ -103,29 +103,36 @@ def run_migration():
   return json.dumps(data), 202
 
 
-@maintenance_app.route('/maintenance/turnoff_maintenance_mode',
-                       methods=['POST'])
-def turn_off_maintenance_mode():
-  """Turn off maintenance mode manually."""
-  if "access_token" not in request.form:
-    gae_user = users.get_current_user()
-    if not (gae_user and
-            gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS):
-      return "Unauthorized", 403
-
-  if not (hasattr(settings, 'ACCESS_TOKEN') and
-          request.form.get("access_token") == settings.ACCESS_TOKEN):
-    logger.error("Invalid access token: %s", request.form.get("access_token"))
-    return "Unauthorized", 403
-
+def _turn_off_maintenance_mode():
+  """Turn off maintenance mode."""
   sess = db.session
   db_row = sess.query(Maintenance).get(1)
   if db_row:
     db_row.under_maintenance = False
     sess.add(db_row)
     sess.commit()
+    return "Maintenance mode turned off successfully"
 
-  return "Maintenance mode turned off successfully", 202
+
+@maintenance_app.route('/maintenance/turnoff_maintenance_mode',
+                       methods=['POST'])
+def turn_off_maintenance_mode():
+  """Allow authenticated user to turn off maintenance mode."""
+  if "access_token" not in request.form:
+    gae_user = users.get_current_user()
+    if not (gae_user and
+            gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS):
+      return "Unauthorized", 403
+
+    return _turn_off_maintenance_mode() or ""
+
+
+  if not (hasattr(settings, 'ACCESS_TOKEN') and
+          request.form.get("access_token") == settings.ACCESS_TOKEN):
+    logger.error("Invalid access token: %s", request.form.get("access_token"))
+    return "Unauthorized", 403
+
+  return _turn_off_maintenance_mode(), 202
 
 
 @maintenance_app.route('/maintenance/check_migration_status/<row_id>',
