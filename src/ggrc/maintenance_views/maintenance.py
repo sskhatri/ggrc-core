@@ -126,7 +126,6 @@ def turn_off_maintenance_mode():
 
     return _turn_off_maintenance_mode() or ""
 
-
   if not (hasattr(settings, 'ACCESS_TOKEN') and
           request.form.get("access_token") == settings.ACCESS_TOKEN):
     logger.error("Invalid access token: %s", request.form.get("access_token"))
