@@ -43,7 +43,7 @@ def trigger(version, appengine_instance, access_token):
         break
 
       if sleep_time > CUTOFF_TIME:
-        print "Migration running for too long. Aborting.."
+        print "Migration running for too long. Aborting periodic check."
         sys.exit(1)
 
       print "Migration is in progress. Retrying in {} seconds".format(

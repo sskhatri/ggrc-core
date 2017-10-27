@@ -50,11 +50,15 @@ def index():
   return render_template("maintenance/trigger.html", **context)
 
 
-def run_migration():
+def trigger_migration():
   """Triggers a deferred task for migration."""
   try:
     sess = db.session
     maint_row = sess.query(Maintenance).get(1)
+    if maint_row and maint_row.under_maintenance:
+      logger.info(
+          'System is under maintenance. Try running migration later.')
+      return
     mig_row = MigrationLog(is_migration_complete=False)
     sess.add(mig_row)
 
@@ -78,14 +82,14 @@ def run_migration():
 
 
 @maintenance_app.route('/maintenance/migrate', methods=['POST'])
-def authenticate():
-  """Authenticates user and allows to run migration."""
+def run_migration():
+  """Allow authenticated user or with valid access token to run migration."""
   if "access_token" not in request.form:
     gae_user = users.get_current_user()
     if not (gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS):
       return "Unauthorized", 403
 
-    run_migration()
+    trigger_migration()
     return redirect(url_for('index'))
 
   if not (hasattr(settings, 'ACCESS_TOKEN') and
@@ -93,7 +97,7 @@ def authenticate():
     logger.error("Invalid access token: %s", request.form.get("access_token"))
     return json.dumps({"message": "Unauthorized"}), 403
 
-  mig_row_id = run_migration()
+  mig_row_id = trigger_migration()
   data = {'migration_task_id': mig_row_id,
           'message': 'Migration is running in background'}
   return json.dumps(data), 202
@@ -102,23 +106,26 @@ def authenticate():
 @maintenance_app.route('/maintenance/turnoff_maintenance_mode',
                        methods=['POST'])
 def turn_off_maintenance_mode():
-  """Super users are allowed to turn off maintenance mode manually."""
-  gae_user = users.get_current_user()
-  if gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS:
-    sess = db.session
-    db_row = sess.query(Maintenance).get(1)
+  """Turn off maintenance mode manually."""
+  if "access_token" not in request.form:
+    gae_user = users.get_current_user()
+    if not (gae_user and
+            gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS):
+      return "Unauthorized", 403
 
-    # Set the db flag before running migrations
-    if db_row:
-      db_row.under_maintenance = False
-      sess.add(db_row)
-      sess.commit()
-  else:
-    msg = "User not authorized"
-    logger.info(msg)
-    return msg
+  if not (hasattr(settings, 'ACCESS_TOKEN') and
+          request.form.get("access_token") == settings.ACCESS_TOKEN):
+    logger.error("Invalid access token: %s", request.form.get("access_token"))
+    return "Unauthorized", 403
 
-  return redirect(url_for('index'))
+  sess = db.session
+  db_row = sess.query(Maintenance).get(1)
+  if db_row:
+    db_row.under_maintenance = False
+    sess.add(db_row)
+    sess.commit()
+
+  return "Maintenance mode turned off successfully", 202
 
 
 @maintenance_app.route('/maintenance/check_migration_status/<row_id>',
