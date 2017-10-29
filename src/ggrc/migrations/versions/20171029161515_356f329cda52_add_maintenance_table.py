@@ -4,7 +4,7 @@
 """
 Add maintenance table
 
-Create Date: 2017-09-22 17:08:56.567214
+Create Date: 2017-10-28 17:08:56.567214
 """
 # disable Invalid constant name pylint warning for mandatory Alembic variables.
 # pylint: disable=invalid-name
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '1bbe724a2bc3'
-down_revision = 'fa2f60a53c9'
+revision = '356f329cda52'
+down_revision = '3c095f8ad47'
 
 
 def upgrade():
