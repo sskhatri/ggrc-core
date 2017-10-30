@@ -5,9 +5,9 @@
 Test Reader role
 """
 
-from integration.ggrc import TestCase
 from ggrc.models import get_model
 from ggrc.models import all_models
+from integration.ggrc import TestCase
 from integration.ggrc.api_helper import Api
 from integration.ggrc.generator import Generator
 from integration.ggrc.generator import ObjectGenerator
@@ -33,21 +33,19 @@ class TestReader(TestCase):
       self.users[name] = user
 
   def test_admin_page_access(self):
-    return
     for role, code in (("reader", 403), ("admin", 200)):
       self.api.set_user(self.users[role])
       self.assertEqual(self.api.client.get("/admin").status_code, code)
 
   def test_reader_can_crud(self):
-    return
     """ Test Basic create/read,update/delete operations """
     self.api.set_user(self.users["reader"])
     all_errors = []
     base_models = set([
-        "Control", "Assessment", "DataAsset", "Contract",
+        "Control", "DataAsset", "Contract",
         "Policy", "Regulation", "Standard", "Document", "Facility",
         "Market", "Objective", "OrgGroup", "Vendor", "Product",
-        "Clause", "System", "Process", "Issue", "Project", "AccessGroup",
+        "Clause", "System", "Process", "Project", "AccessGroup",
     ])
     for model_singular in base_models:
       try:
@@ -90,12 +88,11 @@ class TestReader(TestCase):
                   model_singular))
           continue
       except:
-          all_errors.append("{} exception thrown".format(model_singular))
-          raise
+        all_errors.append("{} exception thrown".format(model_singular))
+        raise
     self.assertEqual(all_errors, [])
 
   def test_reader_search(self):
-    return
     """ Test if reader can see the correct object while using search api """
     self.api.set_user(self.users['admin'])
     self.api.post(all_models.Regulation, {
@@ -105,15 +102,6 @@ class TestReader(TestCase):
     response = self.api.post(all_models.Policy, {
         "policy": {"title": "reader Policy", "context": None},
     })
-    obj_id = response.json.get("policy").get("id")
-    self.api.post(all_models.ObjectOwner, {"object_owner": {
-        "person": {
-            "id": self.users['reader'].id,
-            "type": "Person",
-        }, "ownable": {
-            "type": "Policy",
-            "id": obj_id,
-        }, "context": None}})
     response, _ = self.api.search("Regulation,Policy")
     entries = response.json["results"]["entries"]
     self.assertEqual(len(entries), 2)
@@ -164,6 +152,7 @@ class TestReader(TestCase):
     self.assertEqual(num, 1)
 
   def test_creation_of_mappings(self):
+    """Check if reader can't create mappings"""
     self.generator.api.set_user(self.users["admin"])
     _, control = self.generator.generate(all_models.Control, "control", {
         "control": {"title": "Test Control", "context": None},

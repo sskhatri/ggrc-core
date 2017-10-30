@@ -17,6 +17,11 @@ class SystemWideRoles(object):
   CREATOR = u"Creator"
   NO_ACCESS = u"No Access"
 
+  admins = {
+      SUPERUSER,
+      ADMINISTRATOR
+  }
+
 
 def context_query_filter(context_column, contexts):
   '''

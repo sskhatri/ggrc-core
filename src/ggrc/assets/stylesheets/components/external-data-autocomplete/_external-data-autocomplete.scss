@@ -1,0 +1,20 @@
+
+@import "./autocomplete-results";
+
+external-data-autocomplete {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+
+  .spinner.saving {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+  }
+}
+
+.autocomplete-field {
+  external-data-autocomplete {
+    width: 50%;
+  }
+}

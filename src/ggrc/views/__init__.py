@@ -28,6 +28,7 @@ from ggrc.extensions import get_extension_modules
 from ggrc.fulltext import get_indexer, mixin
 from ggrc.login import get_current_user
 from ggrc.login import login_required
+from ggrc.login import admin_required
 from ggrc.models import all_models
 from ggrc.models.background_task import create_task
 from ggrc.models.background_task import make_task_response
@@ -153,6 +154,7 @@ def get_public_config():
       "snapshotable_objects": list(rules.Types.all),
       "snapshotable_ignored": list(rules.Types.ignore),
       "snapshotable_parents": list(rules.Types.parents),
+      "external_services": {"Person": "/people/suggest"},
   }
 
 
@@ -341,11 +343,10 @@ def object_browser():
 
 @app.route("/admin/reindex", methods=["POST"])
 @login_required
+@admin_required
 def admin_reindex():
   """Calls a webhook that reindexes indexable objects
   """
-  if not permissions.is_allowed_read("/admin", None, 1):
-    raise Forbidden()
   task_queue = create_task(
       name="reindex",
       url=url_for(reindex.__name__),
@@ -358,6 +359,7 @@ def admin_reindex():
 
 @app.route("/admin/refresh_revisions", methods=["POST"])
 @login_required
+@admin_required
 def admin_refresh_revisions():
   """Calls a webhook that refreshes revision content."""
   admins = getattr(settings, "BOOTSTRAP_ADMIN_USERS", [])
@@ -373,6 +375,7 @@ def admin_refresh_revisions():
 
 @app.route("/admin/compute_attributes", methods=["POST"])
 @login_required
+@admin_required
 def send_event_job():
   with benchmark("POST /admin/compute_attributes"):
     if request.data:
@@ -385,11 +388,10 @@ def send_event_job():
 
 @app.route("/admin")
 @login_required
+@admin_required
 def admin():
   """The admin dashboard page
   """
-  if not permissions.is_allowed_read("/admin", None, 1):
-    raise Forbidden()
   return render_template("admin/index.haml")
 
 

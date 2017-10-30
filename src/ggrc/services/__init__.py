@@ -94,6 +94,9 @@ def init_extra_services(app):
   app.add_url_rule(
       '/search', 'search', login_required(search))
 
+  from .suggest import suggest
+  app.add_url_rule('/people/suggest', 'suggest', login_required(suggest))
+
   from .description import ServiceDescription
   app.add_url_rule(
       '/api', view_func=ServiceDescription.as_view('ServiceDescription'))
