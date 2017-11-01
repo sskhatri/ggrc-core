@@ -38,9 +38,16 @@ def index():
     try:
       row = db.session.query(MigrationLog).order_by(
           MigrationLog.id.desc()).first()
-      if row and row.is_migration_complete:
+      if not row:
+        return render_template("maintenance/trigger.html", **context)
+
+      if row.log:
+        context['migration_status'] = 'Error'
+
+      elif row.is_migration_complete:
         context['migration_status'] = 'Complete'
-      elif row:
+
+      else:
         context['migration_status'] = 'In progress'
     except sqlalchemy.exc.ProgrammingError as e:
       if not re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""",
@@ -150,11 +157,6 @@ def check_migration_status(row_id):
     if mig_row.log:
       data = {"status": "Fail",
               "message": mig_row.log}
-      return json.dumps(data), 202
-
-    if not mig_row.is_migration_complete and not maint_row.under_maintenance:
-      data = {"status": "Fail",
-              "message": "Migration seem to stuck."}
       return json.dumps(data), 202
 
     if not mig_row.is_migration_complete:

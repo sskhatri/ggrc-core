@@ -145,11 +145,15 @@ def upgradeall(config=None, row_id=None):
       mig_row.version_num = version_num
       mig_row.is_migration_complete = True
 
-  finally:
-    # Unset db flag after running migrations
-    if db_row:
-      db_row.under_maintenance = False
-      sess.commit()
+  except Exception as e:
+    if mig_row:
+      mig_row.log = mig_row.log + '\n' + e.message
+    logger.exception("Migration failed : %s", e.message)
+    raise
+  # Unset db flag after running migrations successfully
+  if db_row:
+    db_row.under_maintenance = False
+    sess.commit()
 
 
 def migrate(row_id=None):
