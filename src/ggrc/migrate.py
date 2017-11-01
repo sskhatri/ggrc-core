@@ -128,7 +128,7 @@ def upgradeall(config=None, row_id=None):
   except sqlalchemy.exc.ProgrammingError as e:
     if not re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""", e.message):
       if mig_row:
-        mig_row.log = mig_row.log + '\n' + e.message
+        mig_row.log = e.message
       else:
         raise
 
@@ -147,7 +147,8 @@ def upgradeall(config=None, row_id=None):
 
   except Exception as e:
     if mig_row:
-      mig_row.log = mig_row.log + '\n' + e.message
+      mig_row.log = e.message
+      sess.commit()
     logger.exception("Migration failed : %s", e.message)
     raise
   # Unset db flag after running migrations successfully
