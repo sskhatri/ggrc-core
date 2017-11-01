@@ -7,8 +7,8 @@ from logging import getLogger
 
 import sys
 import json
-import requests
 import time
+import requests
 
 CUTOFF_TIME = 600
 
