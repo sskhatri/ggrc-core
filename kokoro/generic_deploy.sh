@@ -5,7 +5,7 @@
 set -o nounset
 set -o errexit
 
-mv /tmpfs/src/gfile/settings_ggrc_prod /tmpfs/src/gfile/settings
+mv /tmpfs/src/gfile/generic_settings /tmpfs/src/gfile/settings
 
 CURRENT_SCRIPTPATH=$( cd "$(dirname "$0")" ; pwd -P )
 export CURRENT_SCRIPTPATH
