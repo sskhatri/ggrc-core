@@ -33,6 +33,9 @@ logger = getLogger(__name__)
 @maintenance_app.route('/maintenance/index')
 def index():
   """Renders admin maintenance dashboard."""
+  gae_user = users.get_current_user()
+  if not (gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS):
+    return "Unauthorized", 403
   context = {'migration_status': 'Not started'}
   if session.get('migration_started'):
     try:
