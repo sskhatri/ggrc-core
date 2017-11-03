@@ -87,7 +87,8 @@ def check_if_under_maintenance():
     logger.info('Request path : %s', request.path)
     condition = (db_row and
                  db_row.under_maintenance and
-                 request.path != url_for('maintenance_'))
+                 request.path != url_for('maintenance_') and
+                 request.path != '/_ah/start')
     if condition:
       return redirect(url_for('maintenance_'))
 
