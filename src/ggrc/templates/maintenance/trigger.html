@@ -34,6 +34,22 @@
       </form>
     </div>
 
+    <div>
+      <form action='/admin/refresh_revisions' method='POST'>
+          <p>
+              <input type="submit" value="Run revision refresh">  Status : {{ revision_refresh_status }}
+          </p>
+      </form>
+    </div>
+
+    <div>
+      <form action='/admin/reindex' method='POST'>
+          <p>
+              <input type="submit" value="Run reindex">  Status : {{ reindex_status }}
+          </p>
+      </form>
+    </div>
+
   </div>
 </div>
 

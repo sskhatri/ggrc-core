@@ -5,6 +5,10 @@
 Handle non-RESTful views, e.g. routes which return HTML rather than JSON
 """
 
+# pylint: disable=invalid-name
+
+
+import re
 import collections
 import json
 import logging
@@ -15,6 +19,7 @@ from flask import g
 from flask import render_template
 from flask import url_for
 from flask import request
+from flask import session
 from werkzeug.exceptions import Forbidden
 
 from ggrc import models
@@ -35,6 +40,9 @@ from ggrc.models import all_models
 from ggrc.models.background_task import create_task
 from ggrc.models.background_task import make_task_response
 from ggrc.models.background_task import queued_task
+from ggrc.models.maintenance import Maintenance
+from ggrc.models.maintenance import ReindexLog
+from ggrc.models.maintenance import RevisionRefreshLog
 from ggrc.models.reflection import AttributeInfo
 from ggrc.rbac import permissions
 from ggrc.services.common import as_json
@@ -54,12 +62,58 @@ from ggrc.utils import revisions
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
+def start_maintenance(model_type, model_field):
+  """Sets maintenance flag for given maintenance model."""
+  try:
+    sess = db.session
+    row = sess.query(Maintenance).get(1)
+    if row:
+      row.under_maintenance = True
+    else:
+      row = Maintenance(under_maintenance=True)
+      sess.add(row)
+    model_obj = model_type()
+    setattr(model_obj, model_field, False)
+    sess.add(model_obj)
+    sess.commit()
+  except sqlalchemy.exc.ProgrammingError as e:
+    logger.error(e.message)
+    if not re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""", e.message):
+      raise
+  session['row_id'] = model_obj.id if model_obj else 0
+  if model_type == ReindexLog:
+    session['reindex_started'] = True
+  if model_type == RevisionRefreshLog:
+    session['revision_refresh_started'] = True
+
+
+def stop_maintenance(model_type, model_field):
+  """Unsets maintenance flag for given maintenance model."""
+  try:
+    sess = db.session
+    row_id = session.get('row_id') or 0
+    if row_id:
+      del session['row_id']
+    maint_row = sess.query(Maintenance).get(1)
+    row = sess.query(model_type).get(row_id)
+    if maint_row:
+      maint_row.under_maintenance = False
+    if row:
+      setattr(row, model_field, True)
+    sess.commit()
+  except sqlalchemy.exc.ProgrammingError as e:
+    logger.error(e.message)
+    if not re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""", e.message):
+      raise
+
+
 # Needs to be secured as we are removing @login_required
 @app.route("/_background_tasks/refresh_revisions", methods=["POST"])
 @queued_task
 def refresh_revisions(_):
   """Web hook to update revision content."""
   revisions.do_refresh_revisions()
+  stop_maintenance(RevisionRefreshLog, 'is_revision_refresh_complete')
   return app.make_response(("success", 200, [("Content-Type", "text/html")]))
 
 
@@ -82,6 +136,7 @@ def compute_attributes(args):
     else:
       revision_ids = [id_ for id_ in args.parameters["revision_ids"]]
     computed_attributes.compute_attributes(revision_ids)
+    stop_maintenance(ReindexLog, 'is_reindex_complete')
     return app.make_response(("success", 200, [("Content-Type", "text/html")]))
 
 
@@ -160,7 +215,6 @@ def start_update_audit_issues(audit_id, message):
 
 def do_reindex():
   """Update the full text search index."""
-
   indexer = get_indexer()
   indexed_models = {
       m.__name__: m for m in all_models.all_models
@@ -416,6 +470,7 @@ def object_browser():
 def admin_reindex():
   """Calls a webhook that reindexes indexable objects
   """
+  start_maintenance(ReindexLog, 'is_reindex_complete')
   task_queue = create_task(
       name="reindex",
       url=url_for(reindex.__name__),
@@ -431,6 +486,7 @@ def admin_reindex():
 @admin_required
 def admin_refresh_revisions():
   """Calls a webhook that refreshes revision content."""
+  start_maintenance(RevisionRefreshLog, 'is_revision_refresh_complete')
   admins = getattr(settings, "BOOTSTRAP_ADMIN_USERS", [])
   if get_current_user().email not in admins:
     raise Forbidden()

@@ -15,6 +15,8 @@ from ggrc import migrate
 from ggrc import settings
 from ggrc.models.maintenance import Maintenance
 from ggrc.models.maintenance import MigrationLog
+from ggrc.models.maintenance import ReindexLog
+from ggrc.models.maintenance import RevisionRefreshLog
 
 from google.appengine.api import users
 from google.appengine.ext import deferred
@@ -30,32 +32,54 @@ import sqlalchemy
 logger = getLogger(__name__)
 
 
+def update_context(model_type, model_field, model_status, context):
+  """Updates the current status for the operation."""
+  try:
+    row = db.session.query(model_type).order_by(
+        model_type.id.desc()).first()
+
+    if not row:
+      return
+
+    if row.log:
+      context[model_status] = 'Error'
+
+    elif getattr(row, model_field):
+      context[model_status] = 'Complete'
+
+    else:
+      context[model_status] = 'In progress'
+
+  except sqlalchemy.exc.ProgrammingError as e:
+    if not re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""",
+                     e.message):
+      raise
+
+
 @maintenance_app.route('/maintenance/index')
 def index():
   """Renders admin maintenance dashboard."""
   gae_user = users.get_current_user()
   if not (gae_user and gae_user.email() in settings.BOOTSTRAP_ADMIN_USERS):
     return "Unauthorized", 403
-  context = {'migration_status': 'Not started'}
+  context = {'migration_status': 'Not started',
+             'reindex_status': 'Not started',
+             'revision_refresh_status': 'Not started'}
   if session.get('migration_started'):
-    try:
-      row = db.session.query(MigrationLog).order_by(
-          MigrationLog.id.desc()).first()
-      if not row:
-        return render_template("maintenance/trigger.html", **context)
-
-      if row.log:
-        context['migration_status'] = 'Error'
-
-      elif row.is_migration_complete:
-        context['migration_status'] = 'Complete'
-
-      else:
-        context['migration_status'] = 'In progress'
-    except sqlalchemy.exc.ProgrammingError as e:
-      if not re.search(r"""\(1146, "Table '.+' doesn't exist"\)$""",
-                       e.message):
-        raise
+    update_context(MigrationLog,
+                   'is_migration_complete',
+                   'migration_status',
+                   context)
+  if session.get('reindex_started'):
+    update_context(ReindexLog,
+                   'is_reindex_complete',
+                   'reindex_status',
+                   context)
+  if session.get('revision_refresh_started'):
+    update_context(RevisionRefreshLog,
+                   'is_revision_refresh_complete',
+                   'revision_refresh_status',
+                   context)
 
   return render_template("maintenance/trigger.html", **context)
 
