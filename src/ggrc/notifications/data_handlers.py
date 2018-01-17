@@ -16,12 +16,13 @@ from logging import getLogger
 
 import pytz
 from pytz import timezone
-from sqlalchemy import and_
+import sqlalchemy as sa
 
 from ggrc import db
 from ggrc import models
 from ggrc import notifications
 from ggrc import utils
+from ggrc.models.comment import Commentable
 from ggrc.utils import DATE_FORMAT_US
 from ggrc.models.reflection import AttributeInfo
 
@@ -100,15 +101,15 @@ def _get_revisions(obj, created_at):
       .first()
   old_rev = db.session.query(models.Revision) \
       .filter_by(resource_id=obj.id, resource_type=obj.type) \
-      .filter(and_(models.Revision.created_at < created_at,
-                   models.Revision.id < new_rev.id)) \
+      .filter(sa.and_(models.Revision.created_at < created_at,
+                      models.Revision.id < new_rev.id)) \
       .order_by(models.Revision.id.desc()) \
       .first()
   if not old_rev:
     old_rev = db.session.query(models.Revision) \
         .filter_by(resource_id=obj.id, resource_type=obj.type) \
-        .filter(and_(models.Revision.created_at == created_at,
-                     models.Revision.id < new_rev.id)) \
+        .filter(sa.and_(models.Revision.created_at == created_at,
+                        models.Revision.id < new_rev.id)) \
         .order_by(models.Revision.id) \
         .first()
   return new_rev, old_rev
@@ -219,7 +220,7 @@ def assignable_open_data(notif):
         notif.object_type, notif.id,
     )
     return {}
-  people = [person for person, _ in obj.assignees]
+  people = [person for person in obj.assignees]
 
   return _get_assignable_dict(people, notif)
 
@@ -240,7 +241,7 @@ def assignable_updated_data(notif):
         notif.object_type, notif.id,
     )
     return {}
-  people = [person for person, _ in obj.assignees]
+  people = [person for person in obj.assignees]
 
   return _get_assignable_dict(people, notif)
 
@@ -256,7 +257,7 @@ def _get_declined_people(obj):
     the given object type.
   """
   if obj.type == "Assessment":
-    return [person for person, _ in obj.assignees]
+    return [person for person in obj.assignees]
   return []
 
 
@@ -294,7 +295,9 @@ def assignable_reminder(notif):
       # In case object already moved out of targeted state
       return notif_data
     assignee_group = data[obj.status]
-    people = [a for a, roles in obj.assignees if assignee_group in roles]
+    people = [
+        a for a, roles in obj.assignees.items() if assignee_group in roles
+    ]
 
     for person in people:
       notif_data[person.email] = {
@@ -418,6 +421,42 @@ def generate_comment_notification(obj, comment, person):
   }
 
 
+def _get_comment_relation(comment):
+  """Get relationship objects for provided comment
+
+  Args:
+      comment: a Comment instance
+
+  Returns:
+      Relationship between comment object and any other
+  """
+  return models.Relationship.query.filter(sa.or_(
+      sa.and_(
+          models.Relationship.source_type == "Comment",
+          models.Relationship.source_id == comment.id,
+      ),
+      sa.and_(
+          models.Relationship.destination_type == "Comment",
+          models.Relationship.destination_id == comment.id,
+      )
+  ))
+
+
+def _get_people_with_roles(comment_obj):
+  """Collect recipients with their roles
+
+  Args:
+      comment_obj: Commentable object for which notification should be send
+
+  Returns:
+      Dict with Person instances and set of role names
+  """
+  assignees = defaultdict(set)
+  for acl in comment_obj.access_control_list:
+    assignees[acl.person].add(acl.ac_role.name)
+  return assignees
+
+
 def get_comment_data(notif):
   """Return data for comment notifications.
 
@@ -436,10 +475,15 @@ def get_comment_data(notif):
   recipients = set()
   comment = get_notification_object(notif)
   comment_obj = None
-  rel = models.Relationship.find_related(comment, models.Assessment())
 
-  if rel:
-    comment_obj = rel.Assessment_destination or rel.Assessment_source
+  rel = _get_comment_relation(comment).first()
+  if rel and (
+      issubclass(type(rel.source), Commentable) or
+      issubclass(type(rel.destination), Commentable)
+  ):
+    comment_obj = rel.source
+    if rel.source_type == "Comment":
+      comment_obj = rel.destination
   if not comment_obj:
     logger.warning('Comment object not found for notification %s', notif.id)
     return {}
@@ -447,8 +491,8 @@ def get_comment_data(notif):
   if comment_obj.recipients:
     recipients = set(comment_obj.recipients.split(","))
 
-  for person, assignee_type in comment_obj.assignees:
-    if not recipients or recipients.intersection(set(assignee_type)):
+  for person, assignee_types in _get_people_with_roles(comment_obj).items():
+    if not recipients or recipients.intersection(assignee_types):
       data[person.email] = generate_comment_notification(
           comment_obj, comment, person)
   return data

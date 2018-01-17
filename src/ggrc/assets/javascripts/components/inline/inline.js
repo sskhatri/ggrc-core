@@ -1,27 +1,39 @@
-/*!
+/* !
     Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import './readonly-inline-content';
+import '../form/fields/checkbox-form-field';
+import '../form/fields/date-form-field';
+import '../form/fields/dropdown-form-field';
+import '../form/fields/person-form-field';
+import '../form/fields/rich-text-form-field';
+import '../form/fields/text-form-field';
+import '../form/fields/numberbox-form-field';
+import template from './inline.mustache';
+
 
 (function (can, GGRC) {
   'use strict';
 
   GGRC.Components('inlineEditControl', {
     tag: 'inline-edit-control',
-    template: can.view(
-      GGRC.mustache_path + '/components/inline/inline.mustache'
-    ),
+    template: template,
     viewModel: {
       define: {
+        isValid: {
+          get() {
+            return !this.attr('mandatory') || !!this.attr('context.value');
+          },
+        },
         isShowContent: {
           get: function () {
             return this.attr('hideContentInEditMode') ?
               this.attr('editMode') :
               true;
-          }
-        }
+          },
+        },
       },
       instance: {},
       editMode: false,
@@ -38,6 +50,7 @@ import './readonly-inline-content';
       isLastOpenInline: false,
       isEditIconDenied: false,
       hideContentInEditMode: false,
+      mandatory: false,
       context: {
         value: null
       },
@@ -56,6 +69,10 @@ import './readonly-inline-content';
         var oldValue = this.attr('value');
         var value = this.attr('context.value');
 
+        if (!this.attr('isValid')) {
+          return;
+        }
+
         this.attr('editMode', false);
         // In case value is String and consists only of spaces - do nothing
         if (typeof value === 'string' && !value.trim()) {
@@ -72,7 +89,7 @@ import './readonly-inline-content';
         this.dispatch({
           type: 'inlineSave',
           value: value,
-          propName: this.attr('propName')
+          propName: this.attr('propName'),
         });
       },
       cancel: function () {

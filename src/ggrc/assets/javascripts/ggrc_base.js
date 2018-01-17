@@ -2,6 +2,9 @@
     Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
+
+import PersistentNotifier from './plugins/persistent_notifier';
+
 (function(GGRC, moment) {
   GGRC.mustache_path = '/static/mustache';
 
@@ -164,7 +167,7 @@
      * Shows flash notification
      * @param  {String} type    type of notification. error|warning
      * @param  {String} message Plain text message or mustache template if data is passed
-     * @param  {Object} data data to populate mustache template
+     * @param  {Object} [data] data to populate mustache template
      */
     function notifier(type, message, data) {
       var props = {};
@@ -190,6 +193,10 @@
         notifier(type, message);
       };
     }
+
+    window.addEventListener('error', event => {
+      notifier('error', event.message);
+    });
 
     return {
       messages: messages,

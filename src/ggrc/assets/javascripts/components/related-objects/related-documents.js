@@ -3,6 +3,11 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import {
+  buildParam,
+  batchRequests,
+} from '../../plugins/utils/query-api-utils';
+
 (function (can, $, _, GGRC) {
   'use strict';
 
@@ -44,8 +49,8 @@
         } :
         [];
 
-        var query = GGRC.Utils.QueryAPI
-          .buildParam('Document', {}, relevantFilters, [], additionalFilter);
+        var query =
+          buildParam('Document', {}, relevantFilters, [], additionalFilter);
         query.order_by = [{name: 'created_at', desc: true}];
 
         return query;
@@ -56,7 +61,7 @@
         var query = this.getDocumentsQuery();
 
         this.attr('isLoading', true);
-        promise = GGRC.Utils.QueryAPI.batchRequests(query).then(
+        promise = batchRequests(query).then(
           function (response) {
             var documents = response.Document.values;
             self.attr('documents').replace(documents);

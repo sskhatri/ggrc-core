@@ -3,8 +3,10 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import Component from '../csv-template';
+
 describe('GGRC.Components.csvTemplate', function () {
-  var events = GGRC.Components.get('csvTemplate').prototype.events;
+  var events = Component.prototype.events;
 
   describe('events', function () {
     var scope;

@@ -68,7 +68,7 @@ class _ObjectWidgetBar(_WidgetBar):
     """Select 'Dashboard' tab on Object Widget Bar."""
     Button(self._driver, locator.WidgetBar.DASHBOARD_TAB).click()
     return selenium_utils.get_when_visible(
-        self._driver, locator.DashboardWidget.TAB_CONTAINER)
+        self._driver, locator.DashboardWidget.TAB_CONTAINER_CSS)
 
   def is_dashboard_tab_exist(self):
     """Check is 'Dashboard' tab exist on Object Widget Bar."""
@@ -143,6 +143,8 @@ class AdminDashboard(_WidgetBar):
         self._driver, locator.WidgetBar.ADMIN_EVENTS)
     self.tab_custom_attributes = widget_bar.Tab(
         self._driver, locator.WidgetBar.ADMIN_CUSTOM_ATTRIBUTE)
+    self.tab_custom_roles = widget_bar.Tab(
+        self._driver, locator.WidgetBar.ADMIN_CUSTOM_ATTRIBUTE)
 
   def select_people(self):
     """
@@ -171,6 +173,10 @@ class AdminDashboard(_WidgetBar):
     """
     self.tab_custom_attributes.click()
     return admin_widget.CustomAttributes(self._driver)
+
+  def select_custom_roles(self):
+    # todo: Return: lib.page.widget.admin_widget.CustomRoles
+    raise NotImplementedError
 
 
 class Dashboard(_ObjectWidgetBar):

@@ -3,6 +3,10 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import {
+  getPageType,
+} from '../../plugins/utils/current-page-utils';
+
 (function (can) {
   'use strict';
 
@@ -14,7 +18,7 @@
         contextName: {
           type: String,
           get: function () {
-            return GGRC.Utils.CurrentPage.getPageType();
+            return getPageType();
           }
         }
       },

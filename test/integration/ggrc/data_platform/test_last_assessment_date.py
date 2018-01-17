@@ -26,9 +26,9 @@ Corner cases:
 
 import collections
 import datetime
+import itertools
 
 import freezegun
-import itertools
 
 from ggrc import models
 from ggrc.converters import errors
@@ -226,7 +226,7 @@ class TestLastAssessmentDate(TestCase):
     self._check_csv_response(resp, {
         "Control": {
             "row_warnings": {
-                errors.UNMODIFIABLE_COLUMN.format(
+                errors.EXPORT_ONLY_WARNING.format(
                     line=3, column_name="Last Assessment Date"
                 )
             }

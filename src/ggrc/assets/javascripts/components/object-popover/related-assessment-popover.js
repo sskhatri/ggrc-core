@@ -3,19 +3,27 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../related-objects/related-comments';
+import '../custom-attributes/custom-attributes-field-view';
+import '../mapped-objects/mapped-objects';
+import '../object-list-item/comment-list-item';
+import '../form/form-validation-icon';
+import '../tabs/tab-container';
+import '../show-more/show-more';
+import '../related-objects/related-comments';
+import './object-popover';
 import {convertValuesToFormFields} from '../../plugins/utils/ca-utils';
+import template from './related-assessment-popover.mustache';
 
 (function (can) {
   'use strict';
 
-  var tpl = can.view(GGRC.mustache_path +
-    '/components/object-popover/related-assessment-popover.mustache');
   /**
    * Simple wrapper component to load Related to Parent Object Snapshots of Controls and Objectives
    */
   can.Component.extend({
     tag: 'related-assessment-popover',
-    template: tpl,
+    template: template,
     viewModel: {
       selectedAssessment: {},
       popoverTitleInfo: 'Assessment Title: ',

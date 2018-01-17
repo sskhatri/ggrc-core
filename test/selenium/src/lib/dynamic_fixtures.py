@@ -14,7 +14,8 @@ from lib.entities.entities_factory import CustomAttributeDefinitionsFactory
 from lib.entities.entity import Entity
 from lib.page.widget import info_widget
 from lib.service import rest_service
-from lib.utils import conftest_utils, test_utils, string_utils
+from lib.utils import conftest_utils, test_utils
+from lib.utils.string_utils import StringMethods
 
 dict_executed_fixtures = {}
 
@@ -95,7 +96,7 @@ def _new_objs_rest(obj_name, obj_count,  # noqa: ignore=C901
     if has_cas and obj_name in objects.ASSESSMENT_TEMPLATES:
       parent_objs = (
           [CustomAttributeDefinitionsFactory().create(
-              attribute_type=ca_type, definition_type="") for
+              attribute_type=unicode(ca_type), definition_type=unicode("")) for
               ca_type in _list_cas_types] + parent_objs)
     objs = create_objs_rest_used_exta_arrts(
         name=obj_name, factory_params=factory_params, extra_attrs=parent_objs)
@@ -123,13 +124,13 @@ def generate_common_fixtures(*fixtures):  # noqa: ignore=C901
       fixture_params = fixture.replace("new_cas_for_", "").replace("_rest", "")
       obj_name = objects.CUSTOM_ATTRIBUTES
       factory_cas_for_objs = [CustomAttributeDefinitionsFactory().create(
-          attribute_type=ca_type,
-          definition_type=objects.get_singular(fixture_params))
+          attribute_type=unicode(ca_type),
+          definition_type=unicode(objects.get_singular(fixture_params)))
           for ca_type in _list_cas_types]
       new_objs = [
           _new_objs_rest(obj_name=obj_name, obj_count=1, factory_params=dict(
-              attribute_type=ca.attribute_type,
-              definition_type=ca.definition_type,
+              attribute_type=unicode(ca.attribute_type),
+              definition_type=unicode(ca.definition_type),
               multi_choice_options=ca.multi_choice_options))[0]
           for ca in factory_cas_for_objs]
     else:
@@ -293,7 +294,7 @@ def generate_snapshots_fixtures(fixture):
       _creation_params, _action_params = fixture_params.split("_and_")
     if "_and_" not in fixture_params:
       _creation_params = fixture_params
-    creation_params = string_utils.convert_list_elements_to_list([
+    creation_params = StringMethods.convert_list_elements_to_list([
         "new_{}_rest".format(param) if "_with_cas" not in param else
         ["new_cas_for_{}_rest".format(objects.get_plural(param.split("_")[0])),
          "new_{}_rest".format(param)]

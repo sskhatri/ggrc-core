@@ -4,15 +4,19 @@
 """
 Test Reader role
 """
+import ddt
 
+from ggrc import db
 from ggrc.models import get_model
 from ggrc.models import all_models
 from integration.ggrc import TestCase
+from integration.ggrc import factories
 from integration.ggrc.api_helper import Api
 from integration.ggrc.generator import Generator
 from integration.ggrc.generator import ObjectGenerator
 
 
+@ddt.ddt
 class TestReader(TestCase):
   """ Test reader role """
 
@@ -25,7 +29,9 @@ class TestReader(TestCase):
 
   def init_users(self):
     """ Init users needed by the test cases """
-    users = [("reader", "Reader"), ("admin", "Administrator")]
+    users = [("reader", "Reader"),
+             ("admin", "Administrator"),
+             ("creator", "Creator")]
     self.users = {}
     for (name, role) in users:
       _, user = self.object_generator.generate_person(
@@ -175,4 +181,18 @@ class TestReader(TestCase):
                 "type": "context"
             }},
         })
+    self.assertEqual(response.status_code, 403)
+
+  @ddt.data("creator", "reader")
+  def test_unmap_people(self, user_role):
+    """Test that global reader/creator can't unmap people from program"""
+    user = self.users[user_role]
+    with factories.single_commit():
+      program = factories.ProgramFactory()
+      mapped_person = factories.ObjectPersonFactory(
+          personable=program, person=user, context=program.context
+      )
+    self.api.set_user(user)
+    db.session.add(mapped_person)
+    response = self.api.delete(mapped_person)
     self.assertEqual(response.status_code, 403)

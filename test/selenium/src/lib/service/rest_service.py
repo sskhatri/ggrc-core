@@ -4,8 +4,7 @@
 # pylint: disable=too-few-public-methods
 
 import json
-
-from requests import exceptions
+import requests
 
 from lib import environment, factory
 from lib.constants import url, objects, messages
@@ -68,54 +67,61 @@ class BaseRestService(object):
 
   def update_obj(self, obj, **attrs):
     """Update attributes values of existing object via REST API."""
-    obj.update_attrs(**attrs)
     return self.set_obj_attrs(obj=obj, attrs=self.get_items_from_resp(
-        self.client.update_object(
-            href=obj.href, **dict({k: v for k, v in obj.__dict__
-                                  .iteritems() if k != "href"}.items()))))
+        self.client.update_object(href=obj.href, **attrs)))
 
-  @staticmethod
-  def get_items_from_resp(response):
-    """Check response from server and get items {key: value} from it."""
-    # pylint: disable=superfluous-parens
-    def get_extra_items(response):
+  @staticmethod  # noqa: ignore=C901
+  def get_items_from_resp(resp):
+    """Check response (waiting object of requests library) from server and get
+    items {key: value} from it."""
+    def get_extra_items(resp_dict):
       """Get extra items {key: value} that used in entities."""
       extra = {}
-      if response.get("selfLink"):
-        extra.update({"href": response.get("selfLink")})
-      if response.get("viewLink"):
+      if resp_dict.get("selfLink"):
+        extra.update({"href": resp_dict.get("selfLink")})
+      if resp_dict.get("viewLink"):
         extra.update(
-            {"url": environment.APP_URL + response.get("viewLink")[1:]})
+            {"url": environment.APP_URL + resp_dict.get("viewLink")[1:]})
       return extra
-    resp_text = json.loads(response.text)
-    resp_status_code = response.status_code
-    req_method = response.request.method
-    is_query_resp = False
-    # check response from server
-    if resp_status_code == client.RestClient.STATUS_CODES["OK"]:
-      # 'POST' request methods
-      if req_method == "POST" and isinstance(resp_text, list):
-        # REST API: [[201, {resp}]] to {resp}
-        if len(resp_text[0]) == 2 and resp_text[0][0] == 201:
-          resp_text = resp_text[0][1]
-        # QUERY API: [[{resp}]] to {resp}
-        elif len(resp_text[0]) == 1 and resp_text[0] != 201:
-          is_query_resp = True
-          resp_text = resp_text[0]
-      # 'PUT' request methods
-      if req_method == "PUT":
-        pass
-    # {resp} == {key: {value}}
-    if isinstance(resp_text, dict) and len(resp_text) == 1:
-      # {key: {value}} to {value}
-      resp_text = resp_text.itervalues().next()
-      return (dict(resp_text.items() + ({}.items() if is_query_resp
-              else get_extra_items(resp_text).items())))
+    if isinstance(resp, requests.models.Response):
+      try:
+        resp_text = json.loads(resp.text, encoding="utf-8")
+      except UnicodeDecodeError as unicode_err:
+        raise requests.exceptions.ContentDecodingError(
+            messages.ExceptionsMessages.err_server_req_resp.format(
+                resp.request.body, resp.status_code + unicode_err, resp.text))
+      resp_status_code = resp.status_code
+      req_method = resp.request.method
+      is_query_resp = False
+      # check response from server
+      if resp_status_code == client.RestClient.STATUS_CODES["OK"]:
+        # 'POST' request methods
+        if req_method == "POST" and isinstance(resp_text, list):
+          # REST API: [[201, {resp}]] to {resp}
+          if len(resp_text[0]) == 2 and resp_text[0][0] == 201:
+            resp_text = resp_text[0][1]
+          # QUERY API: [[{resp}]] to {resp}
+          elif len(resp_text[0]) == 1 and resp_text[0] != 201:
+            is_query_resp = True
+            resp_text = resp_text[0]
+        # 'PUT' request methods
+        if req_method == "PUT":
+          pass
+      # {resp} == {key: {value}}
+      if isinstance(resp_text, dict) and len(resp_text) == 1:
+        # {key: {value}} to {value}
+        resp_text = resp_text.itervalues().next()
+        return (dict(resp_text.items() +
+                     ({}.items() if is_query_resp else
+                      get_extra_items(resp_text).items())))
+      else:
+        resp_code, resp_message = resp_text[0]
+        raise requests.exceptions.ContentDecodingError(
+            messages.ExceptionsMessages.err_server_req_resp.format(
+                resp.request.body, resp_code, resp_message))
     else:
-      resp_code, resp_message = resp_text[0]
-      raise exceptions.ContentDecodingError(
-          messages.ExceptionsMessages.err_server_response.
-          format(resp_code, resp_message))
+      raise requests.exceptions.RequestException(
+          messages.ExceptionsMessages.err_server_resp.format(resp))
 
   @staticmethod
   def set_obj_attrs(attrs, obj, **kwargs):
@@ -205,20 +211,6 @@ class AssessmentsService(BaseRestService):
   """Service for working with Assessments entities."""
   def __init__(self):
     super(AssessmentsService, self).__init__(url.ASSESSMENTS)
-
-  def create_objs(self, count, factory_params=None, **attrs_for_template):
-    """Create new Assessments and make default relationships of Persons:
-    'Creator', 'Assessor' to them via REST API and return list of created
-    objects with filtered attributes.
-    """
-    objs = BaseRestService(self.endpoint).create_objs(
-        count, factory_params, **attrs_for_template)
-    assignees = [assignee for obj in objs for assignee in obj.assignees]
-    if assignees:
-      RelationshipsService().map_objs(
-          src_obj=ObjectPersonsFactory().default(), dest_objs=objs,
-          attrs={"AssigneeType": ",".join(assignees)})
-    return objs
 
 
 class IssuesService(BaseRestService):

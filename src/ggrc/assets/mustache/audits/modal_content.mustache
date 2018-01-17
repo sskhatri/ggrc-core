@@ -53,9 +53,10 @@
         </label>
         <i class="fa fa-person green pull-left icon-field"></i>
         <div class="objective-selector">
-          {{#using contact=instance.contact}}
             {{^if_config_exist 'external_services.Person'}}
-            <input data-id="audit_lead" tabindex="3" type="text" name="contact.email" data-lookup="Person" class="span10 audit-selector search-icon" placeholder="Enter text to search for Audit Captain" value="{{firstnonempty contact.email ''}}">
+            <input data-id="audit_lead" tabindex="3" type="text" name="contact.email" data-lookup="Person"
+              class="span10 audit-selector search-icon" placeholder="Enter text to search for Audit Captain"
+              value="{{firstnonempty instance.contact.email ''}}" data-no-serialization>
             {{else}}
             <inline-autocomplete-wrapper
               class="inline-block"
@@ -75,7 +76,6 @@
               </external-data-autocomplete>
             </inline-autocomplete-wrapper>
             {{/if_config_exist}}
-          {{/using}}
         </div>
       </div>
       <div data-id="status_hidden" class="span3 hidable">
@@ -241,6 +241,34 @@
     </div>
 
     {{#with_current_user_as 'current_user'}}<input type="hidden" name="modified_by_id" value="{{current_user.id}}">{{/with_current_user_as}}
+
+    {{#displayAssessmentIssueTracker instance.can_use_issue_tracker}}
+      <div class="expanded-area">
+        <div class="expand-link">
+          <a class="show-hidden-fields info-show-hide active" href="javascript://">
+            <span class="out">
+              <i class="fa fa-caret-right"></i>
+              SHOW
+            </span>
+            <span class="in">
+              <i class="fa fa-caret-down"></i>
+              HIDE
+            </span>
+            BUGANIZER INFO
+          </a>
+        </div>
+        <div class="hidden-fields-area">
+          <div class="ggrc-form">
+            <issue-tracker-switcher
+              {instance}="instance"
+              {(is-integration-enabled)}="instance.issue_tracker.enabled">
+                <modal-issue-tracker-fields {instance}="instance">
+                </modal-issue-tracker-fields>
+            </issue-tracker-switcher>
+          </div>
+        </div>
+      </div>
+    {{/displayAssessmentIssueTracker}}
   </form>
 {{/instance}}
 </div>

@@ -10,6 +10,7 @@ from ggrc import db
 from ggrc.builder import simple_property
 from ggrc.models import assessment
 from ggrc.models import audit
+from ggrc.models import issuetracker_issue
 from ggrc.models import mixins
 from ggrc.models import relationship
 from ggrc.models.exceptions import ValidationError
@@ -31,9 +32,11 @@ class AssessmentTemplate(assessment.AuditRelationship, relationship.Relatable,
   object.
   """
   __tablename__ = "assessment_templates"
-  _mandatory_default_people = ("assessors",)
+  _mandatory_default_people = ("assignees",)
 
   PER_OBJECT_CUSTOM_ATTRIBUTABLE = True
+
+  RELATED_TYPE = 'assessment'
 
   # the type of the object under assessment
   template_object_type = db.Column(db.String, nullable=True)
@@ -42,7 +45,7 @@ class AssessmentTemplate(assessment.AuditRelationship, relationship.Relatable,
   test_plan_procedure = db.Column(db.Boolean, nullable=False, default=False)
 
   # procedure description
-  procedure_description = db.Column(db.Text, nullable=True)
+  procedure_description = db.Column(db.Text, nullable=False, default=u"")
 
   # the people that should be assigned by default to each assessment created
   # within the releated audit
@@ -69,14 +72,14 @@ class AssessmentTemplate(assessment.AuditRelationship, relationship.Relatable,
 
   # REST properties
   _api_attrs = reflection.ApiAttributes(
-      "template_object_type",
-      "test_plan_procedure",
-      "procedure_description",
-      "default_people",
-      reflection.Attribute("archived", create=False, update=False),
-      reflection.Attribute("DEFAULT_PEOPLE_LABELS",
-                           create=False,
-                           update=False),
+      'template_object_type',
+      'test_plan_procedure',
+      'procedure_description',
+      'default_people',
+      reflection.Attribute('issue_tracker', create=False, update=False),
+      reflection.Attribute('archived', create=False, update=False),
+      reflection.Attribute(
+          'DEFAULT_PEOPLE_LABELS', create=False, update=False),
   )
 
   _fulltext_attrs = [
@@ -89,13 +92,13 @@ class AssessmentTemplate(assessment.AuditRelationship, relationship.Relatable,
           "mandatory": False,
           "description": "Options are:\n{}".format('\n'.join(VALID_STATES))
       },
-      "default_assessors": {
-          "display_name": "Default Assignee",
+      "default_assignees": {
+          "display_name": "Default Assignees",
           "mandatory": True,
           "filter_by": "_nop_filter",
       },
       "default_verifier": {
-          "display_name": "Default Verifier",
+          "display_name": "Default Verifiers",
           "mandatory": False,
           "filter_by": "_nop_filter",
       },
@@ -115,6 +118,7 @@ class AssessmentTemplate(assessment.AuditRelationship, relationship.Relatable,
           "display_name": "Archived",
           "mandatory": False,
           "ignore_on_update": True,
+          "view_only": True,
       },
       "template_custom_attributes": {
           "display_name": "Custom Attributes",
@@ -191,7 +195,7 @@ class AssessmentTemplate(assessment.AuditRelationship, relationship.Relatable,
   def validate_default_people(self, key, value):
     """Check that default people lists are not empty.
 
-    Check if the default_people contains both assessors and verifiers. The
+    Check if the default_people contains both assignees and verifiers. The
     values of those fields must be truthy, and if the value is a string it
     must be a valid default people label. If the value is not a string, it
     should be a list of valid user ids, but that is too expensive to test in
@@ -220,6 +224,13 @@ class AssessmentTemplate(assessment.AuditRelationship, relationship.Relatable,
     if hasattr(self, 'context') and hasattr(self.context, 'related_object'):
       return getattr(self.context.related_object, 'archived', False)
     return False
+
+  @simple_property
+  def issue_tracker(self):
+    """Returns representation of issue tracker related info as a dict."""
+    issue_obj = issuetracker_issue.IssuetrackerIssue.get_issue(
+        'AssessmentTemplate', self.id)
+    return issue_obj.to_dict() if issue_obj is not None else {}
 
 
 def create_audit_relationship(audit_stub, obj):

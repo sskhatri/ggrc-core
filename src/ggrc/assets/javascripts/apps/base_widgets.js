@@ -116,4 +116,6 @@
   GGRC.tree_view = GGRC.tree_view || new can.Map();
   GGRC.tree_view.attr('base_widgets_by_type', baseWidgetsByType);
   GGRC.tree_view.attr('defaultOrderTypes', defaultOrderTypes);
+  GGRC.tree_view.attr('basic_model_list', []);
+  GGRC.tree_view.attr('sub_tree_for', {});
 })(window.GGRC, window._);

@@ -13,6 +13,7 @@ import freezegun
 
 from ggrc import db
 from ggrc import models
+from ggrc.access_control.role import get_custom_roles_for
 from ggrc.converters import errors
 
 from integration.ggrc import TestCase
@@ -51,29 +52,40 @@ class TestAssessmentImport(TestCase):
   def _test_assessment_users(self, asmt, users):
     """ Test that all users have correct roles on specified Assessment"""
     verification_errors = ""
+    ac_roles = {
+        acr_name: acr_id
+        for acr_id, acr_name in get_custom_roles_for(asmt.type).items()
+    }
     for user_name, expected_types in users.items():
-      try:
-        user = models.Person.query.filter_by(name=user_name).first()
-        rel = models.Relationship.find_related(asmt, user)
-        if expected_types:
-          self.assertNotEqual(
-              rel, None,
-              "User {} is not mapped to {}".format(user.email, asmt.slug))
-          self.assertIn("AssigneeType", rel.relationship_attrs)
+      for role in expected_types:
+        try:
+          user = models.Person.query.filter_by(name=user_name).first()
+          acl_len = models.AccessControlList.query.filter_by(
+              ac_role_id=ac_roles[role],
+              person_id=user.id,
+              object_id=asmt.id,
+              object_type=asmt.type,
+          ).count()
           self.assertEqual(
-              set(rel.relationship_attrs[
-                  "AssigneeType"].attr_value.split(",")),
-              expected_types
+              acl_len, 1,
+              "User {} is not mapped to {}".format(user.email, asmt.slug)
           )
-        else:
-          self.assertEqual(
-              rel, None,
-              "User {} is mapped to {}".format(user.email, asmt.slug))
-      except AssertionError as error:
-        verification_errors += "\n\nChecks for Users-Assessment mapping "\
-            "failed for user '{}' with:\n{}".format(user_name, str(error))
+        except AssertionError as error:
+          verification_errors += "\n\nChecks for Users-Assessment mapping "\
+              "failed for user '{}' with:\n{}".format(user_name, str(error))
 
     self.assertEqual(verification_errors, "", verification_errors)
+
+  def _test_assigned_user(self, assessment, user_id, role):
+    acls = models.AccessControlList.query.filter_by(
+        person_id=user_id,
+        object_id=assessment.id,
+        object_type=assessment.type,
+    )
+    self.assertEqual(
+        [user_id] if user_id else [],
+        [i.person_id for i in acls if i.ac_role.name == role]
+    )
 
   def test_assessment_full_no_warnings(self):
     """ Test full assessment import with no warnings
@@ -87,8 +99,8 @@ class TestAssessmentImport(TestCase):
     # Test first Assessment line in the CSV file
     asmt_1 = models.Assessment.query.filter_by(slug="Assessment 1").first()
     users = {
-        "user 1": {"Assessor"},
-        "user 2": {"Assessor", "Creator"}
+        "user 1": {"Assignees"},
+        "user 2": {"Assignees", "Creators"}
     }
     self._test_assessment_users(asmt_1, users)
     self.assertEqual(asmt_1.status, models.Assessment.START_STATE)
@@ -96,8 +108,8 @@ class TestAssessmentImport(TestCase):
     # Test second Assessment line in the CSV file
     asmt_2 = models.Assessment.query.filter_by(slug="Assessment 2").first()
     users = {
-        "user 1": {"Assessor"},
-        "user 2": {"Creator"},
+        "user 1": {"Assignees"},
+        "user 2": {"Creators"},
         "user 3": {},
         "user 4": {},
         "user 5": {},
@@ -337,7 +349,7 @@ class TestAssessmentImport(TestCase):
             models.Assessment(), models.Snapshot()
         ).exists()).first()[0])
     slug = "TestAssessment"
-    self.import_data(OrderedDict([
+    response = self.import_data(OrderedDict([
         ("object_type", "Assessment"),
         ("Code*", slug),
         ("Audit*", audit.slug),
@@ -346,6 +358,7 @@ class TestAssessmentImport(TestCase):
         ("Title", "Strange title"),
         ("map:Control versions", control.slug),
     ]))
+    self._check_csv_response(response, {})
     assessment = models.Assessment.query.filter(
         models.Assessment.slug == slug
     ).first()
@@ -372,7 +385,7 @@ class TestAssessmentImport(TestCase):
     assessment = models.Assessment.query.filter(
         models.Assessment.slug == slug
     ).first()
-    self.assertEqual([assignee_id], [i.id for i in assessment.assessors])
+    self._test_assigned_user(assessment, assignee_id, "Assignees")
 
   def test_create_import_creators(self):
     "Test for creation assessment with mapped creator"
@@ -393,7 +406,7 @@ class TestAssessmentImport(TestCase):
     assessment = models.Assessment.query.filter(
         models.Assessment.slug == slug
     ).first()
-    self.assertEqual([creator_id], [i.id for i in assessment.creators])
+    self._test_assigned_user(assessment, creator_id, "Creators")
 
   def test_update_import_creators(self):
     "Test for creation assessment with mapped creator"
@@ -403,7 +416,7 @@ class TestAssessmentImport(TestCase):
     with factories.single_commit():
       assessment = factories.AssessmentFactory(slug=slug)
       creator_id = factories.PersonFactory(name=name, email=email).id
-    self.assertNotEqual([creator_id], [i.id for i in assessment.creators])
+    self._test_assigned_user(assessment, None, "Creators")
     self.import_data(OrderedDict([
         ("object_type", "Assessment"),
         ("Code*", slug),
@@ -412,7 +425,7 @@ class TestAssessmentImport(TestCase):
     assessment = models.Assessment.query.filter(
         models.Assessment.slug == slug
     ).first()
-    self.assertEqual([creator_id], [i.id for i in assessment.creators])
+    self._test_assigned_user(assessment, creator_id, "Creators")
 
   def test_update_import_assignee(self):
     "Test for creation assessment with mapped creator"
@@ -422,7 +435,7 @@ class TestAssessmentImport(TestCase):
     with factories.single_commit():
       assessment = factories.AssessmentFactory(slug=slug)
       assignee_id = factories.PersonFactory(name=name, email=email).id
-    self.assertNotEqual([assignee_id], [i.id for i in assessment.assessors])
+    self._test_assigned_user(assessment, None, "Assignees")
     self.import_data(OrderedDict([
         ("object_type", "Assessment"),
         ("Code*", slug),
@@ -431,7 +444,7 @@ class TestAssessmentImport(TestCase):
     assessment = models.Assessment.query.filter(
         models.Assessment.slug == slug
     ).first()
-    self.assertEqual([assignee_id], [i.id for i in assessment.assessors])
+    self._test_assigned_user(assessment, assignee_id, "Assignees")
 
   def test_update_import_verifiers(self):
     """Test import does not delete verifiers if empty value imported"""
@@ -451,7 +464,7 @@ class TestAssessmentImport(TestCase):
     assessment = models.Assessment.query.filter(
         models.Assessment.slug == slug
     ).first()
-    self.assertEqual([verifier_id], [i.id for i in assessment.verifiers])
+    self._test_assigned_user(assessment, verifier_id, "Verifiers")
     self.import_data(OrderedDict([
         ("object_type", "Assessment"),
         ("Code*", slug),
@@ -460,7 +473,7 @@ class TestAssessmentImport(TestCase):
     assessment = models.Assessment.query.filter(
         models.Assessment.slug == slug
     ).first()
-    self.assertEqual([verifier_id], [i.id for i in assessment.verifiers])
+    self._test_assigned_user(assessment, verifier_id, "Verifiers")
 
   @ddt.data(
       (
@@ -471,12 +484,6 @@ class TestAssessmentImport(TestCase):
           "Created Date",
           lambda: datetime.date.today() - datetime.timedelta(7),
       ),
-      # NOTE: skiped error on import every object setup as modified rather
-      # if object isn't changed
-      # (
-      #     "Last Updated By",
-      #     lambda: factories.PersonFactory(email="new_user@email.com").email,
-      # ),
   )
   @ddt.unpack
   def test_update_non_changeable_field(self, field, value_creator):
@@ -508,6 +515,73 @@ class TestAssessmentImport(TestCase):
                                     (field, value)]))
     self.assertEqual(before_update,
                      self.export_parsed_csv(data)["Assessment"][0][field])
+
+  @ddt.data(
+      ("Last Updated By", "new_user@email.com"),
+  )
+  @ddt.unpack
+  def test_exportable_only_updated_by(self, field, value):
+    """Test exportable only "Last Updated By" field"""
+    slug = "TestAssessment"
+    with factories.single_commit():
+      factories.AssessmentFactory(
+          slug=slug,
+          modified_by=factories.PersonFactory(email="modifier@email.com"),
+      )
+    data = [{
+        "object_name": "Assessment",
+        "fields": "all",
+        "filters": {
+            "expression": {
+                "left": "code",
+                "op": {"name": "="},
+                "right": slug
+            },
+        }
+    }]
+    before_update = self.export_parsed_csv(data)["Assessment"][0][field]
+    self.assertEqual(before_update, "modifier@email.com")
+    self.import_data(OrderedDict([("object_type", "Assessment"),
+                                  ("Code*", slug),
+                                  (field, value)]))
+    after_update = self.export_parsed_csv(data)["Assessment"][0][field]
+    self.assertEqual(after_update, "user@example.com")
+
+  def test_import_last_deprecated_date(self):
+    """Last Deprecated Date on assessment should be non editable."""
+    with factories.single_commit():
+      with freezegun.freeze_time("2017-01-01"):
+        assessment = factories.AssessmentFactory(status="Deprecated")
+
+    resp = self.import_data(OrderedDict([
+        ("object_type", "Assessment"),
+        ("code", assessment.slug),
+        ("Last Deprecated Date", "02/02/2017"),
+    ]))
+
+    result = models.Assessment.query.get(assessment.id)
+
+    self.assertEqual(1, len(resp))
+    self.assertEqual(1, resp[0]["updated"])
+    self.assertEqual(result.end_date, datetime.date(2017, 1, 1))
+
+  @ddt.data(*models.Assessment.VALID_STATES)
+  def test_import_set_up_deprecated(self, start_state):
+    """Update assessment from {0} to Deprecated."""
+    with factories.single_commit():
+      assessment = factories.AssessmentFactory(status=start_state)
+    resp = self.import_data(
+        OrderedDict([
+            ("object_type", "Assessment"),
+            ("code", assessment.slug),
+            ("State", models.Assessment.DEPRECATED),
+        ]))
+    self.assertEqual(1, len(resp))
+
+    self.assertEqual(1, resp[0]["updated"])
+    self.assertEqual(
+        models.Assessment.query.get(assessment.id).status,
+        models.Assessment.DEPRECATED)
 
 
 @ddt.ddt
@@ -709,30 +783,3 @@ class TestAssessmentExport(TestCase):
     resp = self.export_parsed_csv(data)["Assessment"]
     self.assertEqual(1, len(resp))
     self.assertEqual(slug, resp[0]["Code*"])
-
-  ASSESSMENT_LABELS = [
-      models.Assessment.Labels.AUDITOR_PULLS_EVIDENCE,
-      models.Assessment.Labels.FOLLOWUP,
-      models.Assessment.Labels.NEEDS_REWORK,
-      models.Assessment.Labels.NEEDS_DISCUSSION,
-      None
-  ]
-
-  @ddt.data(*ASSESSMENT_LABELS)
-  def test_export_by_label(self, label):
-    "Test Export Assessment by label"
-    with factories.single_commit():
-      results = {l: factories.AssessmentFactory(label=l).slug
-                 for l in self.ASSESSMENT_LABELS}
-    if label is None:
-      exp = {"left": "label", "op": {"name": "is"}, "right": "empty"}
-    else:
-      exp = {"left": "label", "op": {"name": "="}, "right": label}
-
-    data = [{"object_name": "Assessment",
-             "fields": "all",
-             "filters": {"expression": exp}}]
-
-    resp = self.export_parsed_csv(data)["Assessment"]
-    self.assertEqual(1, len(resp))
-    self.assertEqual(results[label], resp[0]["Code*"])

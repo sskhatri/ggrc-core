@@ -3,7 +3,17 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-// = require can.jquery-all
+import {
+  isSnapshot,
+  toObjects,
+  setAttrs,
+} from '../plugins/utils/snapshot-utils';
+import {
+  makeRequest,
+} from '../plugins/utils/query-api-utils';
+import resolveConflict from './cacheable_conflict_resolution.js';
+import PersistentNotifier from '../plugins/persistent_notifier';
+import RefreshQueue from './refresh_queue';
 
 (function (can, GGRC, CMS) {
   var _oldAttr;
@@ -180,7 +190,6 @@
         var deferred = can.Deferred();
         var sourceDeferred = finder.call(this, params);
         var self = this;
-        var tracker_stop = GGRC.Tracker.start('modelize', self.shortName);
 
         deferred.then(success, error);
         sourceDeferred.then(function (sourceData) {
@@ -200,7 +209,7 @@
           deferred.reject.apply(deferred, arguments);
         });
 
-        return deferred.done(tracker_stop);
+        return deferred;
       };
     },
 
@@ -280,7 +289,7 @@
       this.bind('created', function (ev, new_obj) {
         var cache = can.getObject('cache', new_obj.constructor, true);
         if (new_obj[id_key] || new_obj[id_key] === 0) {
-          if (!GGRC.Utils.Snapshots.isSnapshot(new_obj)) {
+          if (!isSnapshot(new_obj)) {
             cache[new_obj[id_key]] = new_obj;
           }
           if (cache[undefined] === new_obj)
@@ -302,17 +311,10 @@
           this.resolve_deferred_bindings.bind(this),
           function (xhr) {
             if (xhr.status === 409) {
-              xhr.warningId = setTimeout(function () {
-                GGRC.Errors.notifier('warning',
-                  'There was a conflict while saving.' +
-                  ' Your changes have not been saved yet.' +
-                  ' Please check any fields you were editing' +
-                  ' and try saving again');
-              });
-              // TODO: we should show modal window here
+              return resolveConflict(xhr, this.findInCacheById(id));
             }
             return xhr;
-          }
+          }.bind(this)
         );
         delete ret.hasFailCallback;
         return ret;
@@ -445,7 +447,7 @@
       var cache = can.getObject('cache', this, true);
       var isKeyExists = args && args[this.id];
       var isObjectExists = isKeyExists && cache[args[this.id]];
-      var notSnapshot = args && !GGRC.Utils.Snapshots.isSnapshot(args);
+      var notSnapshot = args && !isSnapshot(args);
       if (isObjectExists && notSnapshot) {
         // cache[args.id].attr(args, false); //CanJS has bugs in recursive merging
         // (merging -- adding properties from an object without removing existing ones
@@ -495,7 +497,7 @@
       var deferred = can.Deferred();
       var self = this;
 
-      GGRC.Utils.QueryAPI.makeRequest(request)
+      makeRequest(request)
         .then(function (sourceData) {
           var values = [];
           var listDfd = can.Deferred();
@@ -511,7 +513,7 @@
           } else if (sourceData.Snapshot) {
             // This is response with snapshots - convert it to objects
             sourceData = sourceData.Snapshot;
-            values = GGRC.Utils.Snapshots.toObjects(sourceData.values);
+            values = toObjects(sourceData.values);
           }
 
           if (!values.splice) {
@@ -533,7 +535,7 @@
     queryAll: function (request) {
       var deferred = can.Deferred();
 
-      GGRC.Utils.QueryAPI.makeRequest(request)
+      makeRequest(request)
         .then(function (sourceData) {
           var values = [];
 
@@ -635,14 +637,14 @@
       params = this.object_from_resource(params);
       if (!params)
         return params;
-      if (GGRC.Utils.Snapshots.isSnapshot(params)) {
+      if (isSnapshot(params)) {
         this.removeFromCacheById(params[this.id]);
         delete this.cache[params[this.id]];
       }
       model = this.findInCacheById(params[this.id]) ||
         (params.provisional_id &&
         can.getObject('provisional_cache', can.Model.Cacheable, true)[params.provisional_id]);
-      if (model && !GGRC.Utils.Snapshots.isSnapshot(params)) {
+      if (model && !isSnapshot(params)) {
         if (model.provisional_id && params.id) {
           delete can.Model.Cacheable.provisional_cache[model.provisional_id];
           model.removeAttr('provisional_id');
@@ -667,7 +669,7 @@
       packaged_datetime: makeDateSerializer('datetime', 'dateTime')
     },
     tree_view_options: {
-      display_attr_names: ['title', 'owner', 'status'],
+      display_attr_names: ['title', 'owner', 'status', 'updated_at'],
       mandatory_attr_names: ['title']
     },
     sub_tree_view_options: {},
@@ -788,9 +790,9 @@
       var cache = can.getObject('cache', this.constructor, true);
       var id_key = this.constructor.id;
       var that = this;
-      GGRC.Utils.Snapshots.setAttrs(this);
+      setAttrs(this);
       if ((this[id_key] || this[id_key] === 0) &&
-        !GGRC.Utils.Snapshots.isSnapshot(this)) {
+        !isSnapshot(this)) {
         cache[this[id_key]] = this;
       }
       this.attr('class', this.constructor);
@@ -1083,7 +1085,7 @@
       }
       /* Serialize only meaningful properties */
       Object.keys(this._data).forEach(function (name) {
-        if (name.startsWith('_')) {
+        if (name.startsWith && name.startsWith('_')) {
           return;
         }
         val = this[name];

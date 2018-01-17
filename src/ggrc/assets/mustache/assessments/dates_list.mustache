@@ -18,6 +18,14 @@
   {{/if}}
 </div>
 <div class="ggrc-form-item__multiple-row">
+  <div class="info-pane__section-title">Last Deprecated Date</div>
+  {{#if instance.end_date}}
+    <span>{{localize_date instance.end_date}}</span>
+  {{else}}
+    <span class="empty-message">None</span>
+  {{/if}}
+</div>
+<div class="ggrc-form-item__multiple-row">
   <div class="info-pane__section-title">Verified</div>
   {{#if instance.verified_date}}
     <span>{{localize_date instance.verified_date}}</span>

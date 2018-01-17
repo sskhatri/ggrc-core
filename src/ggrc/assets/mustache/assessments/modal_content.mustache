@@ -9,11 +9,8 @@
     <form action="javascript://">
 
       {{^if new_object_form}}
-        {{#if_in instance.status "Not Started,Completed,Verified,In Review"}}
-          {{#if_helpers '\
-            #if' instance.isDirty '\
-            or #if' mappedObjectsChanges.length '\
-            or #if' referenceUrlChanged}}
+  {{#if_in instance.status "Completed,Verified,In Review"}}
+          {{#if_helpers '#if' instance.isDirty 'or #if' mappedObjectsChanges.length 'or #if' referenceUrlChanged}}
           <div class="ggrc-form-item">
             <div class="alert warning width-100">
               <i class="fa fa-exclamation-triangle red"></i>
@@ -24,12 +21,13 @@
         {{/if_in}}
       {{/if}}
 
-      <div class="ggrc-form-item">
+      <div class="ggrc-form-item ggrc-form-item_m-b-0">
         <div class="ggrc-form-item__multiple-row">
           <label class="form-label ggrc-form-item__label">
             Assessment Type
           </label>
           <assessment-object-type-dropdown
+	    class="input-medium"
             {instance}="instance"
             {(assessment-type)}="instance.assessment_type">
             <dropdown
@@ -39,18 +37,23 @@
             </dropdown>
           </assessment-object-type-dropdown>
         </div>
-        <div class="ggrc-form-item__multiple-row">
+        <div class="ggrc-form-item__multiple-row multi-select-label-container">
           <label class="form-label ggrc-form-item__label">
             Label
           </label>
-          <select can-value="label">
-            <option value="" selected="selected">---</option>
-            <option value="Needs Discussion">Needs Discussion</option>
-            <option value="Needs Rework">Needs Rework</option>
-            <option value="Followup">Followup</option>
-            <option value="Auditor pulls evidence">Auditor pulls evidence</option>
-          </select>
+          <multi-select-label only-edit-mode="true"
+                              {instance}="instance"
+                              {labels}="instance.labels">
+          </multi-select-label>
         </div>
+      </div>
+      <div class="ggrc-form-item">
+	<div class="ggrc-form-item__checkbox-item">
+	  <label class="inline-check pull-left">
+	    <input type="checkbox" ($value)="instance._copyAssessmentProcedure" class="js-toggle-controlplans">
+	      Copy Assessment Procedure from mapped object
+	  </label>
+	</div>
       </div>
       <div class="ggrc-form-item">
         <div class="ggrc-form-item__row {{#instance.computed_errors.title}}field-failure{{/instance.computed_errors.title}}">
@@ -104,20 +107,20 @@
             </div>
             <div class="ggrc-form-item__checkbox-item">
               <label class="input--inline">
-                    <input tabindex="5" type="checkbox" can-value="values.Creator">
-                    Notify creator(s)
+                    <input tabindex="5" type="checkbox" can-value="values.Creators">
+                    Notify creators
                 </label>
             </div>
             <div class="ggrc-form-item__checkbox-item">
               <label class="input--inline">
-                    <input tabindex="6" type="checkbox" can-value="values.Assessor">
-                    Notify assignee(s)
+                    <input tabindex="6" type="checkbox" can-value="values.Assignees">
+                    Notify assignees
               </label>
             </div>
             <div class="ggrc-form-item__checkbox-item">
               <label class="input--inline">
-                    <input tabindex="7" type="checkbox" can-value="values.Verifier">
-                    Notify verifier(s)
+                    <input tabindex="7" type="checkbox" can-value="values.Verifiers">
+                    Notify verifiers
                 </label>
             </div>
           </checkbox-to-list>
@@ -292,6 +295,35 @@
           {{>'/static/mustache/assessments/modal_content_additional_fields.mustache'}}
         </div>
       </div>
+
+      {{#displayAssessmentIssueTracker instance.can_use_issue_tracker true}}
+        <div class="additional-fields">
+          <div class="expand-issue-tracker-link">
+            <a class="show-hidden-fields info-show-hide active" href="javascript://">
+              <span class="out">
+                <i class="fa fa-caret-right"></i>
+                SHOW
+              </span>
+              <span class="in">
+                <i class="fa fa-caret-down"></i>
+                HIDE
+              </span>
+              BUGANIZER INFO
+            </a>
+          </div>
+          <div class="hidden-issue-tracker-fields-area">
+            <issue-tracker-switcher
+              set-issue-title="true"
+              {default-title}="instance.title"
+              {instance}="instance"
+              {(is-integration-enabled)}="instance.issue_tracker.enabled"
+              {parent}="instance.audit">
+                <modal-issue-tracker-fields {instance}="instance">
+                </modal-issue-tracker-fields>
+            </issue-tracker-switcher>
+          </div>
+        </div>
+      {{/displayAssessmentIssueTracker}}
 
     </form>
     {{/instance}}

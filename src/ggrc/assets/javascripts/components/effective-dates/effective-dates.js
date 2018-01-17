@@ -3,15 +3,15 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import '../datepicker/datepicker';
+import template from './effective-dates.mustache';
+
 (function (can, GGRC) {
   'use strict';
 
   GGRC.Components('effective-dates', {
     tag: 'effective-dates',
-    template: can.view(
-      GGRC.mustache_path +
-      '/components/effective-dates/effective-dates.mustache'
-    ),
+    template: template,
     scope: {
       instance: null,
       configStartDate: {

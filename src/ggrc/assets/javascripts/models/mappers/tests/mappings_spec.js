@@ -3,6 +3,8 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import {getInScopeModels} from '../../../plugins/utils/snapshot-utils';
+
 describe('GGRC.Mappings', function () {
   'use strict';
 
@@ -144,8 +146,7 @@ describe('GGRC.Mappings', function () {
     modelsForTests.forEach(function (type) {
       it('returns mappable types for ' + type, function () {
         var expectedModels = mappingRules[type];
-        var result = GGRC.Mappings.getMappingTypes(type, [],
-          GGRC.Utils.Snapshots.inScopeModels);
+        var result = GGRC.Mappings.getMappingTypes(type, [], getInScopeModels());
         var resultGroups = Object.keys(result);
         var resultModels = getModelsFromGroups(result, EXPECTED_GROUPS);
 

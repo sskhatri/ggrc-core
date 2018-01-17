@@ -9,16 +9,13 @@ from sqlalchemy.orm import validates
 
 from ggrc import db
 from ggrc.models.comment import Commentable
+from ggrc.models.mixins.with_similarity_score import WithSimilarityScore
 from ggrc.models.object_document import PublicDocumentable
 from ggrc.access_control.roleable import Roleable
 from ggrc.models.audit_object import Auditable
 from ggrc.models.categorization import Categorizable
 from ggrc.models.category import CategoryBase
-from ggrc.models.mixins import BusinessObject
-from ggrc.models.mixins import CustomAttributable
-from ggrc.models.mixins import Hierarchical
-from ggrc.models.mixins import TestPlanned
-from ggrc.models.mixins import LastDeprecatedTimeboxed
+from ggrc.models import mixins
 from ggrc.models.mixins.with_last_assessment_date import WithLastAssessmentDate
 from ggrc.models.deferred import deferred
 from ggrc.models.object_person import Personable
@@ -138,11 +135,25 @@ class AssertionCategorized(Categorizable):
     )
 
 
-class Control(WithLastAssessmentDate, HasObjectState, Roleable, Relatable,
-              CustomAttributable, Personable, ControlCategorized,
-              PublicDocumentable, AssertionCategorized, Hierarchical,
-              LastDeprecatedTimeboxed, Auditable, TestPlanned,
-              Commentable, BusinessObject, Indexed, db.Model):
+class Control(WithLastAssessmentDate,
+              HasObjectState,
+              Roleable,
+              Relatable,
+              mixins.CustomAttributable,
+              Personable,
+              ControlCategorized,
+              PublicDocumentable,
+              AssertionCategorized,
+              mixins.Hierarchical,
+              mixins.LastDeprecatedTimeboxed,
+              Auditable,
+              mixins.TestPlanned,
+              Commentable,
+              WithSimilarityScore,
+              mixins.BusinessObject,
+              Indexed,
+              mixins.Folderable,
+              db.Model):
   __tablename__ = 'controls'
 
   company_control = deferred(db.Column(db.Boolean), 'Control')
@@ -151,20 +162,12 @@ class Control(WithLastAssessmentDate, HasObjectState, Roleable, Relatable,
   kind_id = deferred(db.Column(db.Integer), 'Control')
   means_id = deferred(db.Column(db.Integer), 'Control')
   version = deferred(db.Column(db.String), 'Control')
-  documentation_description = deferred(db.Column(db.Text), 'Control')
+  documentation_description = deferred(db.Column(db.Text, nullable=False,
+                                                 default=u""), 'Control')
   verify_frequency_id = deferred(db.Column(db.Integer), 'Control')
   fraud_related = deferred(db.Column(db.Boolean), 'Control')
   key_control = deferred(db.Column(db.Boolean), 'Control')
   active = deferred(db.Column(db.Boolean), 'Control')
-  principal_assessor_id = deferred(
-      db.Column(db.Integer, db.ForeignKey('people.id')), 'Control')
-  secondary_assessor_id = deferred(
-      db.Column(db.Integer, db.ForeignKey('people.id')), 'Control')
-
-  principal_assessor = db.relationship(
-      'Person', uselist=False, foreign_keys='Control.principal_assessor_id')
-  secondary_assessor = db.relationship(
-      'Person', uselist=False, foreign_keys='Control.secondary_assessor_id')
 
   kind = db.relationship(
       'Option',
@@ -182,13 +185,6 @@ class Control(WithLastAssessmentDate, HasObjectState, Roleable, Relatable,
                   'Option.role == "verify_frequency")',
       uselist=False)
 
-  @staticmethod
-  def _extra_table_args(_):
-    return (
-        db.Index('ix_controls_principal_assessor', 'principal_assessor_id'),
-        db.Index('ix_controls_secondary_assessor', 'secondary_assessor_id'),
-    )
-
   # REST properties
   _api_attrs = reflection.ApiAttributes(
       'active',
@@ -201,8 +197,6 @@ class Control(WithLastAssessmentDate, HasObjectState, Roleable, Relatable,
       'means',
       'verify_frequency',
       'version',
-      'principal_assessor',
-      'secondary_assessor',
   )
 
   _fulltext_attrs = [
@@ -222,14 +216,6 @@ class Control(WithLastAssessmentDate, HasObjectState, Roleable, Relatable,
       'means',
       'verify_frequency',
       'version',
-      attributes.FullTextAttr(
-          "principal_assessor",
-          "principal_assessor",
-          ["email", "name"]),
-      attributes.FullTextAttr(
-          'secondary_assessor',
-          'secondary_assessor',
-          ["email", "name"]),
   ]
 
   _sanitize_html = [
@@ -247,16 +233,6 @@ class Control(WithLastAssessmentDate, HasObjectState, Roleable, Relatable,
             "directive"
         ).undefer_group(
             "Directive_complete"
-        ),
-        orm.Load(cls).joinedload(
-            "principal_assessor"
-        ).undefer_group(
-            "Person_complete"
-        ),
-        orm.Load(cls).joinedload(
-            "secondary_assessor"
-        ).undefer_group(
-            "Person_complete"
         ),
         orm.Load(cls).joinedload(
             'kind',
@@ -301,8 +277,6 @@ class Control(WithLastAssessmentDate, HasObjectState, Roleable, Relatable,
     query = super(Control, cls).eager_query()
     return cls.eager_inclusions(query, Control._include_links).options(
         orm.joinedload('directive'),
-        orm.joinedload('principal_assessor'),
-        orm.joinedload('secondary_assessor'),
         orm.joinedload('kind'),
         orm.joinedload('means'),
         orm.joinedload('verify_frequency'),

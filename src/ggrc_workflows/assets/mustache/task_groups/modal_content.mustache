@@ -62,9 +62,7 @@
       </div>
     </div>
     <div class="span4">
-      {{#if_helpers '\
-        ^if' instance.id '\
-        and ^if' object_params.workflow}}
+      {{#if_helpers '^if' instance.id 'and ^if' object_params.workflow}}
         {{#using workflow=instance.workflow}}
         <label>
           Workflow

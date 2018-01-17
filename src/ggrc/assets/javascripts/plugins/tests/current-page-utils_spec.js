@@ -3,9 +3,15 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import * as TreeViewUtils from '../utils/tree-view-utils';
+import * as SnapshotUtils from '../utils/snapshot-utils';
+import * as CurrentPageUtils from '../utils/current-page-utils';
+import * as QueryAPI from '../utils/query-api-utils';
+
 describe('GGRC Utils CurrentPage', function () {
   var pageType;
-  beforeEach(function () {
+
+  beforeAll(() => {
     pageType = GGRC.pageType;
   });
 
@@ -14,10 +20,10 @@ describe('GGRC Utils CurrentPage', function () {
   });
 
   beforeEach(function () {
-    var instance = {
+    let instance = new CMS.Models.Audit({
       id: 1,
-      type: 'Audit'
-    };
+      type: 'Audit',
+    });
 
     spyOn(GGRC, 'page_instance')
       .and.returnValue(instance);
@@ -28,7 +34,7 @@ describe('GGRC Utils CurrentPage', function () {
     var method;
 
     beforeEach(function () {
-      method = GGRC.Utils.CurrentPage.getPageType;
+      method = CurrentPageUtils.getPageType;
     });
 
     it('returns pageType value if it defined', function () {
@@ -45,7 +51,7 @@ describe('GGRC Utils CurrentPage', function () {
     var method;
 
     beforeEach(function () {
-      method = GGRC.Utils.CurrentPage.isMyAssessments;
+      method = CurrentPageUtils.isMyAssessments;
     });
 
     it('returns True for GGRC.pageType = MY_ASSESSMENTS', function () {
@@ -67,7 +73,7 @@ describe('GGRC Utils CurrentPage', function () {
     var method;
 
     beforeEach(function () {
-      method = GGRC.Utils.CurrentPage.isMyWork;
+      method = CurrentPageUtils.isMyWork;
     });
 
     it('returns True for GGRC.pageType = MY_WORK', function () {
@@ -89,7 +95,7 @@ describe('GGRC Utils CurrentPage', function () {
     var method;
 
     beforeEach(function () {
-      method = GGRC.Utils.CurrentPage.isAdmin;
+      method = CurrentPageUtils.isAdmin;
     });
 
     it('returns True for GGRC.pageType = ADMIN', function () {
@@ -111,7 +117,7 @@ describe('GGRC Utils CurrentPage', function () {
     var method;
 
     beforeEach(function () {
-      method = GGRC.Utils.CurrentPage.isObjectContextPage;
+      method = CurrentPageUtils.isObjectContextPage;
     });
 
     it('returns True if pageType not defined', function () {
@@ -134,7 +140,7 @@ describe('GGRC Utils CurrentPage', function () {
           Assessment: {},
           objective: {}
         });
-      method = GGRC.Utils.CurrentPage.getWidgetList;
+      method = CurrentPageUtils.getWidgetList;
     });
 
     it('returns an empty object when model is not provided', function () {
@@ -163,7 +169,7 @@ describe('GGRC Utils CurrentPage', function () {
     var method;
 
     beforeEach(function () {
-      method = GGRC.Utils.CurrentPage.getDefaultWidgets;
+      method = CurrentPageUtils.getDefaultWidgets;
     });
 
     it('should return "Info" widget for non-object browser path', function () {
@@ -224,7 +230,7 @@ describe('GGRC Utils CurrentPage', function () {
             }
           }
         });
-      method = GGRC.Utils.CurrentPage.getWidgetModels;
+      method = CurrentPageUtils.getWidgetModels;
     });
 
     it('returns an empty array when model is not provided', function () {
@@ -268,20 +274,20 @@ describe('GGRC Utils CurrentPage', function () {
 
     beforeEach(function () {
       queryDfd = can.Deferred();
-      method = GGRC.Utils.CurrentPage.initCounts;
-      getCounts = GGRC.Utils.CurrentPage.getCounts;
+      method = CurrentPageUtils.initCounts;
+      getCounts = CurrentPageUtils.getCounts;
 
-      spyOn(GGRC.Utils.TreeView, 'makeRelevantExpression')
+      spyOn(TreeViewUtils, 'makeRelevantExpression')
         .and.returnValue({
           type: 'Assessment',
           id: id,
           operation: 'owned'
         });
-      spyOn(GGRC.Utils.Snapshots, 'isSnapshotRelated')
+      spyOn(SnapshotUtils, 'isSnapshotRelated')
         .and.callFake(function (type, widgetType) {
           return widgetType === 'Control';
         });
-      spyOn(GGRC.Utils.QueryAPI, 'buildParam')
+      spyOn(QueryAPI, 'buildParam')
         .and.callFake(function (objName) {
           return {
             objectName: objName
@@ -291,14 +297,14 @@ describe('GGRC Utils CurrentPage', function () {
       spyOn(GGRC.query_parser, 'parse')
         .and.returnValue({});
 
-      spyOn(GGRC.Utils.QueryAPI, 'makeRequest')
+      spyOn(QueryAPI, 'makeRequest')
         .and.returnValue(queryDfd);
     });
 
     it('should not make request when no widget was provided', function () {
       method([], 'Control', 1);
 
-      expect(GGRC.Utils.QueryAPI.makeRequest)
+      expect(QueryAPI.makeRequest)
         .not.toHaveBeenCalled();
     });
 
@@ -307,7 +313,7 @@ describe('GGRC Utils CurrentPage', function () {
 
       method(['Control'], 'Assessment', 1);
 
-      expect(GGRC.Utils.QueryAPI.makeRequest)
+      expect(QueryAPI.makeRequest)
         .toHaveBeenCalledWith({
           data: [
             {
@@ -333,7 +339,7 @@ describe('GGRC Utils CurrentPage', function () {
 
       method(['Assessment'], 'Control', 1);
 
-      expect(GGRC.Utils.QueryAPI.makeRequest)
+      expect(QueryAPI.makeRequest)
         .toHaveBeenCalledWith({
           data: [
             {
@@ -362,7 +368,7 @@ describe('GGRC Utils CurrentPage', function () {
         countsName: 'ActiveCycle'
       }], 'Control', 1);
 
-      expect(GGRC.Utils.QueryAPI.makeRequest)
+      expect(QueryAPI.makeRequest)
         .toHaveBeenCalledWith({
           data: [
             {
@@ -391,7 +397,7 @@ describe('GGRC Utils CurrentPage', function () {
     beforeEach(function () {
       var requestDfd;
 
-      spyOn(GGRC.Utils.QueryAPI, 'buildRelevantIdsQuery')
+      spyOn(QueryAPI, 'buildRelevantIdsQuery')
         .and.callFake(function (objName, page, relevant, additionalFilter) {
           return {
             model: objName,
@@ -399,23 +405,23 @@ describe('GGRC Utils CurrentPage', function () {
           };
         });
 
-      spyOn(GGRC.Utils.Snapshots, 'isSnapshotRelated')
+      spyOn(SnapshotUtils, 'isSnapshotRelated')
         .and.callFake(function (parent, child) {
           return child === 'Control';
         });
 
-      spyOn(GGRC.Utils.Snapshots, 'transformQuery')
+      spyOn(SnapshotUtils, 'transformQuery')
         .and.callFake(function (query) {
           return query;
         });
 
-      spyOn(GGRC.Utils.QueryAPI, 'batchRequests')
+      spyOn(QueryAPI, 'batchRequests')
         .and.callFake(function () {
           requestDfd = can.Deferred();
           requestDfds.push(requestDfd);
           return requestDfd;
         });
-      method = GGRC.Utils.CurrentPage.initMappedInstances;
+      method = CurrentPageUtils.initMappedInstances;
     });
 
     it('should init mappings for snapshotable objects',
@@ -466,5 +472,73 @@ describe('GGRC Utils CurrentPage', function () {
           });
         });
       });
+  });
+
+  describe('refreshCounts() method', function () {
+    var widgets;
+    var refreshCounts;
+
+    beforeEach(function () {
+      refreshCounts = CurrentPageUtils.refreshCounts;
+
+      widgets =
+        {
+          Program: {
+            content_controller_options: {
+              model: {
+                shortName: 'Program',
+              },
+            },
+          },
+        Assessment: {
+          content_controller_options: {
+            model: {
+              shortName: 'Assessment',
+            },
+          },
+        },
+        Audit: {
+          content_controller_options: {
+            model: {
+              shortName: 'Audit',
+            },
+          },
+        },
+      };
+
+      spyOn(GGRC.WidgetList, 'get_widget_list_for')
+        .and.returnValue(widgets);
+
+      spyOn(can, 'ajax')
+        .and.returnValues(
+        can.Deferred().resolve(
+          [
+            {Program: {count: 0, total: 0}, selfLink: null},
+            {Assessment: {count: 0, total: 0}, selfLink: null},
+            {Audit: {count: 3, total: 4}, selfLink: null},
+          ]));
+    });
+
+    it('should reinit counts', function (done) {
+      refreshCounts()
+        .then(function (counts) {
+          var reqParams;
+          var reqParamNames;
+
+          expect(can.ajax.calls.count()).toEqual(1);
+          reqParams = JSON.parse(can.ajax.calls.argsFor(0)[0].data);
+          reqParamNames = _.map(reqParams,
+          function (param) {
+            return param.object_name;
+          });
+          expect(reqParams.length).toEqual(3);
+          expect(reqParamNames).toContain('Program');
+          expect(reqParamNames).toContain('Assessment');
+          expect(reqParamNames).toContain('Audit');
+          expect(counts.Audit).toEqual(4);
+          expect(counts.Program).toEqual(0);
+          done();
+        });
+    });
   });
 });

@@ -3,8 +3,8 @@
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-@import "components/access-control-list/access-control-list";
 @import "components/advanced-search/advanced-search";
+@import "components/bulk-update/bulk-update";
 @import "components/info-pane/info-pane";
 @import "components/comment/comment-input";
 @import "components/comment/comment-add-form";
@@ -52,3 +52,4 @@
 @import "components/related-objects/related-reference-urls";
 @import "components/object-list-item/person-list-item";
 @import "components/loading/loading-status";
+@import "components/multi-select-label/multi-select-label"

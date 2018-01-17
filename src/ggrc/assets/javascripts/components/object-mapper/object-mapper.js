@@ -3,7 +3,26 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-(function (can, $, utils) {
+import '../../components/advanced-search/advanced-search-filter-container';
+import '../../components/advanced-search/advanced-search-filter-state';
+import '../../components/advanced-search/advanced-search-mapping-container';
+import '../../components/advanced-search/advanced-search-wrapper';
+import '../../components/unified-mapper/mapper-results';
+import '../../components/collapsible-panel/collapsible-panel';
+import '../../components/mapping-controls/mapping-type-selector';
+
+import ObjectOperationsBaseVM from '../view-models/object-operations-base-vm';
+import {
+  isInScopeModel,
+  isSnapshotModel,
+  isSnapshotParent,
+} from '../../plugins/utils/snapshot-utils';
+import {
+  refreshCounts,
+} from '../../plugins/utils/current-page-utils';
+import RefreshQueue from '../../models/refresh_queue';
+
+(function (can, $) {
   'use strict';
 
   var DEFAULT_OBJECT_MAP = {
@@ -59,12 +78,12 @@
         special: parentViewModel.attr('special'),
       };
 
-      var resolvedConfig = GGRC.VM.ObjectOperationsBaseVM.extractConfig(
+      var resolvedConfig = ObjectOperationsBaseVM.extractConfig(
         config.general.type,
         config
       );
 
-      return GGRC.VM.ObjectOperationsBaseVM.extend({
+      return ObjectOperationsBaseVM.extend({
         join_object_id: resolvedConfig.isNew ? null :
           resolvedConfig['join-object-id'] ||
           (GGRC.page_instance() && GGRC.page_instance().id),
@@ -84,15 +103,10 @@
         allowedToCreate: function () {
           // Don't allow to create new instances for "In Scope" Objects that
           // are snapshots
-          var snapUtils = utils.Snapshots;
-          var isInScopeModel =
-            snapUtils.isInScopeModel(this.attr('object'));
-          var allow =
-            !isInScopeModel || (
-               isInScopeModel &&
-               !snapUtils.isSnapshotModel(this.attr('type'))
-            );
-          return allow;
+          var isInScopeSrc = isInScopeModel(this.attr('object'));
+
+          return !isInScopeSrc ||
+            (isInScopeSrc && !isSnapshotModel(this.attr('type')));
         },
         showAsSnapshots: function () {
           if (this.attr('freezedConfigTillSubmit.useSnapshots')) {
@@ -101,16 +115,11 @@
           return false;
         },
         showWarning: function () {
-          var isInScopeSrc =
-            utils.Snapshots.isInScopeModel(this.attr('object'));
-          var isSnapshotParentSrc =
-            utils.Snapshots.isSnapshotParent(this.attr('object'));
-          var isSnapshotParentDst =
-            utils.Snapshots.isSnapshotParent(this.attr('type'));
-          var isSnapshotModelSrc =
-            utils.Snapshots.isSnapshotModel(this.attr('object'));
-          var isSnapshotModelDst =
-            utils.Snapshots.isSnapshotModel(this.attr('type'));
+          var isInScopeSrc = isInScopeModel(this.attr('object'));
+          var isSnapshotParentSrc = isSnapshotParent(this.attr('object'));
+          var isSnapshotParentDst = isSnapshotParent(this.attr('type'));
+          var isSnapshotModelSrc = isSnapshotModel(this.attr('object'));
+          var isSnapshotModelDst = isSnapshotModel(this.attr('type'));
 
           var result =
             // Dont show message if source is inScope model, for example Assessment.
@@ -288,7 +297,7 @@
                 instance.dispatch('refreshMapping');
               }
               // This Method should be modified to event
-              GGRC.Utils.CurrentPage.refreshCounts();
+              refreshCounts();
 
               _.each($('sub-tree-wrapper'), function (wrapper) {
                 var vm = $(wrapper).viewModel();
@@ -328,4 +337,4 @@
       },
     },
   });
-})(window.can, window.can.$, GGRC.Utils);
+})(window.can, window.can.$);

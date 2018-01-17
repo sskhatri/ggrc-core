@@ -3,6 +3,8 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import * as TreeViewUtils from '../../../plugins/utils/tree-view-utils';
+
 describe('GGRC.Components.subTreeWrapper', function () {
   'use strict';
 
@@ -27,10 +29,10 @@ describe('GGRC.Components.subTreeWrapper', function () {
     });
 
     it('doesnt call server-side if childModels not defined', function (done) {
-      spyOn(GGRC.Utils.TreeView, 'loadItemsForSubTier');
+      spyOn(TreeViewUtils, 'loadItemsForSubTier');
 
       method().then(function () {
-        expect(GGRC.Utils.TreeView.loadItemsForSubTier).not.toHaveBeenCalled();
+        expect(TreeViewUtils.loadItemsForSubTier).not.toHaveBeenCalled();
 
         done();
       });
@@ -38,7 +40,7 @@ describe('GGRC.Components.subTreeWrapper', function () {
 
     it('returns empty list', function (done) {
       vm.attr('childModels', ['a', 'b', 'c']);
-      spyOn(GGRC.Utils.TreeView, 'loadItemsForSubTier').and
+      spyOn(TreeViewUtils, 'loadItemsForSubTier').and
         .returnValue(can.Deferred().resolve({
           directlyItems: [],
           notDirectlyItems: [],
@@ -59,11 +61,11 @@ describe('GGRC.Components.subTreeWrapper', function () {
 
     it('returns valid data from server-side', function (done) {
       vm.attr('childModels', ['a', 'b', 'c']);
-      spyOn(GGRC.Utils.TreeView, 'loadItemsForSubTier').and
+      spyOn(TreeViewUtils, 'loadItemsForSubTier').and
         .returnValue(can.Deferred().resolve({
-          directlyItems: [1, 2, 3],
-          notDirectlyItems: [4, 5, 6, 7],
-          showMore: false
+          directlyItems: [{id: 1}, {id: 2}, {id: 3}],
+          notDirectlyItems: [{id: 4}, {id: 5}, {id: 6}, {id: 7}],
+          showMore: false,
         }));
 
       method().then(function () {

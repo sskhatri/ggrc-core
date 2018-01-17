@@ -4,9 +4,14 @@
  */
 
 import './revision-log-data';
+import '../paginate';
+import RefreshQueue from '../../models/refresh_queue';
+import template from './revision-log.mustache';
 
 (function (GGRC, can) {
   'use strict';
+
+  const EMPTY_DIFF_VALUE = '—';
 
   var _DATE_FIELDS = {
     created_at: 1,
@@ -33,10 +38,7 @@ import './revision-log-data';
    */
   GGRC.Components('revisionLog', {
     tag: 'revision-log',
-    template: can.view(
-      GGRC.mustache_path +
-      '/components/revision-log/revision-log.mustache'
-    ),
+    template,
     viewModel: {
       _LIST_FIELDS: _LIST_FIELDS,
       _DATE_FIELDS: _DATE_FIELDS,
@@ -48,6 +50,7 @@ import './revision-log-data';
       },
       instance: null,
       isLoading: true,
+      personLoadingDfd: can.Deferred,
 
       fetchItems: function () {
         this._fetchRevisionsData()
@@ -56,6 +59,9 @@ import './revision-log-data';
             // calculate history of role changes
             this.attr('roleHistory',
               this._computeRoleChanges(revisions));
+
+            // load not cached people
+            this._loadACLPeople(revisions.object);
 
             // combine all the changes and sort them by date descending
             changeHistory = _([]).concat(
@@ -252,6 +258,147 @@ import './revision-log-data';
         return _.filter(diffList, 'changes.length');
       },
       /**
+       * Compare 2 arrays by property name
+       *
+       * @param {Array} arr1 - access_control_list
+       *
+       * @param {Array} arr2 - access_control_list
+       *
+       * @param {string} propName - property name for compare
+       *
+       * @return {Boolean} - arrays is equal.
+       */
+      _isEqualArrays: function (arr1, arr2, propName) {
+        let diffArray;
+        if (arr1.length === 0 && arr2.length === 0) {
+          return true;
+        }
+
+        if (arr1.length !== arr2.length) {
+          return false;
+        }
+
+        diffArray = arr1.filter((item1) =>
+          _.findIndex(arr2, (item2) =>
+            item1[propName] === item2[propName]) === -1
+        );
+
+        return !diffArray.length;
+      },
+      /**
+       * Load to cache people from access control list
+       *
+       * @param {Object} revisions - list of revisions
+       */
+      _loadACLPeople: function (revisions) {
+        const refreshQueue = new RefreshQueue();
+
+        revisions.forEach((revision) => {
+          if (!revision.content || !revision.content.access_control_list) {
+            return;
+          }
+
+          revision.content.access_control_list.forEach((aclItem) => {
+            if (!CMS.Models.Person.findInCacheById(aclItem.person.id)) {
+              refreshQueue.enqueue(aclItem.person);
+            }
+          });
+        });
+
+        if (refreshQueue.objects.length) {
+          this.attr('personLoadingDfd', refreshQueue.trigger());
+        } else {
+          this.attr('personLoadingDfd', can.Deferred().resolve());
+        }
+      },
+      /**
+       * Build list of users emails
+       *
+       * @param {Array} people - list of people
+       *
+       * @return {Array} - array of people emails or empty value.
+       */
+      _buildPeopleEmails: function (people) {
+        const peopleList = people.map((person) =>
+          CMS.Models.Person.findInCacheById(person.id) ?
+            CMS.Models.Person.findInCacheById(person.id).email :
+            ''
+        );
+
+        return peopleList.length ? peopleList : [EMPTY_DIFF_VALUE];
+      },
+      /**
+       * Get people list from access_contro_list by role
+       *
+       * @param {Object} role - access_control_role object
+       *
+       * @param {Object} revisionContent - content of current revision
+       *
+       * @return {Array} - array of people.
+       */
+      _getPeopleForRole: function (role, revisionContent) {
+        if (!revisionContent.access_control_list) {
+          return [];
+        }
+
+        return revisionContent.access_control_list
+          .filter((item) => item.ac_role_id === role.id)
+          .map((item) => item.person);
+      },
+      /**
+       * A helper function for computing the difference between the two Revisions
+       * of an access_control_list.
+       * @param {CMS.Models.Revision} rev1 - the older of the two revisions
+       * @param {CMS.Models.Revision} rev2 - the newer of the two revisions
+       *
+       * @return {Array} - A list of objects describing the modified attributes of the
+       * instance's access_control_list, with each object having the following attributes:
+       *  - fieldName: the name of the changed custom role
+       *  - origVal: the attribute's original value
+       *  - newVal: the attribute's new (modified) value
+       *  - isLoading: the flag describing load state of people from access_control_list
+       *  - isRole: the flag describing that diff related to access_control_list
+       */
+      _accessControlListDiff: function (rev1, rev2) {
+        const rev1content = rev1.content;
+        const rev2content = rev2.content;
+        let diff = [];
+        let roles;
+
+        if (!this.attr('instance.type')) {
+          return [];
+        }
+
+        roles = GGRC.access_control_roles.filter((item) =>
+          item.object_type === this.attr('instance.type'));
+
+        roles.forEach((role) => {
+          let rev1people = this._getPeopleForRole(role, rev1content);
+          let rev2people = this._getPeopleForRole(role, rev2content);
+          let roleDiff;
+
+          if (!this._isEqualArrays(rev1people, rev2people, 'id')) {
+            roleDiff = new can.Map({
+              fieldName: role.name,
+              origVal: [],
+              newVal: [],
+              isLoading: true,
+              isRole: true,
+            });
+
+            this.attr('personLoadingDfd').then(() => {
+              roleDiff.attr('origVal', this._buildPeopleEmails(rev1people));
+              roleDiff.attr('newVal', this._buildPeopleEmails(rev2people));
+              roleDiff.attr('isLoading', false);
+            });
+
+            diff.push(roleDiff);
+          }
+        });
+
+        return diff;
+      },
+      /**
        * A helper function for computing the difference between the two Revisions
        * of an object.
        *
@@ -295,8 +442,8 @@ import './revision-log-data';
           var origVal = rev1.content[fieldName];
           var displayName;
           var unifyValue = function (value) {
-            value = value || '—';
-            value = value.length ? value : '—';
+            value = value || EMPTY_DIFF_VALUE;
+            value = value.length ? value : EMPTY_DIFF_VALUE;
             if (_.isObject(value)) {
               value = value.map(function (item) {
                 return item.display_name;
@@ -344,6 +491,9 @@ import './revision-log-data';
           }
         }.bind(this));
         diff.changes = diff.changes.concat(
+          this._accessControlListDiff(rev1, rev2)
+        );
+        diff.changes = diff.changes.concat(
           this._objectCADiff(
             rev1.content.custom_attributes,
             rev1.content.custom_attribute_definitions,
@@ -384,8 +534,10 @@ import './revision-log-data';
             var def = defs[id];
             var diff = {
               fieldName: def.title,
-              origVal: showValue(origValues[id] || {}, def) || '—',
-              newVal: showValue(newValues[id] || {}, def) || '—'
+              origVal:
+                showValue(origValues[id] || {}, def) || EMPTY_DIFF_VALUE,
+              newVal:
+                showValue(newValues[id] || {}, def) || EMPTY_DIFF_VALUE,
             };
             if (diff.origVal === diff.newVal) {
               return undefined;
@@ -464,7 +616,7 @@ import './revision-log-data';
         displayType = object.display_type() || object.type;
 
         fieldName = 'Mapping to ' + displayType + ': ' + displayName;
-        origVal = '—';
+        origVal = EMPTY_DIFF_VALUE;
         newVal = _.capitalize(revision.action);
         previous = chain[_.findIndex(chain, revision) - 1];
         if (revision.action !== 'deleted' &&

@@ -1,0 +1,28 @@
+{{!
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div>
+  <content/>
+
+  <div class="people-list">
+    <object-list ({items})="people" {empty-message}="emptyListMessage" {is-disabled}="isLoading">
+      <div class="action-toolbar {{#unless canUnmap}}people-group__readonly-person{{/unless}}">
+        <person-list-item {is-disabled}="isDisabled" person="{.}" {with-details}="withDetails">
+          {{#unless isDisabled}}
+            {{#unmapablePerson}}
+              <div class="action-toolbar__controls">
+                <a href="javascript://" class="info-action unmap" ($click)="unmap(person)">
+                  <action-toolbar-control>
+                    <i class="fa fa-trash"></i>
+                  </action-toolbar-control>
+                </a>
+              </div>
+            {{/unmapablePerson}}
+          {{/unless}}
+        </person-list-item>
+      </div>
+    </object-list>
+  </div>
+</div>

@@ -82,6 +82,22 @@ class Restful(object):
         :src: The original PUT JSON dictionary.
         :service: The instance of Resource handling the PUT request.
       """,)
+  model_put_before_commit = signals.signal(
+      "Model PUT - before",
+      """
+      Indicates that a model object update was received via PUT and has been
+      precessed but not yet stored in the database. The sender in the signal
+      will be the model class of the PUT resource. The following arguments will
+      be sent along with the
+      signal:
+
+        :obj: The model instance updated from the PUT JSON.
+        :src: The original PUT JSON dictionary.
+        :service: The instance of Resource handling the PUT request.
+        :event: Instance of an Event (if change took place) or None otherwise
+        :initial_state: A named tuple of initial values of an object before
+          applying any change.
+      """,)
   model_put_after_commit = signals.signal(
       "Model PUT - after",
       """
@@ -94,6 +110,8 @@ class Restful(object):
         :src: The original PUT JSON dictionary.
         :service: The instance of Resource handling the PUT request.
         :event: Instance of an Event (if change took place) or None otherwise
+        :initial_state: A named tuple of initial values of an object before
+          applying any change.
       """,)
   model_deleted = signals.signal(
       "Model DELETEd",

@@ -222,18 +222,32 @@ class TestComprehensiveSheets(TestCase):
                 errors.DUPLICATE_COLUMN.format(
                     line=1, duplicates="title, assessment procedure, notes"),
             },
+            "row_warnings": {
+                errors.EXPORT_ONLY_WARNING.format(
+                    line=55, column_name="Last Deprecated Date"),
+                errors.EXPORT_ONLY_WARNING.format(
+                    line=56, column_name="Last Deprecated Date"),
+                errors.EXPORT_ONLY_WARNING.format(
+                    line=57, column_name="Last Deprecated Date"),
+                errors.EXPORT_ONLY_WARNING.format(
+                    line=58, column_name="Last Deprecated Date"),
+            },
         },
         "Program": {
             "row_warnings": {
                 errors.OWNER_MISSING.format(line=7, column_name="Manager"),
+                errors.EXPORT_ONLY_WARNING.format(
+                    line=7, column_name="Last Deprecated Date"),
+                errors.EXPORT_ONLY_WARNING.format(
+                    line=8, column_name="Last Deprecated Date"),
+                errors.EXPORT_ONLY_WARNING.format(
+                    line=9, column_name="Last Deprecated Date"),
             },
             "row_errors": {
                 errors.UNKNOWN_DATE_FORMAT.format(
                     line=8, column_name="Effective Date"),
                 errors.WRONG_VALUE_ERROR.format(
                     line=9, column_name="Effective Date"),
-                errors.WRONG_VALUE_ERROR.format(
-                    line=9, column_name="Last Deprecated Date"),
             },
         },
         "Assessment": {

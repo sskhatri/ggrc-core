@@ -90,17 +90,17 @@ Not Launched
 In Scope
 Not in Scope
 Deprecated",,,,MM/DD/YYYY,MM/DD/YYYY,,
-Assessment,code*,audit*,title*,description,Creators,Assignees,Verifiers,state,Assessment Procedure,,,effective date,stop date,notes,reference url,conclusion: design
-,ca-1,Aud-1,ca-1,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,Effective
-,ca-2,Aud-2,ca-2,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,Ineffective
-,ca-3,Aud-3,ca-3,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,needs improvement
-,ca-4,Aud-4,ca-4,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,Not Applicable
-,ca-5,Aud-5,ca-5,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,not applicable
-,ca-6,Aud-6,ca-6,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,effective
-,ca-7,Aud-7,ca-7,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,Effective
-,ca-8,Aud-8,ca-8,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,Ineffective
-,ca-9,Aud-9,ca-9,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,needs improvement
-,ca-10,Aud-10,ca-10,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,7/15/2015,this is a note,google.com,Not Applicable
+Assessment,code*,audit*,title*,description,Creators,Assignees,Verifiers,state,Assessment Procedure,,,effective date,notes,reference url,conclusion: design
+,ca-1,Aud-1,ca-1,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,Effective
+,ca-2,Aud-2,ca-2,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,Ineffective
+,ca-3,Aud-3,ca-3,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,needs improvement
+,ca-4,Aud-4,ca-4,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,Not Applicable
+,ca-5,Aud-5,ca-5,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,not applicable
+,ca-6,Aud-6,ca-6,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,effective
+,ca-7,Aud-7,ca-7,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,Effective
+,ca-8,Aud-8,ca-8,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,Ineffective
+,ca-9,Aud-9,ca-9,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,needs improvement
+,ca-10,Aud-10,ca-10,test,user1@ggrc.com,user1@ggrc.com,user1@ggrc.com,Not Started,plan,,,7/1/2015,this is a note,google.com,Not Applicable
 ,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,
 Object type,"Must be unique.  Can be left empty for autogeneration.  If updating or deleting, code is required",,,"if owner is not provided, current user will be reated as owner of the object","Default value 'draft' is selected

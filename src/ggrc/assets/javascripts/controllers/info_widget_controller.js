@@ -3,6 +3,10 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import '../components/comment/comment-data-provider';
+import '../components/comment/comment-add-form';
+import '../components/comment/mapped-comments';
+
 (function (_, can, GGRC, CMS) {
   can.Control('GGRC.Controllers.InfoWidget', {
     defaults: {
@@ -40,10 +44,13 @@
         error_msg: '',
         error: true,
       });
-      can.view(this.get_widget_view(this.element),
-        this.options.context, function (frag) {
-          this.element.html(frag);
-        }.bind(this));
+      import(/* webpackChunkName: "modalsCtrls" */'./modals')
+        .then(() => {
+          can.view(this.get_widget_view(this.element),
+            this.options.context, function (frag) {
+              this.element.html(frag);
+            }.bind(this));
+        });
     },
 
     get_widget_view: function (el) {

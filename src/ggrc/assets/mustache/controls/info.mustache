@@ -17,199 +17,229 @@
 
       <tab-container>
         <tab-panel {(panels)}="panels" title-text="{{instance.type}}">
-          {{>'/static/mustache/base_objects/object-review.mustache'}}
-          {{>'/static/mustache/base_objects/description.mustache'}}
-          {{>'/static/mustache/base_objects/test_plan.mustache'}}
-          {{>'/static/mustache/base_objects/notes.mustache'}}
-          {{>'/static/mustache/controls/contacts.mustache'}}
-          {{>'/static/mustache/base_objects/urls.mustache'}}
+          <div class="info-pane__body">
+            <div class="info-pane__main-content {{^if isSnapshot}}info-pane__main-content-with-sidebar{{/if}}">
+              {{>'/static/mustache/base_objects/object-review.mustache'}}
+              {{>'/static/mustache/base_objects/description.mustache'}}
+              {{>'/static/mustache/base_objects/test_plan.mustache'}}
+              {{>'/static/mustache/base_objects/notes.mustache'}}
+              {{>'/static/mustache/controls/contacts.mustache'}}
+              {{>'/static/mustache/base_objects/urls.mustache'}}
 
-          <div class="row-fluid wrap-row">
-            <div class="span6">
-               <folder-attachments-list title="Attachment"
-                                       {readonly}="isSnapshot"
-                                       {(is-revision-folder-loaded)}="instance.isRevisionFolderLoaded"
-                                       instance="instance"
-                                       deny-no-folder="true"
-                                       tooltip="You can upload up to 10 files in a single batch">
-                </folder-attachments-list>
+              <div class="row-fluid wrap-row">
+                <div class="span6">
+                  {{#if_helpers '\
+                    #if' isSnapshot '\
+                    or ^is_allowed' "update" instance context="for"}}
+                      <folder-attachments-list title="Attachment"
+                                            {readonly}="true"
+                                            {(is-revision-folder-loaded)}="instance.isRevisionFolderLoaded"
+                                            {instance}="instance">
+                      </folder-attachments-list>
+                  {{else}}
+                    <folder-attachments-list title="Attachment"
+                                          {readonly}="false"
+                                          {instance}="instance"
+                                          {deny-no-folder}="true"
+                                          tooltip="You can upload up to 10 files in a single batch">
+                    </folder-attachments-list>
+                  {{/if_helpers}}
+                </div>
+              </div>
+
+              <div class="custom-attr-wrap info-pane__section">
+                <div class="row-fluid">
+                  <div class="span12">
+                    <div class="info-expand">
+                      <a class="show-hidden-fields info-show-hide active" href="javascript://">
+                        <span class="out">
+                          <i class="fa fa-caret-right"></i>
+                          Show
+                        </span>
+                        <span class="in">
+                          <i class="fa fa-caret-down"></i>
+                          Hide
+                        </span>
+                        Advanced
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                <div class="hidden-fields-area">
+                  <div class="row-fluid wrap-row">
+                    <div class="span4">
+                      <h6>Code</h6>
+                      <p>
+                        {{slug}}
+                      </p>
+                    </div>
+                    <div class="span4">
+                      <h6>Kind/Nature</h6>
+                      {{#if kind}}
+                        <p>
+                          {{#using kind=kind}}
+                            {{kind.title}}
+                          {{/using}}
+                        </p>
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                    <div class="span4">
+                      <h6>Fraud Related</h6>
+                      <p>
+                        {{#if_equals fraud_related "0"}}
+                          No
+                        {{/if}}
+                        {{#if_equals fraud_related "1"}}
+                          Yes
+                        {{/if}}
+                        {{^if_equals fraud_related "0" }}
+                          {{^if_equals fraud_related "1" }}
+                            <span class="empty-message">None</span>
+                          {{/if}}
+                        {{/if}}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="row-fluid wrap-row">
+                    <div class="span8">
+                      <h6>Significance</h6>
+                      <p>
+                        {{#if_equals key_control "1"}}
+                          Key
+                        {{/if}}
+                        {{#if_equals key_control "0"}}
+                          Non-Key
+                        {{/if}}
+                        {{^if_equals key_control "0" }}
+                          {{^if_equals key_control "1" }}
+                            <span class="empty-message">None</span>
+                          {{/if}}
+                        {{/if}}
+                      </p>
+                    </div>
+                    <div class="span4">
+                      <h6>Type/Means</h6>
+                      {{#if means}}
+                        <p>
+                          {{#using means=means}}
+                            {{means.title}}
+                          {{/using}}
+                        </p>
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                  </div>
+                  <div class="row-fluid wrap-row">
+                    <div class="span4">
+                      <h6>Effective Date</h6>
+                      {{#if start_date}}
+                        <p>
+                          {{localize_date start_date}}
+                        </p>
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                    <div class="span4">
+                      <h6>Last Deprecated Date</h6>
+                      {{#if end_date}}
+                        <p>
+                          {{localize_date end_date}}
+                        </p>
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                    <div class="span4">
+                      <h6>Frequency</h6>
+                      {{#if verify_frequency}}
+                        <p>
+                          {{#using verify_frequency=verify_frequency}}
+                            {{verify_frequency.title}}
+                          {{/using}}
+                        </p>
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                  </div>
+                  <div class="row-fluid wrap-row">
+                    <div class="span8">
+                      <h6>Assertions</h6>
+                      {{#if assertions}}
+                        {{#if_helpers '\
+                        #if' instance.snapshot '\
+                        or #if' instance.isRevision}}
+                          <ul>
+                            {{#assertions}}
+                              <li>{{display_name}}</li>
+                            {{/assertions}}
+                          </ul>
+                        {{else}}
+                          {{#using items=assertions}}
+                            <ul>
+                              {{#items}}
+                                <li>{{display_name}}</li>
+                              {{/items}}
+                            </ul>
+                          {{/using}}
+                        {{/if_helpers}}
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                    <div class="span4">
+                      <h6>Categories</h6>
+                      {{#if categories}}
+                        {{#if_helpers '\
+                        #if' instance.snapshot '\
+                        or #if' instance.isRevision}}
+                          <ul>
+                            {{#categories}}
+                              <li>{{display_name}}</li>
+                            {{/categories}}
+                          </ul>
+                        {{else}}
+                          {{#using items=categories}}
+                            <ul>
+                              {{#items}}
+                                <li>{{display_name}}</li>
+                              {{/items}}
+                            </ul>
+                          {{/using}}
+                        {{/if_helpers}}
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                  </div>
+                </div>
+              </div><!-- custom-attr-wrap end -->
+              {{>'/static/mustache/custom_attributes/info.mustache'}}
             </div>
+            {{^if isSnapshot}}
+            <div class="info-pane__sidebar">
+              <comment-data-provider {instance}="instance" class="flex-box flex-col">
+                <div class="info-pane__section-title">Responses/Comments</div>
+                {{#unless isEditDenied}}
+                <comment-add-form class="comment-add-form"
+                  {instance}="instance"
+                  {is-saving}="isLoading"
+                  (before-create)="addComment(%event)"
+                  (after-create)="processComment(%event)"
+                  {notifications-info}="'Notify Admins, Primary and Secondary Contacts'">
+                </comment-add-form>
+                {{/unless}}
+                <mapped-comments {mapped-items}="comments"></mapped-comments>
+              </comment-data-provider>
+            </div>
+            {{/if}}
           </div>
-
-          <div class="custom-attr-wrap">
-            <div class="row-fluid">
-              <div class="span12">
-                <div class="info-expand">
-                  <a class="show-hidden-fields info-show-hide active" href="javascript://">
-                    <span class="out">
-                      <i class="fa fa-caret-right"></i>
-                      Show
-                    </span>
-                    <span class="in">
-                      <i class="fa fa-caret-down"></i>
-                      Hide
-                    </span>
-                    Advanced
-                  </a>
-                </div>
-              </div>
-            </div>
-            <div class="hidden-fields-area">
-              <div class="row-fluid wrap-row">
-                <div class="span4">
-                  <h6>Code</h6>
-                  <p>
-                    {{slug}}
-                  </p>
-                </div>
-                <div class="span4">
-                  <h6>Kind/Nature</h6>
-                  {{#if kind}}
-                    <p>
-                      {{#using kind=kind}}
-                        {{kind.title}}
-                      {{/using}}
-                    </p>
-                  {{else}}
-                    <span class="empty-message">None</span>
-                  {{/if}}
-                </div>
-                <div class="span4">
-                  <h6>Fraud Related</h6>
-                  <p>
-                    {{#if_equals fraud_related "0"}}
-                      No
-                    {{/if}}
-                    {{#if_equals fraud_related "1"}}
-                      Yes
-                    {{/if}}
-                    {{^if_equals fraud_related "0" }}
-                      {{^if_equals fraud_related "1" }}
-                        <span class="empty-message">None</span>
-                      {{/if}}
-                    {{/if}}
-                  </p>
-                </div>
-              </div>
-              <div class="row-fluid wrap-row">
-                <div class="span8">
-                  <h6>Significance</h6>
-                  <p>
-                    {{#if_equals key_control "1"}}
-                      Key
-                    {{/if}}
-                    {{#if_equals key_control "0"}}
-                      Non-Key
-                    {{/if}}
-                    {{^if_equals key_control "0" }}
-                      {{^if_equals key_control "1" }}
-                        <span class="empty-message">None</span>
-                      {{/if}}
-                    {{/if}}
-                  </p>
-                </div>
-                <div class="span4">
-                  <h6>Type/Means</h6>
-                  {{#if means}}
-                    <p>
-                      {{#using means=means}}
-                        {{means.title}}
-                      {{/using}}
-                    </p>
-                  {{else}}
-                    <span class="empty-message">None</span>
-                  {{/if}}
-                </div>
-              </div>
-              <div class="row-fluid wrap-row">
-                <div class="span4">
-                  <h6>Effective Date</h6>
-                  {{#if start_date}}
-                    <p>
-                      {{localize_date start_date}}
-                    </p>
-                  {{else}}
-                    <span class="empty-message">None</span>
-                  {{/if}}
-                </div>
-                <div class="span4">
-                  <h6>Last Deprecated Date</h6>
-                  {{#if end_date}}
-                    <p>
-                      {{localize_date end_date}}
-                    </p>
-                  {{else}}
-                    <span class="empty-message">None</span>
-                  {{/if}}
-                </div>
-                <div class="span4">
-                  <h6>Frequency</h6>
-                  {{#if verify_frequency}}
-                    <p>
-                      {{#using verify_frequency=verify_frequency}}
-                        {{verify_frequency.title}}
-                      {{/using}}
-                    </p>
-                  {{else}}
-                    <span class="empty-message">None</span>
-                  {{/if}}
-                </div>
-              </div>
-              <div class="row-fluid wrap-row">
-                <div class="span8">
-                  <h6>Assertions</h6>
-                  {{#if assertions}}
-                    {{#if_helpers '\
-                     #if' instance.snapshot '\
-                     or #if' instance.isRevision}}
-                      <ul>
-                        {{#assertions}}
-                          <li>{{display_name}}</li>
-                        {{/assertions}}
-                      </ul>
-                    {{else}}
-                      {{#using items=assertions}}
-                        <ul>
-                          {{#items}}
-                            <li>{{display_name}}</li>
-                          {{/items}}
-                        </ul>
-                      {{/using}}
-                    {{/if_helpers}}
-                  {{else}}
-                    <span class="empty-message">None</span>
-                  {{/if}}
-                </div>
-                <div class="span4">
-                  <h6>Categories</h6>
-                  {{#if categories}}
-                    {{#if_helpers '\
-                     #if' instance.snapshot '\
-                     or #if' instance.isRevision}}
-                      <ul>
-                        {{#categories}}
-                          <li>{{display_name}}</li>
-                        {{/categories}}
-                      </ul>
-                    {{else}}
-                      {{#using items=categories}}
-                        <ul>
-                          {{#items}}
-                            <li>{{display_name}}</li>
-                          {{/items}}
-                        </ul>
-                      {{/using}}
-                    {{/if_helpers}}
-                  {{else}}
-                    <span class="empty-message">None</span>
-                  {{/if}}
-                </div>
-              </div>
-            </div>
-          </div><!-- custom-attr-wrap end -->
-          {{>'/static/mustache/custom_attributes/info.mustache'}}
         </tab-panel>
-        {{^if instance.snapshot}}
+        {{^if isSnapshot}}
           <tab-panel {(panels)}="panels" title-text="Change Log">
               <revision-log {instance}="instance"></revision-log>
           </tab-panel>

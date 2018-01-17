@@ -1,7 +1,14 @@
-/*!
+/*
     Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
+
+import {
+  buildParam,
+  batchRequests,
+} from '../plugins/utils/query-api-utils';
+import {confirm} from '../plugins/utils/modals';
+import {isSnapshot} from '../plugins/utils/snapshot-utils';
 
 (function (can, GGRC) {
   can.Construct.extend('can.Model.Mixin', {
@@ -167,7 +174,20 @@
       if (!this.access_control_list) {
         this.attr('access_control_list', []);
       }
-    }
+    },
+    'before:refresh': function () {
+      // no need to rewrite access_control_list for snapshots
+      if (isSnapshot(this)) {
+        return;
+      }
+
+      // access_control_list should be set from response.
+      // if access_control_list is not empty CanJS try to merge
+      // lists from instance and response. Outcome: wrong date in ACL
+      if (this.attr('access_control_list.length') > 0) {
+        this.attr('access_control_list', []);
+      }
+    },
   });
 
   can.Model.Mixin('ca_update', {}, {
@@ -179,16 +199,21 @@
     }
   });
 
-  can.Model.Mixin('inScopeObjects', {}, {
+  can.Model.Mixin('inScopeObjectsPreload', {}, {
     'after:info_pane_preload': function () {
-      return this.updateScopeObject();
+      if (this.updateScopeObject) {
+        this.updateScopeObject();
+      }
     },
+  });
+
+  can.Model.Mixin('inScopeObjects', {}, {
     updateScopeObject: function () {
       var objType = 'Audit';
       var queryType = 'values';
-      var queryFields = ['id', 'type', 'title', 'context'];
-      var query = GGRC.Utils.QueryAPI
-        .buildParam(objType, {
+      var queryFields = ['id', 'type', 'title', 'context', 'issue_tracker'];
+      var query =
+        buildParam(objType, {
           current: 1,
           pageSize: 1
         }, {
@@ -196,12 +221,15 @@
           operation: 'relevant',
           id: this.attr('id')
         }, queryFields);
-      return GGRC.Utils.QueryAPI
-        .batchRequests(query)
+      return batchRequests(query)
         .done(function (valueArr) {
           var audit = valueArr[objType][queryType][0];
-          this.attr('scopeObject', audit);
+
           this.attr('audit', audit);
+          if (audit && audit.issue_tracker) {
+            this.attr('can_use_issue_tracker',
+              audit.issue_tracker.enabled);
+          }
         }.bind(this));
     }
   });
@@ -221,6 +249,67 @@
   can.Model.Mixin('mapping-limit-issue', {
     getAllowedMappings: _.partial(getAllowedMappings, ['Program', 'Project', 'TaskGroup'])
   }, {});
+
+  can.Model.Mixin('issueTrackerIntegratable', {
+    issue_tracker_enable_options: [
+      {value: true, title: 'On'},
+      {value: false, title: 'Off'},
+    ],
+    issue_tracker_priorities: ['P0', 'P1', 'P2', 'P3', 'P4'],
+    issue_tracker_severities: ['S0', 'S1', 'S2', 'S3', 'S4'],
+  }, {
+    'after:init': function () {
+      if (!this.issue_tracker) {
+        this.issue_tracker = new can.Map({});
+      }
+
+      this.initIssueTrackerObject();
+    },
+    initIssueTrackerObject: function (defaultValues) {
+      let issueTracker;
+
+      if (!GGRC.ISSUE_TRACKER_ENABLED) {
+        return;
+      }
+
+      issueTracker = this.attr('issue_tracker');
+
+      if (!issueTracker || this.wasEnabled()) {
+        if (!defaultValues) {
+          defaultValues = {};
+        }
+
+        if (!this.attr('issue_tracker.enabled')) {
+          // convert to boolean
+          defaultValues.enabled = !!this.issue_tracker.enabled;
+        }
+
+        this.attr('issue_tracker', defaultValues);
+      }
+    },
+    initCanUseIssueTracker: function (parentIssueTracker) {
+      if (parentIssueTracker && GGRC.ISSUE_TRACKER_ENABLED) {
+        this.attr('can_use_issue_tracker', parentIssueTracker.enabled);
+
+        if (parentIssueTracker.enabled && this.isNew()) {
+          // turn ON issue tracker when CREATE new instance
+          this.attr('issue_tracker.enabled', true);
+        }
+      }
+    },
+    wasEnabled: function () {
+      // 'issue_tracker' has already created if component_id is filled;
+      return !this.issue_tracker.component_id;
+    },
+    'before:refresh': function () {
+      // clear warnings because CanJS save prev value of warning after merge
+      // current instance and response
+      if (this.issue_tracker && this.issue_tracker._warnings) {
+        this.issue_tracker._warnings = [];
+      }
+    },
+  });
+
   /**
    * A mixin to use for objects that can have their status automatically
    * changed when they are edited.
@@ -259,7 +348,7 @@
       if (_.includes(IGNORED_STATES, this.status)) {
         confirmation.resolve();
       } else {
-        GGRC.Controllers.Modals.confirm({
+        confirm({
           modal_description: DESCRIPTION,
           modal_title: TITLE,
           button_view: GGRC.mustache_path + '/gdrive/confirm_buttons.mustache'
@@ -366,7 +455,12 @@
       return [widgetName,
               '_widget/',
               this.hash_fragment(),
-              '&refetch'].join('');
+              '&refetch=true'].join('');
     }
+  });
+
+  can.Model.Mixin('base-notifications', {
+    send_by_default: true,
+    recipients: 'Admin,Primary Contacts,Secondary Contacts',
   });
 })(window.can, window.GGRC);

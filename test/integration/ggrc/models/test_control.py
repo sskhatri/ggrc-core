@@ -49,3 +49,37 @@ class TestControl(TestCase):
     self.api.put(control, {"status": Control.DEPRECATED})
     control = db.session.query(Control).get(control.id)
     self.assertIsNotNone(control.end_date)
+
+  def test_create_commentable(self):
+    """Test if commentable fields are set on creation"""
+    recipients = "Admin,Primary Contacts,Secondary Contacts"
+    send_by_default = 0
+    response = self.api.post(Control, {
+        "control": {
+            "title": "Control title",
+            "context": None,
+            "recipients": recipients,
+            "send_by_default": send_by_default,
+        },
+    })
+    self.assertEqual(response.status_code, 201)
+    control_id = response.json.get("control").get("id")
+    control = db.session.query(Control).get(control_id)
+    self.assertEqual(control.recipients, recipients)
+    self.assertEqual(control.send_by_default, send_by_default)
+
+  def test_update_commentable(self):
+    """Test update of commentable fields"""
+    control = factories.ControlFactory()
+    self.assertEqual(control.recipients, "")
+    self.assertIs(control.send_by_default, True)
+
+    recipients = "Admin,Primary Contacts,Secondary Contacts"
+    send_by_default = 0
+    self.api.put(control, {
+        "recipients": recipients,
+        "send_by_default": send_by_default,
+    })
+    control = db.session.query(Control).get(control.id)
+    self.assertEqual(control.recipients, recipients)
+    self.assertEqual(control.send_by_default, send_by_default)

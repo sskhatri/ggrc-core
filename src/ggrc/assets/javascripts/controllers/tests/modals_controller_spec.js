@@ -3,13 +3,15 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-describe('GGRC.Controllers.Modals', function () {
+import ModalsController from '../modals_controller';
+
+describe('ModalsController', function () {
   'use strict';
 
   var Ctrl;  // the controller under test
 
   beforeAll(function () {
-    Ctrl = GGRC.Controllers.Modals;
+    Ctrl = ModalsController;
   });
 
   describe('init() method', function () {

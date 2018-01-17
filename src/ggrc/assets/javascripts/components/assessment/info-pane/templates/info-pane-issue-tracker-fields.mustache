@@ -1,0 +1,151 @@
+{{!
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#if instance.issue_tracker.issue_url}}
+  {{#displayAssessmentIssueTracker instance.can_use_issue_tracker}}
+    <div class="ggrc-form-item">
+        <div class="ggrc-form-item__row">
+            <div class="issue-tracker-url">
+                <a href="{{instance.issue_tracker.issue_url}}" target="_blank">
+                    Buganizer Link
+                </a>
+            </div>
+        </div>
+    </div>
+  {{/displayAssessmentIssueTracker}}
+{{/if}}
+
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__multiple-row">
+    <issue-tracker-switcher
+      set-issue-title="true"
+      (issue-tracker-switcher-changed)="saveInlineForm(%event)"
+      {instance}="instance"
+      {parent}="instance.audit">
+        <inline-edit-control
+          (inline-save)="inlineDropdownValueChange(%event)"
+          {is-edit-icon-denied}="isEditDenied"
+          {dropdown-options}="instance.class.issue_tracker_enable_options"
+          {instance}="instance"
+          {value}="instance.issue_tracker.enabled"
+          prop-name="issue_tracker.enabled"
+          type="dropdown">
+            <confirm-edit-action
+              (set-edit-mode)="setEditModeInline(%event)"
+              (set-in-progress)="setInProgressState()"
+              {is-edit-icon-denied}="isEditIconDenied"
+              {instance}="instance"
+              {on-state-change-dfd}="onStateChangeDfd"
+              {edit-mode}="editMode">
+                <base-inline-control-title
+                  class="inline__header"
+                  {edit-mode}="editMode"
+                  {is-edit-icon-denied}="isEditIconDenied"
+                  (set-edit-mode-inline)="confirmEdit()">
+                    <div>
+                      <div class="ggrc-form__title">Buganizer</div>
+                        <div class="ggrc-form-item__small-text">
+                          <small>
+                            <em>If turned on, one bug will be created for each assessment.</em>
+                          </small>
+                        </div>
+                    </div>
+                </base-inline-control-title>
+            </confirm-edit-action>
+        </inline-edit-control>
+    </issue-tracker-switcher>
+  </div>
+</div>
+
+{{#if instance.issue_tracker.enabled}}
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type="number"
+      prop-name="issue_tracker.hotlist_id"
+      {set-in-progress}="@setInProgressState"
+      {on-state-change-dfd}="onStateChangeDfd"
+      {is-edit-icon-denied}="isEditDenied"
+      {value}="instance.issue_tracker.hotlist_id"
+      {instance}="instance">
+        <div class="ggrc-form__title">Hotlist ID</div>
+    </assessment-inline-item>
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type="number"
+      prop-name="issue_tracker.component_id"
+      mandatory="true"
+      {set-in-progress}="@setInProgressState"
+      {on-state-change-dfd}="onStateChangeDfd"
+      {is-edit-icon-denied}="isEditDenied"
+      {value}="instance.issue_tracker.component_id"
+      {instance}="instance">
+        <div class="ggrc-form__title form-label required-label">
+            Component ID
+          <i class="fa fa-asterisk"></i>
+        </div>
+    </assessment-inline-item>
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <!-- use "inline-edit-control" to save styles... -->
+    <inline-edit-control>
+      <div class="inline">
+        <base-inline-control-title
+          class="inline__header"
+          is-edit-icon-denied="true">
+            <div class="ggrc-form__title">Issue Type</div>
+        </base-inline-control-title>
+        <span>{{instance.issue_tracker.issue_type}}</span>
+      </div>
+    </inline-edit-control>
+  </div>
+</div>
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type="dropdown"
+      prop-name="issue_tracker.issue_priority"
+      {set-in-progress}="@setInProgressState"
+      {on-state-change-dfd}="onStateChangeDfd"
+      {dropdown-options}="instance.class.issue_tracker_priorities"
+      {is-edit-icon-denied}="isEditDenied"
+      {value}="instance.issue_tracker.issue_priority"
+      {instance}="instance">
+        <div class="ggrc-form__title">Issue Priority</div>
+    </assessment-inline-item>
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type="dropdown"
+      prop-name="issue_tracker.issue_severity"
+      {set-in-progress}="@setInProgressState"
+      {on-state-change-dfd}="onStateChangeDfd"
+      {dropdown-options}="instance.class.issue_tracker_severities"
+      {is-edit-icon-denied}="isEditDenied"
+      {value}="instance.issue_tracker.issue_severity"
+      {instance}="instance">
+        <div class="ggrc-form__title">Issue Severity</div>
+    </assessment-inline-item>
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type="input"
+      prop-name="issue_tracker.title"
+      mandatory="true"
+      with-read-more="true"
+      {set-in-progress}="@setInProgressState"
+      {on-state-change-dfd}="onStateChangeDfd"
+      {is-edit-icon-denied}="isEditDenied"
+      {value}="instance.issue_tracker.title"
+      {instance}="instance">
+        <div class="ggrc-form__title form-label required-label">
+          Issue Title
+          <i class="fa fa-asterisk"></i>
+        </div>
+    </assessment-inline-item>
+  </div>
+</div>
+{{/if}}

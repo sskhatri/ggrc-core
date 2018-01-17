@@ -6,6 +6,7 @@
 """Workflows module"""
 
 import collections
+import itertools
 from datetime import datetime, date
 from logging import getLogger
 from flask import Blueprint
@@ -138,25 +139,6 @@ def update_cycle_dates(cycle):
     cycle: Cycle for which we want to calculate the start and end dates.
 
   """
-  if cycle.id:
-    # If `cycle` is already in the database, then eager load required objects
-    cycle = models.Cycle.query.filter_by(
-        id=cycle.id
-    ).options(
-        orm.Load(models.Cycle).joinedload(
-            'cycle_task_groups'
-        ).joinedload(
-            'cycle_task_group_tasks'
-        ).load_only(
-            "id", "status", "start_date", "end_date"
-        ),
-        orm.Load(models.Cycle).joinedload(
-            'cycle_task_groups'
-        ).load_only(
-            "id", "status", "start_date", "end_date", "next_due_date",
-        ),
-    ).one()
-
   if not cycle.cycle_task_group_object_tasks and \
      cycle.workflow.kind != "Backlog":
     cycle.start_date, cycle.end_date = None, None
@@ -372,12 +354,17 @@ def update_cycle_task_child_state(obj):
           update_cycle_task_child_state(child)
 
 
-def _update_parent_state(parent, child_statuses):
+def _update_parent_status(parent, child_statuses):
   """Util function, update status of sent parent, if it's allowed.
 
   New status based on sent object status and sent child_statuses"""
   old_status = parent.status
-  if len(child_statuses) == 1:
+  # Deprecated status is not counted
+  if child_statuses:
+    child_statuses.discard("Deprecated")
+  if not child_statuses:
+    new_status = "Deprecated"
+  elif len(child_statuses) == 1:
     new_status = child_statuses.pop()
     if new_status == "Declined":
       new_status = "InProgress"
@@ -388,47 +375,47 @@ def _update_parent_state(parent, child_statuses):
   if old_status == new_status:
     return
   parent.status = new_status
-  Signals.status_change.send(
-      parent.__class__,
-      objs=[
-          Signals.StatusChangeSignalObjectContext(
-              instance=parent,
-              old_status=old_status,
-              new_status=new_status,
-          )
-      ]
-  )
 
 
-def update_cycle_task_object_task_parent_state(objs, is_put=False):
+def update_cycle_task_tree(objs):
   """Update cycle task group status for sent cycle task"""
   objs = [o for o in objs or [] if o.cycle.workflow.kind != "Backlog"]
   if not objs:
     return
   groups_dict = {i.cycle_task_group_id: i.cycle_task_group for i in objs}
-  group_status_dict = collections.defaultdict(set)
+  group_task_dict = collections.defaultdict(set)
   # load all tasks that are in the same groups there are tasks that be updated
+  task_ids = [t.id for t in db.session.deleted
+              if isinstance(t, models.CycleTaskGroupObjectTask)]
+  for task in itertools.chain(db.session.dirty, db.session.new):
+    if not isinstance(task, models.CycleTaskGroupObjectTask):
+      continue
+    group_task_dict[task.cycle_task_group].add(task)
+    if task.id:
+      task_ids.append(task.id)
   query = models.CycleTaskGroupObjectTask.query.filter(
       models.CycleTaskGroupObjectTask.cycle_task_group_id.in_(groups_dict)
+  ).options(
+      orm.undefer_group("CycleTaskGroupObjectTask_complete")
   )
-  if is_put:
-    # require to fix problem for tasks that should be deleted
-    task_ids = []
-    for task in objs:
-      group_status_dict[task.cycle_task_group].add(task.status)
-      task_ids.append(task.id)
+  if task_ids:
     query = query.filter(models.CycleTaskGroupObjectTask.id.notin_(task_ids))
-  query = query.distinct().with_for_update()
-  for group_id, status in query.values("cycle_task_group_id", "status"):
-    group_status_dict[groups_dict[group_id]].add(status)
+  tasks = query.distinct().with_for_update().all()
+  for task in tasks:
+    group_task_dict[groups_dict[task.cycle_task_group_id]].add(task)
   updated_groups = []
-  for group, task_statuses in group_status_dict.iteritems():
-    old_status = group.status
-    _update_parent_state(group, task_statuses)
-    if old_status != group.status:
+  for group in groups_dict.itervalues():
+    old_state = [group.status, group.start_date, group.end_date,
+                 group.next_due_date]
+    _update_parent_status(group, {t.status for t in group_task_dict[group]})
+    group.start_date, group.end_date = _get_date_range(group_task_dict[group])
+    group.next_due_date = _get_min_end_date(group_task_dict[group])
+    if old_state != [group.status, group.start_date, group.end_date,
+                     group.next_due_date]:
       # if status updated then add it in list. require to update cycle state
       updated_groups.append(group)
-  update_cycle_task_group_parent_state(updated_groups)
+  if updated_groups:
+    update_cycle_task_group_parent_state(updated_groups)
 
 
 def update_cycle_task_group_parent_state(objs):
@@ -437,21 +424,33 @@ def update_cycle_task_group_parent_state(objs):
   if not objs:
     return
   cycles_dict = {}
-  cycle_statuses_dict = collections.defaultdict(set)
+  cycle_groups_dict = collections.defaultdict(set)
   group_ids = []
   for obj in objs:
-    cycle_statuses_dict[obj.cycle].add(obj.status)
+    cycle_groups_dict[obj.cycle].add(obj)
     group_ids.append(obj.id)
     cycles_dict[obj.cycle.id] = obj.cycle
   # collect all groups that are in same cycles that group from sent list
-  child_statuses = models.CycleTaskGroup.query.filter(
-      models.CycleTaskGroup.cycle_id.in_([c.id for c in cycle_statuses_dict]),
-      models.CycleTaskGroup.id.notin_(group_ids)
-  ).distinct().with_for_update()
-  for cycle_id, status in child_statuses.values("cycle_id", "status"):
-    cycle_statuses_dict[cycles_dict[cycle_id]].add(status)
-  for cycle, group_statuses in cycle_statuses_dict.iteritems():
-    _update_parent_state(cycle, group_statuses)
+  groups = models.CycleTaskGroup.query.filter(
+      models.CycleTaskGroup.cycle_id.in_([c.id for c in cycle_groups_dict]),
+  ).options(
+      orm.undefer_group("CycleTaskGroup_complete")
+  ).distinct().with_for_update().all()
+  for group in groups:
+    cycle_groups_dict[cycles_dict[group.cycle_id]].add(group)
+
+  updated_cycles = []
+  for cycle in cycles_dict.itervalues():
+    old_status = cycle.status
+    _update_parent_status(cycle, {g.status for g in cycle_groups_dict[cycle]})
+    cycle.start_date, cycle.end_date = _get_date_range(
+        cycle_groups_dict[cycle])
+    cycle.next_due_date = _get_min_next_due_date(cycle_groups_dict[cycle])
+    if old_status != cycle.status:
+      updated_cycles.append(Signals.StatusChangeSignalObjectContext(
+          instance=cycle, old_status=old_status, new_status=cycle.status))
+  if updated_cycles:
+    Signals.status_change.send(models.Cycle, objs=updated_cycles)
 
 
 def ensure_assignee_is_workflow_member(workflow, assignee, assignee_id=None):
@@ -495,7 +494,7 @@ def ensure_assignee_is_workflow_member(workflow, assignee, assignee_id=None):
 
 def start_end_date_validator(tgt):
   if tgt.start_date > tgt.end_date:
-      raise ValueError('End date can not be behind Start date')
+    raise ValueError('End date can not be behind Start date')
 
   if max(tgt.start_date.isoweekday(),
          tgt.end_date.isoweekday()) > all_models.Workflow.WORK_WEEK_LEN:
@@ -578,14 +577,6 @@ def handle_task_group_put(sender, obj=None, src=None, service=None):  # noqa pyl
   calculate_new_next_cycle_start_date(obj.workflow)
 
 
-@signals.Restful.model_deleted.connect_via(models.CycleTaskGroupObjectTask)
-def handle_cycle_task_group_object_task_delete(sender, obj=None,
-                                               src=None, service=None):  # noqa pylint: disable=unused-argument
-  """Update cycle dates and statuses"""
-  db.session.flush()
-  update_cycle_dates(obj.cycle)
-
-
 @signals.Restful.model_put.connect_via(models.CycleTaskGroupObjectTask)
 def handle_cycle_task_group_object_task_put(
         sender, obj=None, src=None, service=None):  # noqa pylint: disable=unused-argument
@@ -593,10 +584,6 @@ def handle_cycle_task_group_object_task_put(
   if inspect(obj).attrs._access_control_list.history.has_changes():
     for person_id in obj.get_person_ids_for_rolename("Task Assignees"):
       ensure_assignee_is_workflow_member(obj.cycle.workflow, None, person_id)
-
-  if any([inspect(obj).attrs.start_date.history.has_changes(),
-          inspect(obj).attrs.end_date.history.has_changes()]):
-    update_cycle_dates(obj.cycle)
 
   if inspect(obj).attrs.status.history.has_changes():
     # TODO: check why update_cycle_object_parent_state destroys object history
@@ -612,7 +599,6 @@ def handle_cycle_task_group_object_task_put(
             )
         ]
     )
-    update_cycle_task_object_task_parent_state([obj], is_put=True)
 
   # Doing this regardless of status.history.has_changes() is important in order
   # to update objects that have been declined. It updates the os_last_updated
@@ -627,13 +613,17 @@ def handle_cycle_task_group_object_task_put(
 
 @signals.Restful.model_posted_after_commit.connect_via(
     models.CycleTaskGroupObjectTask)
+@signals.Restful.model_put_after_commit.connect_via(
+    models.CycleTaskGroupObjectTask)
 @signals.Restful.model_deleted_after_commit.connect_via(
     models.CycleTaskGroupObjectTask)
 # noqa pylint: disable=unused-argument
 def handle_cycle_object_status(
-        sender, obj=None, src=None, service=None, event=None):
+        sender, obj=None, src=None, service=None, event=None,
+        initial_state=None):
   """Calculate status of cycle and cycle task group"""
-  update_cycle_task_object_task_parent_state([obj])
+  update_cycle_task_tree([obj])
+  db.session.commit()
 
 
 @signals.Restful.model_posted.connect_via(models.CycleTaskGroupObjectTask)
@@ -642,7 +632,6 @@ def handle_cycle_task_group_object_task_post(
   if obj.cycle.workflow.kind != "Backlog":
     for person_id in obj.get_person_ids_for_rolename("Task Assignees"):
       ensure_assignee_is_workflow_member(obj.cycle.workflow, None, person_id)
-  update_cycle_dates(obj.cycle)
 
   Signals.status_change.send(
       obj.__class__,
@@ -661,7 +650,6 @@ def handle_cycle_task_group_object_task_post(
 def handle_cycle_task_group_put(
         sender, obj=None, src=None, service=None):  # noqa pylint: disable=unused-argument
   if inspect(obj).attrs.status.history.has_changes():
-    update_cycle_task_group_parent_state([obj])
     update_cycle_task_child_state(obj)
 
 
@@ -753,8 +741,10 @@ def handle_cycle_task_status_change(sender, objs=None):
       continue
     if obj.new_status == obj.instance.VERIFIED:
       obj.instance.verified_date = datetime.now()
+      if obj.instance.finished_date is None:
+        obj.instance.finished_date = obj.instance.verified_date
     elif obj.new_status == obj.instance.FINISHED:
-      obj.instance.finished_date = datetime.now()
+      obj.instance.finished_date = obj.instance.finished_date or datetime.now()
       obj.instance.verified_date = None
     else:
       obj.instance.finished_date = None
@@ -833,58 +823,41 @@ def handle_workflow_post(sender, obj=None, src=None, service=None):
         id=source_workflow_id
     ).first()
     source_workflow.copy(obj)
-    db.session.add(obj)
-    db.session.flush()
     obj.title = source_workflow.title + ' (copy ' + str(obj.id) + ')'
 
-  db.session.flush()
   # get the personal context for this logged in user
   user = get_current_user()
-  personal_context = _get_or_create_personal_context(user)
-  context = obj.build_object_context(
-      context=personal_context,
-      name='{object_type} Context {timestamp}'.format(
-          object_type=service.model.__name__,
-          timestamp=datetime.now()),
-      description='',
-  )
-  context.modified_by = get_current_user()
-
-  db.session.add(obj)
-  db.session.flush()
-  db.session.add(context)
-  db.session.flush()
-  obj.contexts.append(context)
+  personal_context = user.get_or_create_object_context(context=1)
+  context = obj.get_or_create_object_context(personal_context)
   obj.context = context
 
-  # add a user_roles mapping assigning the user creating the workflow
-  # the WorkflowOwner role in the workflow's context.
-  workflow_owner_role = _find_role('WorkflowOwner')
-  user_role = UserRole(
-      person=user,
-      role=workflow_owner_role,
-      context=context,
-      modified_by=get_current_user(),
-  )
-  db.session.add(models.WorkflowPerson(
-      person=user,
-      workflow=obj,
-      context=context,
-      modified_by=get_current_user(),
-  ))
-  # pass along a temporary attribute for logging the events.
-  user_role._display_related_title = obj.title
-  db.session.add(user_role)
-  db.session.flush()
+  if not obj.workflow_people:
+    # add a user_roles mapping assigning the user creating the workflow
+    # the WorkflowOwner role in the workflow's context.
+    workflow_owner_role = _find_role('WorkflowOwner')
+    user_role = UserRole(
+        person=user,
+        role=workflow_owner_role,
+        context=context,
+        modified_by=get_current_user(),
+    )
+    models.WorkflowPerson(
+        person=user,
+        workflow=obj,
+        context=context,
+        modified_by=get_current_user(),
+    )
+    # pass along a temporary attribute for logging the events.
+    user_role._display_related_title = obj.title
 
   # Create the context implication for Workflow roles to default context
-  db.session.add(ContextImplication(
+  ContextImplication(
       source_context=context,
       context=None,
       source_context_scope='Workflow',
       context_scope=None,
       modified_by=get_current_user(),
-  ))
+  )
 
   if not src.get('private'):
     # Add role implication - all users can read a public workflow
@@ -903,17 +876,17 @@ def handle_workflow_post(sender, obj=None, src=None, service=None):
       for authorization in source_workflow.context.user_roles:
         # Current user has already been added as workflow owner
         if authorization.person != user:
-          db.session.add(UserRole(
+          UserRole(
               person=authorization.person,
               role=workflow_member_role,
               context=context,
-              modified_by=user))
+              modified_by=user)
       for person in source_workflow.people:
         if person != user:
-          db.session.add(models.WorkflowPerson(
+          models.WorkflowPerson(
               person=person,
               workflow=obj,
-              context=context))
+              context=context)
 
 
 def add_public_workflow_context_implication(context, check_exists=False):

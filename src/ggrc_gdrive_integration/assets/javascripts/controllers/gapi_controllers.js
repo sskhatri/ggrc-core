@@ -4,38 +4,6 @@
 */
 
 (function (CMS, GGRC, can, $) {
-  GGRC.Controllers.Modals('GGRC.Controllers.GAPIModal', {
-    defaults: {
-      skip_refresh: true,
-      content_view: GGRC.mustache_path + '/gdrive/auth_button.mustache'
-    },
-    init: function () {
-      this._super.apply(this, arguments);
-      this.defaults.button_view = can.view.mustache('');
-    }
-  }, {
-    init: function () {
-      this._super();
-      this.element.trigger('shown');
-    },
-    '{scopes} change': function () {
-      this.element.trigger('shown');
-    },
-    '{$content} a.btn[data-toggle=gapi]:not(.disabled) click': function (el) {
-      el.addClass('disabled');
-      GGRC.Controllers.GAPI.doGAuth_step2(null, true);
-      GGRC.Controllers.GAPI.oauth_dfd.always(
-        $.proxy(this.element, 'modal_form', 'hide')
-      );
-    },
-    ' hide': function () {
-      if (GGRC.Controllers.GAPI.oauth_dfd.state() === 'pending') {
-        GGRC.Controllers.GAPI.oauth_dfd.reject('User canceled operation');
-      }
-      this.element && this.element.remove();
-    }
-  });
-
   can.Control('GGRC.Controllers.GAPI', {
     canonical_instance: null,
     oauth_dfd: new $.Deferred(),
@@ -87,11 +55,14 @@
       if (usePopup) {
         $modal = $('.ggrc_controllers_gapi_modal');
         if (!$modal.length) {
-          $('<div class="modal hide">').modal_form()
-            .appendTo(document.body).ggrc_controllers_gapi_modal({
-            scopes: scopes,
-            modal_title: 'Please log in to Google API',
-            new_object_form: true
+          import(/* webpackChunkName: "modalsCtrls" */'../../../../ggrc/assets/javascripts/controllers/modals')
+            .then(() => {
+              $('<div class="modal hide">').modal_form()
+                .appendTo(document.body).ggrc_controllers_gapi_modal({
+                scopes: scopes,
+                modal_title: 'Please log in to Google API',
+                new_object_form: true
+              });
           });
         } else {
           $modal.modal_form('show');
@@ -218,9 +189,6 @@
         this.constructor.oauth_dfd.reject();
         // creating new Promise and running the Auth process again
         dfd = this.constructor.oauth_dfd = new $.Deferred();
-        this.constructor.oauth_dfd.done(function () {
-          dfd.resolve.apply(dfd, arguments);
-        });
         this.doGAuthWithScopes();
       }
 

@@ -3,6 +3,8 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import RefreshQueue from '../models/refresh_queue';
+
 (function (CMS, GGRC, can, $) {
   var MIN_WAIT = 2000;
   var MAX_WAIT = 5000;

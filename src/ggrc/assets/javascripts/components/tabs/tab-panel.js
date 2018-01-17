@@ -3,7 +3,9 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../lazy-render/lazy-render';
 import template from './tab-panel.mustache';
+import {REFRESH_TAB_CONTENT} from '../../events/eventTypes';
 
 const PRE_RENDER_DELAY = 3000;
 
@@ -17,6 +19,9 @@ export default GGRC.Components('tabPanel', {
         get: function () {
           return this.attr('active') ? 'active' : 'hidden';
         },
+      },
+      forceClearContent: {
+        value: false,
       },
       cacheContent: {
         type: 'boolean',
@@ -38,11 +43,19 @@ export default GGRC.Components('tabPanel', {
           return this.attr('active') || this.attr('preRender');
         },
       },
+      parentInstance: {
+        value: {},
+      },
     },
     active: false,
     titleText: '@',
+    tabId: '@', // used in REFRESH_TAB_CONTENT event handler
     panels: [],
     tabIndex: null,
+    clearCache: function () {
+      this.attr('forceClearContent', true);
+      this.attr('forceClearContent', false);
+    },
     addPanel: function () {
       var panels = this.attr('panels');
       var isAlreadyAdded = panels.indexOf(this) > -1;
@@ -85,5 +98,11 @@ export default GGRC.Components('tabPanel', {
     removed: function () {
       this.viewModel.removePanel();
     },
+    [`{viewModel.parentInstance} ${REFRESH_TAB_CONTENT.type}`]:
+      function (scope, event) {
+        if ( event.tabId === this.viewModel.tabId ) {
+          this.viewModel.clearCache();
+        }
+      },
   },
 });

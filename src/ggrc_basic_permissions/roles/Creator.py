@@ -10,7 +10,6 @@ owner_base = [
     "Categorization",
     "Category",
     "ControlCategory",
-    "ObjectPerson",
     "Option",
     {
         "type": "BackgroundTask",
@@ -68,6 +67,7 @@ permissions = {
         "ControlAssertion",
         "Control",
         "Comment",
+        "Issue",
         "DataAsset",
         "AccessGroup",
         "Directive",

@@ -1,0 +1,81 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#is_allowed 'update' instance}}
+{{^if instance.archived}}
+  <li data-test-id="button_widget_add_2c925d94" class="hidden-widgets-list">
+    <a
+      href="{{urlPath}}#dropdown-widgets"
+      class="dropdown-toggle"
+      data-toggle="dropdown"
+      rel="tooltip"
+      data-placement="bottom"
+      title="{{addTabTitle}}">
+      <i class="fa fa-plus-circle"></i>
+      {{addTabTitle}}
+    </a>
+    <div class="dropdown-menu" role="menu">
+      {{#widget_list}}
+        <div class="inner-nav-item">
+          {{#filterWidgets .}}
+            {{#shouldCreateObject instance model.shortName}}
+              <a
+                href="{{urlPath}}{{internav_href}}"
+                rel="tooltip"
+                data-placement="left"
+                data-original-title="Create {{model.title_singular}}"
+                data-toggle="modal-ajax-form"
+                data-modal-reset="reset"
+                data-no-href-load="true"
+                data-modal-class="modal-wide"
+                data-object-singular="{{model.title_singular}}"
+                data-object-plural="{{model.table_plural}}"
+                data-object-params='{
+                  "{{instance.class.table_singular}}": {
+                    "id": {{instance.id}},
+                    "title": "{{json_escape instance.title}}"
+                  },
+                  "context": {
+                    "id": {{firstnonempty instance.context.id "null"}},
+                    "href": "{{instance.context.href}}",
+                    "type": "{{instance.context.type}}"
+                  }
+                }'
+                >
+                <div class="oneline">
+                  <i class="fa fa-{{ internav_icon }} color"></i>
+                  {{internav_display}}
+                </div>
+              </a>
+            {{else}}
+              <a
+                href="{{urlPath}}{{ internav_href }}"
+                {{^is_dashboard_or_all}}
+                {{#is_mappable_type instance.type model.shortName}}
+                {{#is_allowed_to_map instance model.shortName}}
+                {{^if_equals model.shortName 'Assessment'}}
+                  data-clickable="true"
+                  data-toggle="unified-mapper"
+                  data-join-option-type="{{model.shortName}}"
+                  data-join-object-id="{{instance.id}}"
+                  data-join-object-type="{{instance.class.shortName}}"
+                {{/if_equals}}
+                {{/is_allowed_to_map}}
+                {{/is_mappable_type}}
+                {{/is_dashboard_or_all}}
+                >
+                <div class="oneline">
+                  <i class="fa fa-{{ internav_icon }} color"></i>
+                  {{internav_display}}
+                </div>
+              </a>
+            {{/shouldCreateObject}}
+          {{/filterWidgets}}
+        </div>
+      {{/widget_list}}
+    </div>
+  </li>
+{{/if}}
+{{/is_allowed}}

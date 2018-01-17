@@ -9,7 +9,6 @@
                        (expand)="onExpand()"
                        (preview)="select($element)"
                        {expanded}="expanded"
-                       {child-models-list}="childModelsList"
                        {deep-limit}="limitDepthTree"
     ></tree-item-actions>
     <div class="flex-box selectable-attrs width-100" ($click)="onClick($element)">
@@ -29,9 +28,7 @@
 
               {{#case 'role'}}
                 <div class="roles attr-content">
-                    <tree-people-with-role-list-field
-                            {source}="instance"
-                            {role}="attr_name"/>
+                  <tree-people-with-role-list-field {instance}="instance" {role}="attr_name"/>
                 </div>
               {{/case}}
 
@@ -94,9 +91,9 @@
     <div class="sub-tier">
       <sub-tree-wrapper {parent}="instance"
                         {limit-depth-tree}="limitDepthTree"
-                        {child-models}="selectedChildModels"
                         {get-depth-filter}="@getDepthFilter"
                         {is-open}="expanded"
+                        (collapse-subtree)="collapseAndHighlightItem()"
       ></sub-tree-wrapper>
     </div>
   </lazy-render>

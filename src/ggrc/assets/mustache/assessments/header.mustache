@@ -14,6 +14,7 @@ Copyright (C) 2017 Google Inc.
                 prop-name="title"
                 type="input"
                 hide-content-in-edit-mode="true"
+                {mandatory}="true"
                 {is-loading}="isLoading"
                 {instance}="instance"
                 {value}="instance.title"
@@ -93,7 +94,7 @@ Copyright (C) 2017 Google Inc.
                         <li>
                             {{#unless instance._disabled}}
                             {{#unless instance.archived}}
-                                {{#if instance.assignees.Verifier.length}}
+                                {{#if verifiers.length}}
                                     <reminder
                                             {instance}="instance"
                                             {type}="statusToPerson"
@@ -122,18 +123,29 @@ Copyright (C) 2017 Google Inc.
                     {{/is_allowed}}
                     {{/if_in}}
 
+                    {{#is_allowed 'update' instance context='for'}}
                     <li>
                       {{^if_equals instance.status 'Rework Needed'}}
-                      {{#if_equals instance.status 'Deprecated'}}
-                        {{! Set default state }}
-                        <object-change-state
-                          {to-state}="initialState"
-                          (on-state-change)="onStateChange(%event)"
-                        >
-                          <a href="#">
-                            <i class="fa fa-reply"></i> Restore
-                          </a>
-                        </object-change-state>
+                        {{#if_equals instance.status 'Deprecated'}}
+                          {{! Set default state }}
+                          <object-change-state
+                            {to-state}="initialState"
+                            (on-state-change)="onStateChange(%event)"
+                          >
+                            <a href="#">
+                              <i class="fa fa-reply"></i> Restore
+                            </a>
+                          </object-change-state>
+                        {{else}}
+                          <object-change-state
+                            to-state="Deprecated"
+                            (on-state-change)="onStateChange(%event)"
+                          >
+                            <a href="#">
+                              <i class="fa fa-times-circle"></i> Deprecate
+                            </a>
+                          </object-change-state>
+                        {{/if_equals}}
                       {{else}}
                         <object-change-state
                           to-state="Deprecated"
@@ -144,8 +156,8 @@ Copyright (C) 2017 Google Inc.
                           </a>
                         </object-change-state>
                       {{/if_equals}}
-                      {{/if_equals}}
                     </li>
+                    {{/is_allowed}}
 
                     {{#is_allowed 'delete' instance}}
                         {{^if instance.archived}}
@@ -176,7 +188,7 @@ Copyright (C) 2017 Google Inc.
 
         {{#unless isEditDenied}}
                 <object-state-toolbar {{#if is_info_pin}}class="pane-header__toolbar-item"{{/if}}
-                                    {verifiers}="instance.assignees.Verifier"
+                                    {verifiers}="verifiers"
                                     {instance}="instance"
                                     (on-state-change)="onStateChange(%event)">
                 </object-state-toolbar>

@@ -13,6 +13,24 @@ class AttributeValidator(object):
   # pylint: disable=too-few-public-methods
 
   @classmethod
+  def _get_model_names(cls, model):
+    """Get tuple of all attribute names for model.
+
+    Args:
+        model: Model class.
+
+    Returns:
+        Tuple of all attributes for provided model.
+    """
+    if not model:
+      raise ValueError("Invalid definition type")
+    aliases = AttributeInfo.gather_aliases(model)
+    return (
+        (value["display_name"] if isinstance(value, dict) else value).lower()
+        for value in aliases.values() if value
+    )
+
+  @classmethod
   def _get_reserved_names(cls, definition_type):
     """Get a list of all attribute names in all objects.
 
@@ -32,17 +50,15 @@ class AttributeValidator(object):
                           for model in ggrc.models.all_models.all_models}
         definition_map.update({model._inflector.model_singular: model
                               for model in ggrc.models.all_models.all_models})
-
+        reserved_names = []
         definition_model = definition_map.get(definition_type)
-        if not definition_model:
-          raise ValueError("Invalid definition type")
+        reserved_names.extend(cls._get_model_names(definition_model))
 
-        aliases = AttributeInfo.gather_aliases(definition_model)
-        cls._reserved_names[definition_type] = frozenset(
-            (value["display_name"] if isinstance(
-                value, dict) else value).lower()
-            for value in aliases.values() if value
-        )
+        if hasattr(definition_model, 'RELATED_TYPE'):
+          related_model = definition_map.get(definition_model.RELATED_TYPE)
+          reserved_names.extend(cls._get_model_names(related_model))
+        cls._reserved_names[definition_type] = frozenset(reserved_names)
+
       return cls._reserved_names[definition_type]
 
   @classmethod

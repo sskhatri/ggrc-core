@@ -2,6 +2,9 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module for Assessment object"""
+
+import collections
+
 from sqlalchemy import and_
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import remote
@@ -13,13 +16,14 @@ from ggrc.access_control.roleable import Roleable
 from ggrc.builder import simple_property
 from ggrc.models.comment import Commentable
 from ggrc.models.custom_attribute_definition import CustomAttributeDefinition
+from ggrc.models import issuetracker_issue
 from ggrc.models.mixins.audit_relationship import AuditRelationship
 from ggrc.models.mixins import BusinessObject
 from ggrc.models.mixins import CustomAttributable
 from ggrc.models.mixins import FinishedDate
 from ggrc.models.mixins import Notifiable
 from ggrc.models.mixins import TestPlanned
-from ggrc.models.mixins import Timeboxed
+from ggrc.models.mixins import LastDeprecatedTimeboxed
 from ggrc.models.mixins import VerifiedDate
 from ggrc.models.mixins import reminderable
 from ggrc.models.mixins import statusable
@@ -34,36 +38,33 @@ from ggrc.models.object_document import PublicDocumentable
 from ggrc.models.object_person import Personable
 from ggrc.models import reflection
 from ggrc.models.relationship import Relatable
-from ggrc.models.relationship import Relationship
 from ggrc.models.track_object_state import HasObjectState
-from ggrc.fulltext.mixin import Indexed, ReindexRule
-from ggrc.fulltext.attributes import MultipleSubpropertyFullTextAttr
+from ggrc.fulltext.mixin import Indexed
 
 
-def reindex_by_relationship_attr(relationship_attr):
-  """Return a list of assessments which which need to be reindexed
-
-  In case RelationshipAttr changed
-  """
-  source_query = db.session.query(Relationship.source_id).filter(
-      Relationship.source_type == "Assessment",
-      Relationship.id == relationship_attr.relationship_id
-  )
-  dest_query = db.session.query(Relationship.destination_id).filter(
-      Relationship.destination_type == "Assessment",
-      Relationship.id == relationship_attr.relationship_id
-  )
-  resulting_subquery = source_query.union(dest_query)
-  return Assessment.query.filter(Assessment.id.in_(resulting_subquery)).all()
+def _build_audit_stub(assessment_obj):
+  """Returns a stub of audit model to which assessment is related to."""
+  audit_id = assessment_obj.audit_id
+  if audit_id is None:
+    return None
+  issue_obj = issuetracker_issue.IssuetrackerIssue.get_issue(
+      'Audit', audit_id)
+  return {
+      'type': 'Audit',
+      'id': audit_id,
+      'context_id': assessment_obj.context_id,
+      'href': u'/api/audits/%d' % audit_id,
+      'issue_tracker': issue_obj.to_dict() if issue_obj is not None else {},
+  }
 
 
 class Assessment(Roleable, statusable.Statusable, AuditRelationship,
                  AutoStatusChangeable, Assignable, HasObjectState, TestPlanned,
                  CustomAttributable, PublicDocumentable, Commentable,
-                 Personable, reminderable.Reminderable, Timeboxed, Relatable,
-                 WithSimilarityScore, FinishedDate, VerifiedDate,
-                 ValidateOnComplete, Notifiable, WithAction, BusinessObject,
-                 labeled.Labeled, Indexed, db.Model):
+                 Personable, reminderable.Reminderable, Relatable,
+                 LastDeprecatedTimeboxed, WithSimilarityScore, FinishedDate,
+                 VerifiedDate, ValidateOnComplete, Notifiable, WithAction,
+                 labeled.Labeled, BusinessObject, Indexed, db.Model):
   """Class representing Assessment.
 
   Assessment is an object representing an individual assessment performed on
@@ -76,31 +77,18 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
 
   REWORK_NEEDED = u"Rework Needed"
   NOT_DONE_STATES = statusable.Statusable.NOT_DONE_STATES | {REWORK_NEEDED, }
-  VALID_STATES = tuple(NOT_DONE_STATES | statusable.Statusable.DONE_STATES)
-
-  ASSIGNEE_TYPES = (u"Creator", u"Assessor", u"Verifier")
-
-  class Labels(object):  # pylint: disable=too-few-public-methods
-    """Choices for label enum."""
-    AUDITOR_PULLS_EVIDENCE = u'Auditor pulls evidence'
-    FOLLOWUP = u'Followup'
-    NEEDS_REWORK = u'Needs Rework'
-    NEEDS_DISCUSSION = u'Needs Discussion'
-
-  POSSIBLE_LABELS = [Labels.AUDITOR_PULLS_EVIDENCE,
-                     Labels.FOLLOWUP,
-                     Labels.NEEDS_REWORK,
-                     Labels.NEEDS_DISCUSSION]
+  VALID_STATES = tuple(NOT_DONE_STATES | statusable.Statusable.DONE_STATES |
+                       statusable.Statusable.INACTIVE_STATES)
 
   REMINDERABLE_HANDLERS = {
       "statusToPerson": {
           "handler":
               reminderable.Reminderable.handle_state_to_person_reminder,
           "data": {
-              statusable.Statusable.START_STATE: "Assessor",
-              "In Progress": "Assessor"
+              statusable.Statusable.START_STATE: "Assignees",
+              "In Progress": "Assignees"
           },
-          "reminders": {"assessment_assessor_reminder", }
+          "reminders": {"assessment_assignees_reminder", }
       }
   }
 
@@ -150,7 +138,9 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
       'operationally',
       'audit',
       'assessment_type',
+      reflection.Attribute('issue_tracker', create=False, update=False),
       reflection.Attribute('archived', create=False, update=False),
+      reflection.Attribute('folder', create=False, update=False),
       reflection.Attribute('object', create=False, update=False),
   )
 
@@ -158,17 +148,15 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
       'archived',
       'design',
       'operationally',
-      MultipleSubpropertyFullTextAttr('related_assessors', 'assessors',
-                                      ['email', 'name']),
-      MultipleSubpropertyFullTextAttr('related_creators', 'creators',
-                                      ['email', 'name']),
-      MultipleSubpropertyFullTextAttr('related_verifiers', 'verifiers',
-                                      ['email', 'name']),
+      'folder',
   ]
 
+  _custom_publish = {
+      'audit': _build_audit_stub,
+  }
+
   @classmethod
-  def indexed_query(cls):
-    query = super(Assessment, cls).indexed_query()
+  def _populate_query(cls, query):
     return query.options(
         orm.Load(cls).undefer_group(
             "Assessment_complete",
@@ -180,16 +168,18 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
         ),
     )
 
-  _tracked_attrs = {
-      'description',
-      'design',
-      'notes',
-      'operationally',
-      'test_plan',
-      'title',
-      'start_date',
-      'end_date'
-  }
+  @classmethod
+  def eager_query(cls):
+    return cls._populate_query(super(Assessment, cls).eager_query())
+
+  @classmethod
+  def indexed_query(cls):
+    return cls._populate_query(super(Assessment, cls).indexed_query())
+
+  def log_json(self):
+    out_json = super(Assessment, self).log_json()
+    out_json["folder"] = self.folder
+    return out_json
 
   _aliases = {
       "owners": None,
@@ -205,20 +195,6 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
       },
       "design": "Conclusion: Design",
       "operationally": "Conclusion: Operation",
-      "related_creators": {
-          "display_name": "Creators",
-          "mandatory": True,
-          "type": reflection.AttributeInfo.Type.MAPPING,
-      },
-      "related_assessors": {
-          "display_name": "Assignees",
-          "mandatory": True,
-          "type": reflection.AttributeInfo.Type.MAPPING,
-      },
-      "related_verifiers": {
-          "display_name": "Verifiers",
-          "type": reflection.AttributeInfo.Type.MAPPING,
-      },
       "archived": {
           "display_name": "Archived",
           "mandatory": False,
@@ -236,10 +212,6 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
       },
   }
 
-  AUTO_REINDEX_RULES = [
-      ReindexRule("RelationshipAttr", reindex_by_relationship_attr)
-  ]
-
   similarity_options = {
       "relevant_types": {
           "Objective": {"weight": 2},
@@ -248,24 +220,36 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
       "threshold": 1,
   }
 
+  def __init__(self, *args, **kwargs):
+    super(Assessment, self).__init__(*args, **kwargs)
+    self._warnings = collections.defaultdict(list)
+
+  @orm.reconstructor
+  def init_on_load(self):
+    self._warnings = collections.defaultdict(list)
+
+  def add_warning(self, domain, msg):
+    self._warnings[domain].append(msg)
+
+  @simple_property
+  def issue_tracker(self):
+    """Returns representation of issue tracker related info as a dict."""
+    issue_obj = issuetracker_issue.IssuetrackerIssue.get_issue(
+        'Assessment', self.id)
+    res = issue_obj.to_dict(
+        include_issue=True) if issue_obj is not None else {}
+    res['_warnings'] = self._warnings['issue_tracker']
+
+    return res
+
   @simple_property
   def archived(self):
+    """Returns a boolean whether assessment is archived or not."""
     return self.audit.archived if self.audit else False
 
-  @property
-  def assessors(self):
-    """Get the list of assessor assignees"""
-    return self.assignees_by_type.get("Assessor", [])
-
-  @property
-  def creators(self):
-    """Get the list of creator assignees"""
-    return self.assignees_by_type.get("Creator", [])
-
-  @property
-  def verifiers(self):
-    """Get the list of verifier assignees"""
-    return self.assignees_by_type.get("Verifier", [])
+  @simple_property
+  def folder(self):
+    return self.audit.folder if self.audit else ""
 
   def validate_conclusion(self, value):
     return value if value in self.VALID_CONCLUSIONS else ""
@@ -277,7 +261,7 @@ class Assessment(Roleable, statusable.Statusable, AuditRelationship,
     if self.status == value:
       return value
     if self.status == self.REWORK_NEEDED:
-      valid_states = [self.DONE_STATE, self.FINAL_STATE]
+      valid_states = [self.DONE_STATE, self.FINAL_STATE, self.DEPRECATED]
       if value not in valid_states:
         raise ValueError("Assessment in `Rework Needed` "
                          "state can be only moved to: [{}]".format(

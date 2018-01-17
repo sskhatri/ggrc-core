@@ -37,7 +37,7 @@ class Clause(Roleable, HasObjectState, Hierarchical, CustomAttributable,
   # pylint: disable=invalid-name
   na = deferred(db.Column(db.Boolean, default=False, nullable=False),
                 'Clause')
-  notes = deferred(db.Column(db.Text), 'Clause')
+  notes = deferred(db.Column(db.Text, nullable=False, default=u""), 'Clause')
 
   _api_attrs = reflection.ApiAttributes('na', 'notes')
 

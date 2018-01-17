@@ -4,6 +4,13 @@
 */
 
 import './filterable_controller';
+import {
+  getCounts,
+} from '../plugins/utils/current-page-utils';
+import {
+  getWidgetConfig,
+} from '../plugins/utils/object-versions-utils';
+import tracker from '../tracker';
 
 CMS.Controllers.Filterable('CMS.Controllers.DashboardWidgets', {
   defaults: {
@@ -43,14 +50,15 @@ CMS.Controllers.Filterable('CMS.Controllers.DashboardWidgets', {
       .attr('id', this.options.widget_id + '_widget');
 
     if (this.options.widgetType && this.options.widgetType === 'treeview') {
-      var counts = GGRC.Utils.CurrentPage.getCounts();
+      var counts = getCounts();
 
       var countsName = this.options.countsName ||
-      this.options.model.shortName;
-    
+        (this.options.content_controller_options &&
+          this.options.content_controller_options.countsName) ||
+        this.options.model.shortName;
+
       if (this.options.objectVersion) {
-        countsName = GGRC.Utils.ObjectVersions
-          .getWidgetConfig(countsName, true)
+        countsName = getWidgetConfig(countsName, true)
           .widgetId;
       }
 
@@ -118,10 +126,9 @@ CMS.Controllers.Filterable('CMS.Controllers.DashboardWidgets', {
     }
   },
   display: function (refetch) {
-    var that = this;
-    var tracker_stop = GGRC.Tracker.start(
-      'DashboardWidget', 'display', this.options.model.shortName
-    );
+    const that = this;
+    const stopFn = tracker.start(
+      'DashboardWidget', 'display', this.options.model.shortName);
 
     this._display_deferred = this.prepare().then(function () {
       var dfd;
@@ -141,21 +148,11 @@ CMS.Controllers.Filterable('CMS.Controllers.DashboardWidgets', {
       }
 
       return dfd;
-    }).done(tracker_stop);
+    }).then(stopFn);
 
     return this._display_deferred;
   },
-  'updateCount': function (el, ev, count, updateCount) {
+  updateCount: function (el, ev, count, updateCount) {
     this.options.widget_count.attr('count', '' + count);
-  },
-  display_path: function (path, refetch) {
-    var that = this;
-    if (!that.content_controller) {
-      return this.display(refetch);
-    }
-    return this.display().then(function () {
-      if (that.content_controller && that.content_controller.display_path)
-        return that.content_controller.display_path(path, refetch);
-    });
   },
 });

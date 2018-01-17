@@ -3,6 +3,8 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import {confirm} from '../../plugins/utils/modals';
+
 (function (can, $) {
   'use strict';
   /*
@@ -105,7 +107,7 @@
         }
 
         if (scope.attr("verify_event")) {
-          GGRC.Controllers.Modals.confirm({
+          confirm({
             modal_description: scope.attr("modal_description"),
             modal_confirm: scope.attr("modal_button"),
             modal_title: scope.attr("modal_title"),

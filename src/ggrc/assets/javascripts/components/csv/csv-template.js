@@ -5,7 +5,7 @@
 
 import template from './templates/csv-template.mustache';
 
-GGRC.Components('csvTemplate', {
+export default GGRC.Components('csvTemplate', {
   tag: 'csv-template',
   template: template,
   scope: {

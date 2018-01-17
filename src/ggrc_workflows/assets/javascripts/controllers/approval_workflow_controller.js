@@ -4,34 +4,6 @@
 */
 
 ;(function(can, $, GGRC, CMS) {
-
-GGRC.Controllers.Modals("GGRC.Controllers.ApprovalWorkflow", {
-  defaults : {
-    original_object : null,
-    new_object_form: true,
-    model: CMS.ModelHelpers.ApprovalWorkflow,
-    modal_title: "Submit for review",
-    custom_save_button_text: "Submit",
-    content_view: GGRC.mustache_path + "/wf_objects/approval_modal_content.mustache",
-    button_view : GGRC.Controllers.Modals.BUTTON_VIEW_SAVE_CANCEL,
-    afterFetch: function () {
-      this.attr("instance", new CMS.ModelHelpers.ApprovalWorkflow({
-        original_object : this.attr('instance')
-      }));
-    }
-  }
-}, {
-  init : function() {
-    this.options.button_view = GGRC.Controllers.Modals.BUTTON_VIEW_SAVE_CANCEL;
-    this._super.apply(this, arguments);
-  },
-  "input[null-if-empty] change" : function(el, ev) {
-    if(el.val() === "") {
-      this.options.instance.attr(el.attr("name").split(".").slice(0, -1).join("."), null);
-    }
-  }
-});
-
 GGRC.register_modal_hook("approvalform", function($target, $trigger, option) {
   var instance,
       object_params = JSON.parse($trigger.attr('data-object-params') || "{}");
@@ -46,12 +18,12 @@ GGRC.register_modal_hook("approvalform", function($target, $trigger, option) {
   }
 
   $target
-  .modal_form(option, $trigger)
-  .ggrc_controllers_approval_workflow({
-    object_params : object_params,
-    current_user : GGRC.current_user,
-    instance : instance
-  });
+    .modal_form(option, $trigger)
+    .ggrc_controllers_approval_workflow({
+      object_params : object_params,
+      current_user : GGRC.current_user,
+      instance : instance
+    });
 });
 
 })(window.can, window.can.$, window.GGRC, window.CMS);

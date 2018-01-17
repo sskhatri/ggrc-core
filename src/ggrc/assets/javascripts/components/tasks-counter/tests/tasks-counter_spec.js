@@ -1,4 +1,4 @@
-/*!
+/*
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
@@ -52,11 +52,12 @@ describe('GGRC.Components.TasksCounter', function () {
       });
     });
 
-    describe('on personId attribute update should', function () {
+    describe('on person attribute update should', function () {
       it('trigger execution of loadTasks method', function () {
+        const person = {id: 1, email: 'user@google.com'};
         spyOn(viewModel, 'loadTasks');
-        viewModel.attr('personId', 1);
-        expect(viewModel.attr('personId')).toEqual(1);
+        viewModel.attr('person', person);
+        expect(viewModel.attr('person.id')).toEqual(1);
         expect(viewModel.loadTasks).toHaveBeenCalled();
       });
     });

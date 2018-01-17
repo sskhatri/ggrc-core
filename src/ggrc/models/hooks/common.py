@@ -39,5 +39,5 @@ def map_objects(src, dst):
   db.session.add(all_models.Relationship(
       source=src,
       destination=destination,
-      context_id=src.context_id,
+      context=src.context or destination.context,
   ))

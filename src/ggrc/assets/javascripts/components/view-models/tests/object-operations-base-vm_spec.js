@@ -3,23 +3,22 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-describe('GGRC.VM.ObjectOperationsBaseVM', function () {
+import * as SnapshotUtils from '../../../plugins/utils/snapshot-utils';
+import ObjectOperationsBaseVM from '../object-operations-base-vm';
+
+describe('ObjectOperationsBaseVM', function () {
   'use strict';
 
   var baseVM;
 
   beforeEach(function () {
-    baseVM = GGRC.VM.ObjectOperationsBaseVM();
+    baseVM = ObjectOperationsBaseVM();
   });
 
   describe('availableTypes() method', function () {
-    var originalInScopeModels;
     beforeAll(function () {
-      originalInScopeModels = GGRC.Utils.Snapshots.inScopeModels;
-      GGRC.Utils.Snapshots.inScopeModels = ['test1', 'test2'];
-    });
-    afterAll(function () {
-      GGRC.Utils.Snapshots.inScopeModels = originalInScopeModels;
+      spyOn(SnapshotUtils, 'getInScopeModels')
+        .and.returnValue(['test1', 'test2']);
     });
 
     it('correctly calls getMappingTypes', function () {
@@ -68,7 +67,7 @@ describe('GGRC.VM.ObjectOperationsBaseVM', function () {
         update: jasmine.createSpy('update'),
         prepareConfig: jasmine.createSpy('prepareConfig'),
       });
-      method = GGRC.VM.ObjectOperationsBaseVM
+      method = ObjectOperationsBaseVM
         .prototype
         .define
         .type
@@ -202,7 +201,7 @@ describe('GGRC.VM.ObjectOperationsBaseVM', function () {
     var config;
 
     beforeAll(function () {
-      method = GGRC.VM.ObjectOperationsBaseVM.extractConfig;
+      method = ObjectOperationsBaseVM.extractConfig;
     });
 
     beforeEach(function () {

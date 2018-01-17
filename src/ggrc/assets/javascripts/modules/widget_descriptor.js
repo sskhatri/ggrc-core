@@ -4,6 +4,7 @@
 */
 
 import SummaryWidgetController from '../controllers/summary_widget_controller';
+import {getWidgetConfig} from '../plugins/utils/object-versions-utils';
 
 (function ($, CMS, GGRC) {
   // A widget descriptor has the minimum five properties:
@@ -102,8 +103,7 @@ import SummaryWidgetController from '../controllers/summary_widget_controller';
     */
     make_tree_view: function (instance, farModel, extenders, id) {
       var descriptor;
-      var objectVersionConfig = GGRC.Utils.ObjectVersions
-        .getWidgetConfig(id);
+      var objectVersionConfig = getWidgetConfig(id);
       // Should not even try to create descriptor if configuration options are missing
       if (!instance || !farModel) {
         console

@@ -83,7 +83,7 @@
           </div>
         </action-toolbar>
       {{else}}
-        {{^if readonly}}
+        {{#if showAssignFolder}}
         <a href="javascript://"
           tabindex="{{firstnonempty tabindex '0'}}"
           class="btn btn-white entry-attachment  tree-item-add mapped-folder__add-button"

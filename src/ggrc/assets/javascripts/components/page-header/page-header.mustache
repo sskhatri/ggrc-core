@@ -1,0 +1,140 @@
+{{!
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+<div class="header-content {{headerStyle}}">
+
+  <button class="lhn-trigger lhn-no-init pull-left" href="javascript://">
+    <span class="icon-bar"></span>
+    <span class="icon-bar"></span>
+    <span class="icon-bar"></span>
+  </button>
+
+  <h2 class="logo-wrap ">
+    <a class="to-my-work" href="/dashboard">
+        <img src="{{logo}}" alt="GRC" title="GRC">
+    </a>
+  </h2>
+
+<h1 class="entities">
+  {{#if_equals model.table_singular 'person'}}
+    {{#is_dashboard_or_all}}
+      {{#is_dashboard}}
+        My Work
+      {{else}}
+        All Objects
+      {{/is_dashboard}}
+    {{else}}
+        <span class="entity-type">{{model.title_singular}}:</span>
+        <span class="entity-name">{{firstnonempty instance.name instance.email}}</span>
+    {{/is_dashboard_or_all}}
+  {{/if_equals}}
+  {{^if_equals model.table_singular 'person'}}
+    <span class="entity-type">{{model.title_singular}}:</span>
+    <span class="entity-name">{{instance.title}}</span>
+  {{/if_equals}}
+</h1>
+
+<ul class="menu">
+  <li>
+    <a href="javascript://"
+       class="btn btn-small btn-lightBlue search"
+       data-toggle="unified-search"
+       data-join-object-type="MultitypeSearch"
+       data-original-title="search items">
+      <div class="oneline">
+        <i class="fa fa-search"></i>
+        {{#if showTitles}}Global Search{{/if}}
+      </div>
+    </a>
+  </li>
+  <li>
+    <a href="/dashboard#!task_widget">
+      <div class="oneline">
+        {{#if showTitles}}My Tasks{{/if}}
+        <tasks-counter {person}="current_user"
+        ></tasks-counter>
+      </div></a>
+  </li>
+  {{!^isMyAssessments}}
+    <li>
+      <a href="/assessments_view">
+        <div class="oneline">
+          {{#if showTitles}}My Assessments{{/if}}
+        </div>
+      </a>
+    </li>
+  {{!/isMyAssessments}}
+  {{!^is_allobjectview}}
+    <li>
+      <a id="allObjectView" href="/objectBrowser#!regulation_widget">
+        <div class="oneline">
+          {{#if showTitles}}All Objects{{/if}}
+        </div>
+    </a>
+    </li>
+  {{!/is_allobjectview}}
+  <li>
+    <a href="/import" target="_blank">
+      <div class="oneline">
+        {{#if showTitles}}Import{{/if}}
+      </div>
+    </a>
+  </li>
+  <li class="user user-dropdown dropdown">
+    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">
+      <div class="oneline">
+        <i class="fa fa-user"></i>
+        <i class="fa fa-caret-down"></i>
+      </div>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="drop1" role="menu">
+      <li class="user-email">
+        {{current_user.email}}
+      </li>
+      <li>
+        <a href="/export" class="export-btn" target="_blank">
+          <div class="oneline">
+            <i class="fa fa-sign-out"></i>
+            {{#if showTitles}}Export{{/if}}
+          </div>
+        </a>
+      </li>
+      {{#current_user_is_admin}}
+        <li>
+          <a href="/admin#!people_list_widget" class="admin-btn">
+            <div class="oneline">
+              <i class="fa fa-tachometer"></i>
+              {{#if showTitles}}Administration{{/if}}
+            </div>
+          </a>
+        </li>
+      {{/current_user_is_admin}}
+      <li>
+        <a id="page-help" href="{{helpUrl}}" target="_blank">
+          <i class="fa fa-question-circle"></i>
+          Help
+        </a>
+      </li>
+      <li class="notify-wrap">
+        <span>
+          <i class="fa fa-clock-o"></i>
+          Notifications
+        </span>
+        <div class="inner-list">
+          <label>
+            <input type="checkbox" name="notifications" value="Email_Digest">
+            Daily email digest
+          </label>
+        </div>
+      </li>
+      <li>
+        <a class="nav-logout" href="/logout" tabindex="-1">
+          <i class="fa fa-power-off"></i>
+          Logout
+        </a>
+      </li>
+    </ul>
+  </li>
+</ul>
+</div>

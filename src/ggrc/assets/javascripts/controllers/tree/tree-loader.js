@@ -3,13 +3,12 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-(function (can, $) {
-  if (!GGRC.tree_view) {
-    GGRC.tree_view = new can.Map();
-  }
-  GGRC.tree_view.attr('basic_model_list', []);
-  GGRC.tree_view.attr('sub_tree_for', {});
+import {
+  isSnapshot,
+} from '../../plugins/utils/snapshot-utils';
+import RefreshQueue from '../../models/refresh_queue';
 
+(function (can, $) {
   can.Map.extend('CMS.Models.TreeViewOptions', {
     defaults: {
       instance: undefined,
@@ -86,8 +85,6 @@
 
     display: function (refetch) {
       var that = this;
-      var trackerStop = GGRC.Tracker.start(
-        'TreeView', 'display', this.options.model.shortName);
       var loader = this.fetch_list.bind(this);
 
       if (refetch) {
@@ -112,8 +109,7 @@
           }
           return $.when.apply($, dfds);
         }))
-        .then(that._ifNotRemoved(that.proxy('draw_list')))
-        .done(trackerStop);
+        .then(that._ifNotRemoved(that.proxy('draw_list')));
 
       return this._display_deferred;
     },
@@ -244,7 +240,7 @@
           can.map(filteredItems, function (item) {
             var instance = item.instance || item;
             if (instance.custom_attribute_values &&
-              !GGRC.Utils.Snapshots.isSnapshot(instance)) {
+              !isSnapshot(instance)) {
               return instance.refresh_all('custom_attribute_values')
                 .then(function (values) {
                   var rq = new RefreshQueue();

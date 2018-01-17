@@ -3,20 +3,22 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import Component from '../advanced-search-filter-attribute';
+
 describe('GGRC.Components.advancedSearchFilterAttribute', function () {
   'use strict';
 
   var viewModel;
 
-  beforeEach(function () {
-    viewModel = GGRC.Components.getViewModel('advancedSearchFilterAttribute');
+  beforeEach(() => {
+    viewModel = new Component.prototype.viewModel();
   });
 
   describe('availableAttributes set() method', function () {
     it('initializes "attribute.field" property with first available attribute',
     function () {
       viewModel.attr('availableAttributes', [{
-        attr_title: 'FirstAttr'
+        attr_title: 'FirstAttr',
       }]);
 
       expect(viewModel.attr('attribute').field).toBe('FirstAttr');
@@ -26,7 +28,7 @@ describe('GGRC.Components.advancedSearchFilterAttribute', function () {
     function () {
       viewModel.attr('attribute.field', 'Field');
       viewModel.attr('availableAttributes', [{
-        attr_title: 'FirstAttr'
+        attr_title: 'FirstAttr',
       }]);
 
       expect(viewModel.attr('attribute').field).toBe('Field');

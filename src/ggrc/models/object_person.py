@@ -16,7 +16,8 @@ class ObjectPerson(Timeboxed, Base, db.Model):
   __tablename__ = 'object_people'
 
   role = deferred(db.Column(db.String), 'ObjectPerson')
-  notes = deferred(db.Column(db.Text), 'ObjectPerson')
+  notes = deferred(db.Column(db.Text, nullable=False, default=u""),
+                   'ObjectPerson')
   person_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable=False)
   personable_id = db.Column(db.Integer, nullable=False)
   personable_type = db.Column(db.String, nullable=False)

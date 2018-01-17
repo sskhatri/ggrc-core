@@ -5,6 +5,7 @@
 
 import '../add-issue-button';
 import {REFRESH_RELATED} from '../../../events/eventTypes';
+import * as CurrentPageUtils from '../../../plugins/utils/current-page-utils';
 
 describe('GGRC.Components.addIssueButton', function () {
   'use strict';
@@ -12,12 +13,10 @@ describe('GGRC.Components.addIssueButton', function () {
   var Component;
   var viewModel;
   var events;
-  var CurrentPageUtils;
 
   beforeAll(function () {
     Component = GGRC.Components.get('addIssueButton');
     events = Component.prototype.events;
-    CurrentPageUtils = GGRC.Utils.CurrentPage;
   });
 
   beforeEach(function () {

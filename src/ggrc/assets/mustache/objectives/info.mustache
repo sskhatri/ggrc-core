@@ -17,25 +17,46 @@
 
       <tab-container>
         <tab-panel {(panels)}="panels" title-text="{{instance.type}}">
-          {{>'/static/mustache/base_objects/object-review.mustache'}}
-          {{>'/static/mustache/base_objects/description.mustache'}}
-          {{>'/static/mustache/base_objects/test_plan.mustache'}}
-          {{>'/static/mustache/base_objects/notes.mustache'}}
-          {{>'/static/mustache/base_objects/contacts.mustache'}}
-          {{>'/static/mustache/base_objects/urls.mustache'}}
+          <div class="info-pane__body">
+            <div class="info-pane__main-content {{^if isSnapshot}}info-pane__main-content-with-sidebar{{/if}}">
+              {{>'/static/mustache/base_objects/object-review.mustache'}}
+              {{>'/static/mustache/base_objects/description.mustache'}}
+              {{>'/static/mustache/base_objects/test_plan.mustache'}}
+              {{>'/static/mustache/base_objects/notes.mustache'}}
+              {{>'/static/mustache/base_objects/contacts.mustache'}}
+              {{>'/static/mustache/base_objects/urls.mustache'}}
 
-          <div class="row-fluid wrap-row">
-            <div class="span6">
-              <h6>Code</h6>
-              <p>
-                {{slug}}
-              </p>
+              <div class="row-fluid wrap-row">
+                <div class="span6">
+                  <h6>Code</h6>
+                  <p>
+                    {{slug}}
+                  </p>
+                </div>
+              </div>
+
+              {{>'/static/mustache/custom_attributes/info.mustache'}}
             </div>
+            {{^if isSnapshot}}
+            <div class="info-pane__sidebar">
+              <comment-data-provider {instance}="instance" class="flex-box flex-col">
+                <div class="info-pane__section-title">Responses/Comments</div>
+                {{#unless isEditDenied}}
+                <comment-add-form class="comment-add-form"
+                  {instance}="instance"
+                  {is-saving}="isLoading"
+                  (before-create)="addComment(%event)"
+                  (after-create)="processComment(%event)"
+                  {notifications-info}="'Notify Admins, Primary and Secondary Contacts'">
+                </comment-add-form>
+                {{/unless}}
+                <mapped-comments {mapped-items}="comments"></mapped-comments>
+              </comment-data-provider>
+            </div>
+            {{/if}}
           </div>
-
-          {{>'/static/mustache/custom_attributes/info.mustache'}}
         </tab-panel>
-        {{^if instance.snapshot}}
+        {{^if isSnapshot}}
           <tab-panel {(panels)}="panels" title-text="Change Log">
               <revision-log {instance}="instance"></revision-log>
           </tab-panel>

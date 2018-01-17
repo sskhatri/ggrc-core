@@ -3,7 +3,15 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../lazy-render/lazy-render';
+import '../show-related-assessments-button/show-related-assessments-button';
 import template from './templates/tree-item-actions.mustache';
+import {
+  isSnapshot,
+} from '../../plugins/utils/snapshot-utils';
+import {
+  getPageType,
+} from '../../plugins/utils/current-page-utils';
 
 (function (can, GGRC) {
   'use strict';
@@ -36,7 +44,7 @@ import template from './templates/tree-item-actions.mustache';
       isSnapshot: {
         type: 'boolean',
         get: function () {
-          return GGRC.Utils.Snapshots.isSnapshot(this.attr('instance'));
+          return isSnapshot(this.attr('instance'));
         }
       },
       isAllowedToEdit: {
@@ -95,7 +103,7 @@ import template from './templates/tree-item-actions.mustache';
         'CycleTaskGroup',
         'CycleTaskGroupObjectTask'
       ];
-      return _.contains(pages, GGRC.Utils.CurrentPage.getPageType()) &&
+      return _.contains(pages, getPageType()) &&
         _.contains(instanceTypes, this.attr('instance').type);
     },
     showReducedOptions: function () {
@@ -104,7 +112,7 @@ import template from './templates/tree-item-actions.mustache';
         'Cycle',
         'CycleTaskGroup',
       ];
-      return _.contains(pages, GGRC.Utils.CurrentPage.getPageType()) &&
+      return _.contains(pages, getPageType()) &&
         _.contains(instanceTypes, this.attr('instance').type);
     }
   });

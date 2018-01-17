@@ -2,6 +2,7 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test audit RBAC"""
+from ggrc import app  # noqa  # pylint: disable=unused-import
 import copy
 
 from os.path import abspath
@@ -141,7 +142,7 @@ class TestPermissionsOnAssessmentTemplate(TestCase):
             "audit_title": audit.title,
             "people_value": [],
             "default_people": {
-                "assessors": "Admin",
+                "assignees": "Admin",
                 "verifiers": "Admin",
             },
             "context": {"id": audit.context.id},
@@ -165,7 +166,7 @@ class TestPermissionsOnAssessmentTemplate(TestCase):
             "audit_title": self.audit.title,
             "people_value": [],
             "default_people": {
-                "assessors": "Admin",
+                "assignees": "Admin",
                 "verifiers": "Admin",
             },
             "context": {"id": self.audit.context.id},
@@ -206,7 +207,7 @@ class TestPermissionsOnAssessmentTemplate(TestCase):
 class TestPermissionsOnAssessmentRelatedAssignables(TestCase):
   """Test check Reader permissions for Assessment related assignables
 
-  Global Reader once assigned to Assessment as Assessor, should have
+  Global Reader once assigned to Assessment as Assignee, should have
   permissions to read/update/delete URLs(Documents) related to this Assessment
   """
   def setUp(self):
@@ -219,16 +220,14 @@ class TestPermissionsOnAssessmentRelatedAssignables(TestCase):
     )
     audit = factories.AuditFactory()
     assessment = factories.AssessmentFactory(audit=audit)
-    object_person_rel = factories.RelationshipFactory(
-        source=assessment,
-        destination=self.reader
+    ac_role = all_models.AccessControlRole.query.filter_by(
+        object_type=assessment.type, name="Assignees"
+    ).first()
+    factories.AccessControlListFactory(
+        ac_role=ac_role,
+        object=assessment,
+        person=self.reader
     )
-    factories.RelationshipAttrFactory(
-        relationship_id=object_person_rel.id,
-        attr_name="AssigneeType",
-        attr_value="Assessor"
-    )
-
     factories.RelationshipFactory(source=audit, destination=assessment)
     document = factories.DocumentFactory()
     document_id = document.id

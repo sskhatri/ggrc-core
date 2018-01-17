@@ -47,7 +47,7 @@ class TestCollection(TestCase, WithQueryApi):
     results = self._get_first_result_set(query, "Assessment", "values")
     self.assertEqual(expected_ids, [i['id'] for i in results])
 
-  @ddt.data("Assessor", "Creator", "Verifier")
+  @ddt.data("Assignees", "Creators", "Verifiers")
   def test_delete_assessment_by_role(self, role_name):
     """Delete assessment not allowed for based on Assignee Type."""
     with factories.single_commit():
@@ -55,12 +55,14 @@ class TestCollection(TestCase, WithQueryApi):
       context = factories.ContextFactory(related_object=assessment)
       assessment.context = context
       person = factories.PersonFactory()
-      object_person_rel = factories.RelationshipFactory(
-          source=assessment, destination=person)
-      factories.RelationshipAttrFactory(
-          relationship_id=object_person_rel.id,
-          attr_name="AssigneeType",
-          attr_value=role_name,
+      ac_role = all_models.AccessControlRole.query.filter_by(
+          object_type=assessment.type,
+          name=role_name
+      ).first()
+      factories.AccessControlListFactory(
+          person=person,
+          ac_role=ac_role,
+          object=assessment
       )
     assessment_id = assessment.id
     role = all_models.Role.query.filter(

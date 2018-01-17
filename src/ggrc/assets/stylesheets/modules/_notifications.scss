@@ -23,12 +23,11 @@
     };
 
     display: table;
-    margin: 0px;
+    margin: 10px 0 0;
     padding: 14px;
     border-radius: 2px;
     border: none;
-    background-color: black;
-    opacity: 0.74;
+    background-color: transparentize($black, 0.26);
     color: white;
     text-shadow: none;
 
@@ -76,7 +75,7 @@
   border: 1px solid;
   margin-bottom: 20px;
   word-wrap: break-word;
-  
+
   p {
     margin-bottom: 0;
   }

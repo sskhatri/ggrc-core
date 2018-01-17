@@ -4,6 +4,7 @@
 */
 
 import Component from '../cycle-task-group-object-task';
+import RefreshQueue from '../../../../../../ggrc/assets/javascripts/models/refresh_queue';
 
 describe('GGRC.Components.cycleTaskGroupObjectTask', function () {
   var viewModel;

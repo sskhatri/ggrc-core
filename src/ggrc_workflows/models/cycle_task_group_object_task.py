@@ -52,7 +52,7 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
   IMPORTABLE_FIELDS = (
       'slug', 'title', 'description', 'start_date',
       'end_date', 'finished_date', 'verified_date',
-      '__acl__:Task Assignees',
+      'status', '__acl__:Task Assignees',
   )
 
   @classmethod
@@ -89,6 +89,7 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
       ft_attributes.MultipleSubpropertyFullTextAttr("comments",
                                                     "cycle_task_entries",
                                                     ["description"]),
+      "folder",
   ]
 
   AUTO_REINDEX_RULES = [
@@ -126,6 +127,12 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
   object_approval = association_proxy('cycle', 'workflow.object_approval')
   object_approval.publish_raw = True
 
+  @builder.simple_property
+  def folder(self):
+    if self.cycle:
+      return self.cycle.folder
+    return ""
+
   @property
   def cycle_task_objects_for_cache(self):
     """Changing task state must invalidate `workflow_state` on objects
@@ -146,6 +153,7 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
       reflection.Attribute('finished_date', create=False, update=False),
       reflection.Attribute('verified_date', create=False, update=False),
       reflection.Attribute('allow_change_state', create=False, update=False),
+      reflection.Attribute('folder', create=False, update=False),
   )
 
   default_description = "<ol>"\
@@ -159,8 +167,22 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
   _aliases = {
       "title": "Summary",
       "description": "Task Details",
-      "finished_date": "Actual Finish Date",
-      "verified_date": "Actual Verified Date",
+      "finished_date": {
+          "display_name": "Actual Finish Date",
+          "description": ("Make sure that 'Actual Finish Date' isn't set, "
+                          "if cycle task state is <'Assigned' / "
+                          "'In Progress' / 'Declined' / 'Deprecated'>. "
+                          "Type double dash '--' into "
+                          "'Actual Finish Date' cell to remove it.")
+      },
+      "verified_date": {
+          "display_name": "Actual Verified Date",
+          "description": ("Make sure that 'Actual Verified Date' isn't set, "
+                          "if cycle task state is <'Assigned' / "
+                          "'In Progress' / 'Declined' / 'Deprecated' / "
+                          "'Finished'>. Type double dash '--' into "
+                          "'Actual Verified Date' cell to remove it.")
+      },
       "cycle": {
           "display_name": "Cycle",
           "filter_by": "_filter_by_cycle",
@@ -322,7 +344,15 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
             "description",
             "id"
         ),
+        orm.Load(cls).joinedload("cycle").joinedload("workflow").undefer_group(
+            "Workflow_complete"
+        ),
     )
+
+  def log_json(self):
+    out_json = super(CycleTaskGroupObjectTask, self).log_json()
+    out_json["folder"] = self.folder
+    return out_json
 
   @classmethod
   def bulk_update(cls, src):
@@ -333,17 +363,16 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
           [{"status": "Assigned", "id": 1}, {"status": "InProgress", "id": 2}]
 
     Returns:
-        Two lists: updated_ids, skipped_ids.
-        First one contains object's ids that were updated successfully.
-        Second one contains object's ids that were skipped.
+        list of updated_instances
     """
     new_prv_state_map = {
         cls.DEPRECATED: (cls.ASSIGNED, cls.IN_PROGRESS, cls.FINISHED,
                          cls.VERIFIED, cls.DECLINED),
         cls.IN_PROGRESS: (cls.ASSIGNED, ),
-        cls.FINISHED: (cls.IN_PROGRESS, ),
+        cls.FINISHED: (cls.IN_PROGRESS, cls.DECLINED),
         cls.VERIFIED: (cls.FINISHED, ),
-        cls.DECLINED: (cls.FINISHED, )
+        cls.DECLINED: (cls.FINISHED, ),
+        cls.ASSIGNED: (),
     }
     uniq_states = set([item['state'] for item in src])
     if len(list(uniq_states)) != 1:
@@ -371,8 +400,7 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
     for obj in updatable_objects:
       obj.status = new_state
       obj.modified_by_id = login.get_current_user_id()
-    updated_ids = {obj.id for obj in updatable_objects}
-    return list(updated_ids), list(all_ids - updated_ids)
+    return updatable_objects
 
 
 class CycleTaskable(object):

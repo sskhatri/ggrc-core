@@ -6,13 +6,11 @@
 {{#switch attr_name}}
   {{#case 'owner'}}
     {{#with_mapping 'authorizations' instance}}
-      <get-owner-people-list data="authorizations" role="'WorkflowOwner'">
-        <tree-people-list-field {source}="allOwners"/>
-      </get-owner-people-list>
+      <get-owner-people-list data="authorizations" role="'WorkflowOwner'"/>
     {{/with_mapping}}
   {{/case}}
   {{#case 'modified_by'}}
-      <tree-people-list-field {source}="instance.modified_by"/>
+      <tree-field {source}="instance.modified_by" {field}="'email'"/>
   {{/case}}
   {{#case 'repeat'}}
       <repeat-on-summary {unit}="instance.unit" {repeat-every}="instance.repeat_every"

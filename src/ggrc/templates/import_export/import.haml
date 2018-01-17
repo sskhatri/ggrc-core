@@ -9,7 +9,8 @@
   GGRC.pageType = "IMPORT";
 
 -block page_scripts
-  %script{ type:'text/javascript', src:'{{config.get("DASHBOARD_JS_PATH")}}' }
+  %script{ type:'text/javascript', src:'{{config.get("COMMON_JS_PATH")}}' }
+  %script{ type:'text/javascript', src:'{{config.get("IMPORT_JS_PATH")}}' }
 
 -block title
   Import

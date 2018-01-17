@@ -70,7 +70,10 @@
                       {{#each charts.Assessment.legend}}
                         <tr data-row-index="{{rowIndex}}">
                           <td style="color: {{color}}">
-                            <i class="fa fa-circle"></i> {{title}}
+                            <i class="fa fa-circle"></i>
+                            <a style="color: {{color}}" href="#assessment_widget&amp;state[]={{title}}">
+                                {{title}}
+                            </a>
                           </td>
                           <td>
                             {{count}}

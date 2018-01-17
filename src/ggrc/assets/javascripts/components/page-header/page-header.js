@@ -3,9 +3,14 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../assessment/people/lhn-popup-people';
 import '../tasks-counter/tasks-counter';
 import logo from '../../../images/ggrc-logo.svg';
 import oneColorLogo from '../../../images/ggrc-one-color.svg';
+import {
+  isMyAssessments,
+} from '../../plugins/utils/current-page-utils';
+import template from './page-header.mustache';
 
 (function (GGRC, can) {
   'use strict';
@@ -33,16 +38,13 @@ import oneColorLogo from '../../../images/ggrc-one-color.svg';
     Program: 'header-style-5'
   };
 
-  var template = can.view(GGRC.mustache_path +
-    '/components/page-header/page-header.mustache'
-  );
   var viewModel = can.Map.extend({
     define: {
       isMyAssessments: {
         type: Boolean,
         get: function () {
-          return GGRC.Utils.CurrentPage.isMyAssessments();
-        }
+          return isMyAssessments();
+        },
       },
       showTitles: {
         type: Boolean,

@@ -59,6 +59,9 @@ WRONG_VALUE = (u"Line {line}: Field '{column_name}' contains invalid data. The"
 WRONG_VALUE_DEFAULT = (u"Line {line}: Field '{column_name}' contains invalid"
                        u" data. The default value will be used.")
 
+WRONG_VALUE_CURRENT = (u"Line {line}: Field '{column_name}' contains invalid"
+                       u" data. The current value will be used.")
+
 WRONG_VALUE_ERROR = (u"Line {line}: Field '{column_name}' contains invalid "
                      u"data. The line will be ignored.")
 
@@ -109,8 +112,9 @@ INVALID_ATTRIBUTE_WARNING = (u"Line {line}: Object does not contain attribute "
 CREATE_INSTANCE_ERROR = (u"Line {line}: New instance creation is denied. "
                          u"The line will be ignored.")
 
-INVALID_STATUS_DATE_CORRELATION = (u"Line {line}: Cannot change {date} for "
-                                   u"task which status is {status}. "
+INVALID_STATUS_DATE_CORRELATION = (u"Line {line}: Need to type double dash "
+                                   u"'--' into '{date}' cell, if "
+                                   u"cycle task state is {deny_states}. "
                                    u"The line will be ignored.")
 
 ONLY_IMPORTABLE_COLUMNS_WARNING = (u"Line {line}: Only the following "

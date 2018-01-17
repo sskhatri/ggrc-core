@@ -142,6 +142,9 @@ class AssessmentResource(common.ExtendedResource):
     with benchmark("Get assessment comment data"):
       comments = models.Comment.eager_query().filter(
           models.Comment.id.in_(relationship_ids)
+      ).order_by(
+          models.Comment.created_at.desc(),
+          models.Comment.id.desc(),
       ).all()
     return [comment.log_json() for comment in comments]
 

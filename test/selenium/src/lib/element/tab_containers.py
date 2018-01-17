@@ -1,6 +1,7 @@
 # Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Module of classes inherited from AbstractTabContainer control."""
+
 from lib import base
 from lib.constants import element, locator, roles, value_aliases
 from lib.element.tables import (AssessmentRelatedAsmtsTable,
@@ -8,33 +9,25 @@ from lib.element.tables import (AssessmentRelatedAsmtsTable,
 from lib.utils import selenium_utils
 
 
-class AssessmentTabContainer(base.AbstractTabContainer):
-  """Class of TabContainer in Assessment info."""
-  _elements = element.AssessmentTabContainer
+class TabContainer(base.AbstractTabContainer):
+  """Class of TabContainer for Info Widget."""
+  _locators = locator.TabContainer
+  _elements = element.TabContainer
 
   def _get_locators(self):
-    return locator.WidgetInfoAssessment.TabContainer
+    return self._locators
 
   def _tabs(self):
-    """Dict of Tab objects. AssessmentLog tab item contains dict of
-    validation result, because there is no reason for create AssessmentLog
-    page object class.
-    """
+    """Dict of Tab objects."""
     selenium_utils.scroll_into_view(self._driver, self.container_element)
-    return {
-        self._elements.RELATED_ASMTS_TAB: AssessmentRelatedAsmtsTable,
-        self._elements.RELATED_ISSUES_TAB: AssessmentRelatedIssuesTable,
-        self._elements.CHANGE_LOG_TAB: self._log_tab_validate}
+    return {self._elements.CHANGE_LOG_TAB: self._log_tab_validate}
 
   def get_tab_object(self, tab_name):
     """Switch to passed tab, then return object of this tab which declared in
-    "_tabs" method.
-    for example:
-    Page Object or any
+    '_tabs' method (Page Object or any).
     """
     self.tab_controller.active_tab = tab_name
-    return self.tabs[tab_name](
-        self._driver, self._get_active_tab_element())
+    return self.tabs[tab_name](self._driver, self._get_active_tab_element())
 
   @staticmethod
   def _log_tab_validate(_driver, log_panel_element):
@@ -84,6 +77,49 @@ class AssessmentTabContainer(base.AbstractTabContainer):
     return [check_log_item(el) for el in log_list]
 
 
+class AuditsTabContainer(TabContainer):
+  """Class of TabContainer for Audits."""
+  _elements = element.AuditTabContainer
+
+
+class AssessmentsTabContainer(TabContainer):
+  """Class of TabContainer for Assessments."""
+  _elements = element.AssessmentTabContainer
+
+  def _tabs(self):
+    """Dict of Assessment's Tab objects."""
+    selenium_utils.scroll_into_view(self._driver, self.container_element)
+    return {
+        self._elements.RELATED_ASMTS_TAB: AssessmentRelatedAsmtsTable,
+        self._elements.RELATED_ISSUES_TAB: AssessmentRelatedIssuesTable,
+        self._elements.CHANGE_LOG_TAB: self._log_tab_validate}
+
+
+class ControlsTabContainer(TabContainer):
+  """Class of TabContainer for Controls."""
+  _elements = element.ControlTabContainer
+
+
+class OrgGroupsTabContainer(TabContainer):
+  """Class of TabContainer for OrgGroups."""
+  _elements = element.OrgGroupTabContainer
+
+
+class ProgramsTabContainer(TabContainer):
+  """Class of TabContainer for Programs."""
+  _elements = element.ProgramTabContainer
+
+
+class RisksTabContainer(TabContainer):
+  """Class of TabContainer for Risks."""
+  _elements = element.RiskTabContainer
+
+
+class IssuesTabContainer(TabContainer):
+  """Class of TabContainer for Issues."""
+  _elements = element.IssueTabContainer
+
+
 class DashboardWidget(base.AbstractTabContainer):
   """Class of 'Dashboard' widget which contains one or few tabs."""
 
@@ -93,7 +129,7 @@ class DashboardWidget(base.AbstractTabContainer):
       - Return: dict of tab members
     """
     if selenium_utils.is_element_exist(self._driver,
-                                       self._locators.TAB_CONTROLLER):
+                                       self._locators.TAB_CONTROLLER_CSS):
       tabs = {tab_el.text: self._get_active_tab_element()
               for tab_el in self.tab_controller.get_items()}
     else:

@@ -2,6 +2,9 @@
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
+
+import {confirm} from '../plugins/utils/modals';
+
 (function (can, $) {
   'use strict';
 
@@ -31,7 +34,7 @@
             return $.when(instance.save());
           })
           .then(function () {
-            GGRC.Controllers.Modals.confirm({
+            confirm({
               modal_title: scope.attr('modal_title'),
               modal_description: scope.attr('modal_description'),
               button_view:

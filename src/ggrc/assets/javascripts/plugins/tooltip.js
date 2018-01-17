@@ -10,17 +10,49 @@
   var bootstrapTooltipHide = tooltipPrototype.hide;
   var actions = {};
 
+
+  /**
+   * This class watches the tooltip associated
+   * with the element and removes it if the elements is
+   * removed from the DOM
+   */
+  class TooltipWatcher {
+    constructor(el, tooltipEl) {
+      let $el = $(el);
+      let $tooltipEl = $(tooltipEl);
+      this.iv = setInterval(() => {
+        // if removed from the DOM
+        if ( !$el.closest('html').length ) {
+          $tooltipEl.remove();
+          this.stopWatch();
+        }
+      }, 200);
+    }
+
+    stopWatch() {
+      clearInterval(this.iv);
+    }
+  }
+
   tooltipPrototype.show = function () {
     if (!this.hasContent() || !this.enabled) {
       return;
     }
 
     bootstrapTooltipShow.apply(this);
+    if ( !this.tooltipWatcher ) {
+      this.tooltipWatcher = new TooltipWatcher(this.$element, this.$tip);
+    }
+
     actions.isShown = true;
   };
 
   tooltipPrototype.hide = function () {
     bootstrapTooltipHide.apply(this);
+    if ( this.tooltipWatcher ) {
+      this.tooltipWatcher.stopWatch();
+      this.tooltipWatcher = null;
+    }
     actions.isShown = false;
   };
 

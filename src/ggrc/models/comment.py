@@ -42,10 +42,12 @@ class Commentable(object):
   # pylint: disable=too-few-public-methods
 
   VALID_RECIPIENTS = frozenset([
-      "Assessor",
-      "Assignee",
-      "Creator",
-      "Verifier",
+      "Assignees",
+      "Creators",
+      "Verifiers",
+      "Admin",
+      "Primary Contacts",
+      "Secondary Contacts",
   ])
 
   @validates("recipients")
@@ -77,7 +79,7 @@ class Commentable(object):
   recipients = db.Column(
       db.String,
       nullable=True,
-      default=u"Assessor,Creator,Verifier")
+      default=u"Assignees,Creators,Verifiers")
 
   send_by_default = db.Column(db.Boolean, nullable=True, default=True)
 
@@ -148,7 +150,7 @@ class Comment(Roleable, Relatable, Described, Notifiable,
   """Basic comment model."""
   __tablename__ = "comments"
 
-  assignee_type = db.Column(db.String)
+  assignee_type = db.Column(db.String, nullable=False, default=u"")
   revision_id = deferred(db.Column(
       db.Integer,
       db.ForeignKey('revisions.id', ondelete='SET NULL'),

@@ -2,15 +2,16 @@
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
+
+import '../../object-list-item/person-list-item';
+import template from './person-form-field.mustache';
+
 (function (can, GGRC) {
   'use strict';
 
   GGRC.Components('personFormField', {
     tag: 'person-form-field',
-    template: can.view(
-      GGRC.mustache_path + '/components/form/' +
-        'fields/person-form-field.mustache'
-    ),
+    template: template,
     viewModel: {
       define: {
         _value: {

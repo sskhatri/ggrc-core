@@ -23,7 +23,7 @@ class TestBuilder(TestCase):
     setattr(ggrc.services, name, svc)
     return svc
 
-  def mock_class(self, name, bases=(), _publish_attrs=None):
+  def mock_class(self, name, bases=(), _publish_attrs=None, parents=()):
     cls = MagicMock()
     cls.__name__ = name
     mro = ()
@@ -32,14 +32,17 @@ class TestBuilder(TestCase):
     cls.__mro__ = (cls, ) + mro
     if _publish_attrs:
       cls._api_attrs = ggrc.models.reflection.ApiAttributes(*_publish_attrs)
+    cls.__bases__ = parents
     self.mock_builders.append(name)
     return cls
 
-  def mock_model(self, name, bases=(), _publish_attrs=None, **kwarg):
+  def mock_model(self, name, bases=(), _publish_attrs=None,
+                 parents=(), **kwarg):
     model = MagicMock()
-    model.__class__ = self.mock_class(name, bases, _publish_attrs)
-    for k, v in kwarg.items():
-      setattr(model, k, v)
+    model.__class__ = self.mock_class(
+        name, bases, _publish_attrs, parents=parents)
+    for arg_name, arg_value in kwarg.iteritems():
+      setattr(model, arg_name, arg_value)
     return model
 
   def setUp(self):
@@ -48,10 +51,11 @@ class TestBuilder(TestCase):
     self.mock_builders = []
 
   def tearDown(self):
-    for k in self.mock_services.keys():
+    for k in self.mock_services.iterkeys():
       delattr(ggrc.services, k)
     for k in self.mock_builders:
-      delattr(ggrc.builder.json, k) if hasattr(ggrc.builder.json, k) else None
+      if hasattr(ggrc.builder.json, k):
+        delattr(ggrc.builder.json, k)
     super(TestBuilder, self).tearDown()
 
   def test_simple_builder(self):

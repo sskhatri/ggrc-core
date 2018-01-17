@@ -88,9 +88,6 @@ class TestSnapshot(TestCase):
       "contact_id",
       "secondary_contact_id",
 
-      "principal_assessor_id",
-      "secondary_assessor_id",
-
       "modified_by_id",
 
       "attribute_object_id",

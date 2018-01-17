@@ -15,7 +15,12 @@
     create: 'POST /api/risks',
     update: 'PUT /api/risks/{id}',
     destroy: 'DELETE /api/risks/{id}',
-    mixins: ['unique_title', 'ca_update'],
+    mixins: [
+      'unique_title',
+      'ca_update',
+      'accessControlList',
+      'base-notifications',
+    ],
     is_custom_attributable: true,
     isRoleable: true,
     attributes: {

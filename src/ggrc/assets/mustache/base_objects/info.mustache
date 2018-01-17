@@ -17,66 +17,87 @@
 
       <tab-container>
         <tab-panel {(panels)}="panels" title-text="{{instance.type}}">
-          {{>'/static/mustache/base_objects/object-review.mustache'}}
-          {{>'/static/mustache/base_objects/description.mustache'}}
-          {{>'/static/mustache/base_objects/test_plan.mustache'}}
-          {{>'/static/mustache/base_objects/notes.mustache'}}
-          {{>'/static/mustache/base_objects/contacts.mustache'}}
-          {{>'/static/mustache/base_objects/urls.mustache'}}
+          <div class="info-pane__body">
+            <div class="info-pane__main-content {{^if isSnapshot}}info-pane__main-content-with-sidebar{{/if}}">
+              {{>'/static/mustache/base_objects/object-review.mustache'}}
+              {{>'/static/mustache/base_objects/description.mustache'}}
+              {{>'/static/mustache/base_objects/test_plan.mustache'}}
+              {{>'/static/mustache/base_objects/notes.mustache'}}
+              {{>'/static/mustache/base_objects/contacts.mustache'}}
+              {{>'/static/mustache/base_objects/urls.mustache'}}
 
-          <div class="custom-attr-wrap">
-            <div class="row-fluid">
-              <div class="span12">
-                <div class="info-expand">
-                  <a class="show-hidden-fields info-show-hide active" href="javascript://">
-                    <span class="out">
-                      <i class="fa fa-caret-right"></i>
-                      Show
-                    </span>
-                    <span class="in">
-                      <i class="fa fa-caret-down"></i>
-                      Hide
-                    </span>
-                    Advanced
-                  </a>
-                </div>
-              </div>
-            </div><!-- row-fluid end -->
-            <div class="hidden-fields-area">
-              <div class="row-fluid wrap-row">
-                <div class="span4">
-                  <h6>Code</h6>
-                  <p>
-                    {{slug}}
-                  </p>
-                </div>
-                <div class="span4">
-                  <h6>Effective Date</h6>
-                  {{#if start_date}}
-                    <p>
-                      {{localize_date start_date}}
-                    </p>
-                  {{else}}
-                    <span class="empty-message">None</span>
-                  {{/if}}
-                </div>
-                <div class="span4">
-                  <h6>Last Deprecated Date</h6>
-                  {{#if end_date}}
-                    <p>
-                      {{localize_date end_date}}
-                    </p>
-                  {{else}}
-                    <span class="empty-message">None</span>
-                  {{/if}}
-                </div>
-              </div><!-- row-fluid end -->
-            </div><!-- hidden-fields-area end -->
-          </div><!-- custom-attr-wrap end -->
+              <div class="custom-attr-wrap info-pane__section">
+                <div class="row-fluid">
+                  <div class="span12">
+                    <div class="info-expand">
+                      <a class="show-hidden-fields info-show-hide active" href="javascript://">
+                        <span class="out">
+                          <i class="fa fa-caret-right"></i>
+                          Show
+                        </span>
+                        <span class="in">
+                          <i class="fa fa-caret-down"></i>
+                          Hide
+                        </span>
+                        Advanced
+                      </a>
+                    </div>
+                  </div>
+                </div><!-- row-fluid end -->
+                <div class="hidden-fields-area">
+                  <div class="row-fluid wrap-row">
+                    <div class="span4">
+                      <h6>Code</h6>
+                      <p>
+                        {{slug}}
+                      </p>
+                    </div>
+                    <div class="span4">
+                      <h6>Effective Date</h6>
+                      {{#if start_date}}
+                        <p>
+                          {{localize_date start_date}}
+                        </p>
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                    <div class="span4">
+                      <h6>Last Deprecated Date</h6>
+                      {{#if end_date}}
+                        <p>
+                          {{localize_date end_date}}
+                        </p>
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                  </div><!-- row-fluid end -->
+                </div><!-- hidden-fields-area end -->
+              </div><!-- custom-attr-wrap end -->
 
-          {{>'/static/mustache/custom_attributes/info.mustache'}}
+              {{>'/static/mustache/custom_attributes/info.mustache'}}
+            </div>
+            {{^if isSnapshot}}
+            <div class="info-pane__sidebar">
+              <comment-data-provider {instance}="instance" class="flex-box flex-col">
+                <div class="info-pane__section-title">Responses/Comments</div>
+                {{#unless isEditDenied}}
+                <comment-add-form class="comment-add-form"
+                  {instance}="instance"
+                  {is-saving}="isLoading"
+                  (before-create)="addComment(%event)"
+                  (after-create)="processComment(%event)"
+                  {notifications-info}="'Notify Admins, Primary and Secondary Contacts'">
+                </comment-add-form>
+                {{/unless}}
+                <mapped-comments {mapped-items}="comments"></mapped-comments>
+              </comment-data-provider>
+            </div>
+            {{/if}}
+          </div>
         </tab-panel>
-        {{^if instance.snapshot}}
+        {{^if isSnapshot}}
           <tab-panel {(panels)}="panels" title-text="Change Log">
               <revision-log {instance}="instance"></revision-log>
           </tab-panel>

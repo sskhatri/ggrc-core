@@ -3,16 +3,15 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-describe('GGRC.Utils.TreeView module', function () {
+import * as module from '../../../plugins/utils/tree-view-utils';
+
+describe('TreeViewUtils module', function () {
   'use strict';
 
   var method;
-  var module;
   var origPageType;
 
   beforeAll(function () {
-    module = GGRC.Utils.TreeView;
-
     origPageType = GGRC.pageType;
     GGRC.pageType = 'MY_WORK';
   });
@@ -74,6 +73,29 @@ describe('GGRC.Utils.TreeView module', function () {
           attr_sort_field: 'Role 9'
         };
         expect(result).toContain(jasmine.objectContaining(expected));
+      });
+    });
+  });
+
+  describe('getSortingForModel() method', function () {
+    var noDefaultSortingModels = [
+      'Cycle',
+      'TaskGroup',
+      'TaskGroupTask',
+      'CycleTaskGroupObjectTask',
+    ];
+
+    it('returns default sorting configuration', function () {
+      let result = module.getSortingForModel('Audit');
+
+      expect(result).toEqual({key: 'updated_at', direction: 'desc'});
+    });
+
+    it('returns empty sorting configuration', function () {
+      noDefaultSortingModels.forEach((model) => {
+        let result = module.getSortingForModel(model);
+
+        expect(result).toEqual({key: null, direction: null});
       });
     });
   });

@@ -21,11 +21,12 @@ class Statusable(object):
   VERIFIED_STATE = u"Verified"
   FINAL_STATE = u"Completed"
   DEPRECATED = u"Deprecated"
-  END_STATES = {VERIFIED_STATE, FINAL_STATE, DEPRECATED}
+  END_STATES = {VERIFIED_STATE, FINAL_STATE}
+  INACTIVE_STATES = {DEPRECATED, }
 
   NOT_DONE_STATES = {START_STATE, PROGRESS_STATE}
   DONE_STATES = {DONE_STATE} | END_STATES
-  VALID_STATES = tuple(NOT_DONE_STATES | DONE_STATES)
+  VALID_STATES = tuple(NOT_DONE_STATES | DONE_STATES | INACTIVE_STATES)
 
   @declared_attr
   def status(cls):  # pylint: disable=no-self-argument

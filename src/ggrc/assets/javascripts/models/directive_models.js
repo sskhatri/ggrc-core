@@ -13,7 +13,7 @@ can.Model.Cacheable("CMS.Models.Directive", {
   , root_model : "Directive"
   , findAll : "/api/directives"
   , findOne : "/api/directives/{id}"
-  , mixins : ['unique_title', 'timeboxed', 'ca_update']
+  , mixins : ['unique_title', 'timeboxed', 'ca_update', 'base-notifications']
   , tree_view_options : {
     attr_view: GGRC.mustache_path + '/directives/tree-item-attr.mustache'
     , attr_list : can.Model.Cacheable.attr_list.concat([
@@ -91,7 +91,8 @@ CMS.Models.Directive("CMS.Models.Standard", {
   , is_custom_attributable: true
   , isRoleable: true
   , attributes : {}
-  , meta_kinds : [ "Standard" ]
+  , meta_kinds : [ "Standard" ],
+  mixins: ['accessControlList']
   , cache : can.getObject("cache", CMS.Models.Directive, true),
   sub_tree_view_options: {
     default_filter: ['Section']
@@ -123,7 +124,8 @@ CMS.Models.Directive("CMS.Models.Regulation", {
   , destroy : "DELETE /api/regulations/{id}"
   , is_custom_attributable: true
   , isRoleable: true
-  , attributes : {}
+  , attributes : {},
+  mixins: ['accessControlList']
   , meta_kinds : [ "Regulation" ]
   , cache : can.getObject("cache", CMS.Models.Directive, true),
   sub_tree_view_options: {
@@ -157,7 +159,8 @@ CMS.Models.Directive("CMS.Models.Policy", {
   , tree_view_options : {}
   , is_custom_attributable: true
   , isRoleable: true
-  , attributes : {}
+  , attributes : {},
+  mixins: ['accessControlList']
   , meta_kinds : [  "Company Policy", "Org Group Policy", "Data Asset Policy", "Product Policy", "Contract-Related Policy", "Company Controls Policy" ]
   , cache : can.getObject("cache", CMS.Models.Directive, true),
   sub_tree_view_options: {
@@ -198,7 +201,8 @@ CMS.Models.Directive("CMS.Models.Contract", {
   , findOne : "GET /api/contracts/{id}"
   , create : "POST /api/contracts"
   , update : "PUT /api/contracts/{id}"
-  , destroy : "DELETE /api/contracts/{id}"
+  , destroy : "DELETE /api/contracts/{id}",
+  mixins: ['accessControlList']
   , is_custom_attributable: true
   , isRoleable: true
   , attributes : {

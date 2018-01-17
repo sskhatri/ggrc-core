@@ -28,10 +28,6 @@ ATTRIBUTE_ORDER = (
     "notes",
     "test_plan",
     "owners",
-    "related_assessors",
-    "related_creators",
-    "related_assignees",
-    "related_verifiers",
     "program_owner",
     "program_editor",
     "program_reader",
@@ -41,13 +37,14 @@ ATTRIBUTE_ORDER = (
     "due_on",
     "start_date",
     "end_date",
+    "last_deprecated_date",
     "archived",
     "report_start_date",
     "report_end_date",
     "finished_date",
     "verified_date",
     "status",
-    "label",
+    "labels",
     'os_state',
     "assertions",
     "categories",
@@ -61,8 +58,6 @@ ATTRIBUTE_ORDER = (
     "means",
     "network_zone",
     "operationally",
-    "principal_assessor",
-    "secondary_assessor",
     "secondary_contact",
     "assessment_type",
     "reference_url",
@@ -83,6 +78,7 @@ ATTRIBUTE_ORDER = (
     "updated_at",
     "modified_by",
     "created_at",
+    "folder",
     "delete",
     "repeat_every",
     "unit",
@@ -254,7 +250,7 @@ class AttributeInfo(object):
           AccessControlRole.object_type,
           AccessControlRole.name,
           AccessControlRole.mandatory,
-      )
+      ).filter(~AccessControlRole.internal)
       for object_type, name, mandatory in names_query:
         flask.g.acl_role_names[object_type].add((name, mandatory))
 

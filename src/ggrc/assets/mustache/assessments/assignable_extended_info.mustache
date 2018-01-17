@@ -1,0 +1,71 @@
+{{!
+    Copyright (C) 2017 Google Inc., authors, and contributors
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#instance}}
+  <div class="row-fluid">
+    <div class="span12">
+      {{#using program=instance.program}}
+        <a class="main-title {{instance.class.category}} oneline" href="{{#is_allowed 'view_object_page' 'Program' context=program.context}}{{viewLink}}{{else}}/dashboard#audit_widget/audit/{{id}}{{/is_allowed}}">
+          {{instance.title}}
+        </a>
+      {{/using}}
+    </div>
+  </div>
+
+  <div class="row-fluid">
+    <div class="span9">
+      <h6>Description</h6>
+      <div class="rtf">
+        {{{firstnonempty description '<span class="empty-message">None</span>'}}}
+      </div>
+    </div>
+    <div class="span3">
+      <h6>Status</h6>
+      <p>
+        {{status}}
+      </p>
+    </div>
+  </div>
+  <div class="row-fluid">
+    <div class="span9">
+      <h6>People</h6>
+      <lhn-popup-people {instance}="instance"></lhn-popup-people>
+    </div>
+  </div>
+  <div class="row-fluid">
+    <div class="span3">
+      <h6>Due date</h6>
+      <p>
+        {{#if instance.start_date}}
+          {{localize_date instance.start_date}}
+        {{else}}
+          Not set
+        {{/if}}
+      </p>
+    </div>
+    <div class="span6">
+      <h6>Last deprecated date</h6>
+      <p>
+        {{#if instance.end_date}}
+          {{localize_date instance.end_date}}
+        {{else}}
+          Not set
+        {{/if}}
+      </p>
+    </div>
+  </div>
+
+  <div class="links">
+    <div class="row-fluid">
+      <div class="span12">
+        {{#using program=instance.program}}
+          <a class="secondary oneline {{instance.class.category}}" href="{{#is_allowed 'view_object_page' 'Program' context=program.context}}{{program.viewLink}}{{else}}/dashboard{{/is_allowed}}#audit_widget/audit/{{id}}">
+            View {{instance.title}}
+          </a>
+        {{/using}}
+      </div>
+    </div>
+  </div>
+{{/instance}}

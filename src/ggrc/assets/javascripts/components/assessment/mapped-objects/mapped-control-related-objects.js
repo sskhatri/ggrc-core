@@ -3,12 +3,12 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../../collapsible-panel/collapsible-panel';
+import template from './mapped-control-related-objects.mustache';
+
 (function (can, GGRC) {
   'use strict';
 
-  var tpl = can.view(GGRC.mustache_path +
-    '/components/assessment/mapped-objects/' +
-    'mapped-control-related-objects.mustache');
   var tag = 'assessment-mapped-control-related-objects';
   /**
    * ViewModel for Assessment Mapped Controls Related Objectives and Regulations.
@@ -29,7 +29,7 @@
    */
   GGRC.Components('assessmentMappedControlsPopover', {
     tag: tag,
-    template: tpl,
+    template: template,
     viewModel: viewModel
   });
 })(window.can, window.GGRC);

@@ -3,6 +3,10 @@
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import {
+  initCounts,
+} from '../../../../ggrc/assets/javascripts/plugins/utils/current-page-utils';
+
 (function ($, CMS, GGRC) {
   var WorkflowExtension = {};
   var _workflowObjectTypes = Array.prototype.concat.call(
@@ -580,8 +584,7 @@
     newWidgetDescriptors.history = historyWidgetDescriptor;
     newWidgetDescriptors.current = currentWidgetDescriptor;
 
-    GGRC.Utils.CurrentPage
-      .initCounts([
+    initCounts([
         WorkflowExtension.countsMap.history,
         WorkflowExtension.countsMap.activeCycles,
         WorkflowExtension.countsMap.person,
@@ -609,6 +612,8 @@
   WorkflowExtension.init_widgets_for_person_page = function () {
     var descriptor = {};
     var pageInstance = GGRC.page_instance();
+    const isObjectBrowser = /^\/objectBrowser\/?$/
+      .test(window.location.pathname);
 
     descriptor[pageInstance.constructor.shortName] = {
       task: {
@@ -627,6 +632,7 @@
           sort_property: null,
           sort_function: _taskSortFunction,
           draw_children: true,
+          showBulkUpdate: !isObjectBrowser,
           events: {
             'show-history': function (el, ev) {
               this.options.attr('mapping', el.attr('mapping'));
@@ -638,7 +644,7 @@
     };
 
     // add 'Workflows' tab for 'All Objects' view
-    if (/^\/objectBrowser\/?$/.test(window.location.pathname)) {
+    if (isObjectBrowser) {
       descriptor[pageInstance.constructor.shortName].workflow = {
         widget_id: 'workflow',
         widget_name: 'Workflows',

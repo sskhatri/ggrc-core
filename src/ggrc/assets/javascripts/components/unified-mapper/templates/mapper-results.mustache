@@ -44,7 +44,7 @@
         </mapper-results-item>
       </object-list>
     </div>
-    <tree-pagination paging="paging" class="list-pagination"></tree-pagination>
+    <tree-pagination paging="paging"></tree-pagination>
   {{else}}
     {{#if isLoading}}
       <div class="no-items-spinner-wrapper">
@@ -61,7 +61,9 @@
                 state="relatedAssessments.state"
                 extra-css-class="related-assessments">
     <div class="simple-modal__body">
-      {{> '/static/mustache/assessments/related-assessments-without-reuse.mustache' }}
+      <related-assessments {instance}="instance"
+                           {need-reuse}="false">
+      </related-assessments>
     </div>
   </simple-modal>
 {{/relatedAssessments.show}}

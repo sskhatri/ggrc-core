@@ -3,18 +3,20 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../show-more/show-more';
+import '../spinner/spinner';
+import template from './object-list.mustache';
+
 (function (can, GGRC) {
   'use strict';
 
   var tag = 'object-list';
-  var tpl = can.view(GGRC.mustache_path +
-    '/components/object-list/object-list.mustache');
   /**
    * Object List component
    */
   GGRC.Components('objectList', {
     tag: tag,
-    template: tpl,
+    template: template,
     viewModel: {
       define: {
         itemSelector: {

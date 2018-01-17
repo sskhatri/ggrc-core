@@ -14,7 +14,7 @@ from ggrc.services import signals
 
 
 def init_hook():
-  """Init audit permission hooks"""
+  """Initializes audit permission hooks."""
   # pylint: disable=unused-variable
   @signals.Restful.model_put.connect_via(all_models.Audit)
   @signals.Restful.model_deleted.connect_via(all_models.Audit)

@@ -3,6 +3,9 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import * as SnapshotUtils from '../../plugins/utils/snapshot-utils';
+import * as QueryAPI from '../../plugins/utils/query-api-utils';
+
 describe('GGRC.Components.modalConnector', function () {
   'use strict';
 
@@ -384,7 +387,7 @@ describe('GGRC.Components.modalConnector', function () {
     beforeEach(function () {
       makeRequestDfd = can.Deferred();
       makeRequest = spyOn(
-        GGRC.Utils.QueryAPI, 'makeRequest'
+        QueryAPI, 'makeRequest'
       ).and.returnValue(makeRequestDfd);
       eventScope = {
         viewModel: {},
@@ -450,7 +453,7 @@ describe('GGRC.Components.modalConnector', function () {
         ];
         makeRequestDfd.resolve(response);
         eventScope.buildQuery.and.returnValue([]);
-        spyOn(GGRC.Utils.Snapshots, 'toObject').and.returnValue({
+        spyOn(SnapshotUtils, 'toObject').and.returnValue({
           'class': 'class',
           title: 'title',
           description: 'description',
@@ -493,7 +496,7 @@ describe('GGRC.Components.modalConnector', function () {
             .then(function (list) {
               var objects = response[ORDER.THIRD].Snapshot.values;
               _.each(objects, function (snapshot) {
-                var convertedObject = GGRC.Utils.Snapshots.toObject(snapshot);
+                var convertedObject = SnapshotUtils.toObject(snapshot);
 
                 snapshot.class = convertedObject.class;
                 snapshot.snapshot_object_class = 'snapshot-object';

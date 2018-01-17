@@ -42,7 +42,6 @@ from ggrc.converters.handlers import comments
 from ggrc.converters.handlers import default_people
 from ggrc.converters.handlers import handlers
 from ggrc.converters.handlers import list_handlers
-from ggrc.converters.handlers import related_person
 from ggrc.converters.handlers import template
 from ggrc.converters.handlers import document
 from ggrc.converters.handlers import custom_attribute
@@ -62,7 +61,7 @@ _DEFAULT_COLUMN_HANDLERS_DICT = {
     "comments": comments.CommentColumnHandler,
     "company": handlers.TextColumnHandler,
     "contact": handlers.UserColumnHandler,
-    "default_assessors": default_people.DefaultPersonColumnHandler,
+    "default_assignees": default_people.DefaultPersonColumnHandler,
     "default_verifier": default_people.DefaultPersonColumnHandler,
     "delete": handlers.DeleteColumnHandler,
     "description": handlers.TextareaColumnHandler,
@@ -84,19 +83,14 @@ _DEFAULT_COLUMN_HANDLERS_DICT = {
     "network_zone": handlers.OptionColumnHandler,
     "notes": handlers.TextareaColumnHandler,
     "operationally": handlers.ConclusionColumnHandler,
-    "principal_assessor": handlers.UserColumnHandler,
     "program": handlers.ProgramColumnHandler,
     "recipients": list_handlers.ValueListHandler,
+    "labels": handlers.LabelsHandler,
     "reference_url": document.ReferenceUrlHandler,
-    "related_assessors": related_person.RelatedAssessorsColumnHandler,
-    "related_assignees": related_person.RelatedAssigneesColumnHandler,
-    "related_creators": related_person.RelatedCreatorsColumnHandler,
-    "related_verifiers": related_person.RelatedVerifiersColumnHandler,
     "report_end_date": handlers.DateColumnHandler,
     "last_assessment_date": handlers.DateColumnHandler,
     "report_start_date": handlers.DateColumnHandler,
     "archived": boolean.CheckboxColumnHandler,
-    "secondary_assessor": handlers.UserColumnHandler,
     "secondary_contact": handlers.UserColumnHandler,
     "send_by_default": boolean.CheckboxColumnHandler,
     "slug": handlers.SlugColumnHandler,
@@ -111,7 +105,8 @@ _DEFAULT_COLUMN_HANDLERS_DICT = {
     "verify_frequency": handlers.OptionColumnHandler,
     "updated_at": handlers.ExportOnlyDateColumnHandler,
     "created_at": handlers.ExportOnlyDateColumnHandler,
-    "modified_by": handlers.ExportOnlyUserColumnHandler,
+    "modified_by": handlers.DirecPersonMappingColumnHandler,
+    "last_deprecated_date": handlers.DateColumnHandler,
 
     # Mapping column handlers
     "__mapping__:person": handlers.PersonMappingColumnHandler,

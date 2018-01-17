@@ -25,7 +25,8 @@ class Document(Roleable, Relatable, Base, Indexed, db.Model):
   # TODO: inherit from Titled mixin (note: title is nullable here)
   title = deferred(db.Column(db.String), 'Document')
   link = deferred(db.Column(db.String), 'Document')
-  description = deferred(db.Column(db.Text), 'Document')
+  description = deferred(db.Column(db.Text, nullable=False, default=u""),
+                         'Document')
   kind_id = db.Column(db.Integer, db.ForeignKey('options.id'), nullable=True)
   year_id = db.Column(db.Integer, db.ForeignKey('options.id'), nullable=True)
   language_id = db.Column(db.Integer, db.ForeignKey('options.id'),

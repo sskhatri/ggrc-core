@@ -29,31 +29,17 @@ mapper-results {
     padding: 9px 16px 7px;
   }
 
-  .list-pagination {
-    display: block;
+  .tree-pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
 
-    .tree-pagination {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-
-      .dropdown-toggle {
-        font-size: 12px;
-      }
-
-      .dropdown-toggle,
-      ::-webkit-input-placeholder {
-        color: $gray;
-      }
+    ::-webkit-input-placeholder {
+      color: $gray;
     }
 
-    .clearfix {
-      display: none;
-    }
-
-    .pagination {
-      float: none;
-      height: auto;
+    .pagination-dropdown {
+      margin: 0;
     }
   }
 
@@ -70,7 +56,6 @@ mapper-results {
 
   .list-body {
     display: flex;
-    max-height: 240px;
     box-sizing: border-box;
     overflow: auto;
     position: relative;
@@ -386,8 +371,8 @@ mapper-results-item-attrs {
   .attr {
     @include cell-styles();
 
-    tree-people-list-field {
-      div.people-list {
+    tree-field {
+      div.tree-field__item {
         display: none;
         &:nth-child(1) {
           display: block;
@@ -520,7 +505,7 @@ mapper-results-columns-configuration {
 
 .object-modal {
 
-  object-mapper, object-search, object-generator {
+  object-mapper, object-search, object-generator, object-bulk-update {
     collapsible-panel {
       h6 {
         width: inherit;

@@ -39,33 +39,23 @@ have Docker up and running. Here are the steps:
 **NOTE for Windows/OSX users:** Make sure `docker` is up and running by following the [windows guide](https://docs.docker.com/engine/installation/windows/#using-docker-from-windows-command-prompt-cmd-exe) / [osx guide](https://docs.docker.com/engine/installation/mac/#from-your-shell).
 
 * clone the repo
-* cd to the project
-directory
-* Run the following:
-
-    ```
-    ./bin/containers setup dev
-    ```
-
+* cd to the project directory
 * Set up the necessary keys:
 
-    ```
-    mv docker-compose.override.yml{.example,}
-    vim docker-compose.override.yml # Add the keys from cloud console
-    ```
+``` sh
+mv docker-compose.override.yml{.example,}
+vim docker-compose.override.yml # Add the keys from cloud console
+```
+* Run the following:
 
-    Note: if the keys aren't set in with your override file, try restarting the 
-    container with 
-
-    ```
-    docker-compose stop
-    docker-compose up -d
-    ```
+``` sh
+./bin/containers setup dev
+```
 
 To log into the container, run the following:
 
 ``` sh
-    docker exec -it ggrccore_cleandev_1 su
+./bin/containers connect
 ```
 
 If you see download errors during the `docker-compose up -d` stage, or if any subsequent
@@ -206,7 +196,7 @@ python /selenium/src/run_selenium.py
 
 You should also feel free to check how the `./bin/jenkins/run_selenium` script works.
 
-_NOTE: that the "ggrccore" part of the name is due to the repository parent folder name. if you have your repo in a different folder, change the first part accordingly._
+_NOTE: that the "ggrccore" part of the name is due to the repository parent folder name. If you have your repo in a different folder, change the first part accordingly._
 
 
 ## Quickstart Breakdown
@@ -252,7 +242,7 @@ docker exec -it ggrccore_dev_1 su vagrant
 ### Compiling JavaScript and Sass Templates
 
 Since GGRC uses Webpack to bundle JavaScript and Sass Templates, the sources need to be compiled.
-This has been automated via a script available in $PATH in the virtual
+This has been automated via a script available in `$PATH in the virtual
 machine:
 
 ```sh
@@ -378,7 +368,7 @@ command *should* be an update Python virtualenv containing the Python packages
 required by the application as well as any new development package
 requirements.
 
-To Manually update the requirements, you can log in to docker container and run
+To manually update the requirements, you can log in to docker container and run
 
 ```sh
 pip install -r src/requirements-dev.txt

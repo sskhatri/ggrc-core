@@ -6,11 +6,14 @@
 """Tests for notifications for models with assignable mixin."""
 
 from datetime import datetime
+
+import ddt
 from mock import patch
 from sqlalchemy import and_
 
 from ggrc import db
-from ggrc.models import Assessment
+from ggrc.access_control.role import get_custom_roles_for
+from ggrc.models import Assessment, all_models
 from ggrc.models import Notification
 from ggrc.models import NotificationType
 from ggrc.models import Revision
@@ -20,6 +23,7 @@ from integration.ggrc import generator
 from integration.ggrc.models import factories
 
 
+@ddt.ddt
 class TestCommentNotification(TestCase):
 
   """Test notification on assessment comments."""
@@ -87,7 +91,7 @@ class TestCommentNotification(TestCase):
     self.import_file("assessment_with_templates.csv")
     asmt1 = Assessment.query.filter_by(slug="A 1").first()
     self.generator.generate_comment(
-        asmt1, "Verifier", "some comment", send_notification="true")
+        asmt1, "Verifiers", "some comment", send_notification="true")
 
     notifications = self._get_notifications(notif_type="comment_created").all()
     self.assertEqual(len(notifications), 1,
@@ -116,19 +120,19 @@ class TestCommentNotification(TestCase):
     asmt_ids = (asmt1.id, asmt4.id, asmt6.id)
 
     self.generator.generate_comment(
-        asmt1, "Verifier", "comment X on asmt " + str(asmt1.id),
+        asmt1, "Verifiers", "comment X on asmt " + str(asmt1.id),
         send_notification="true")
     self.generator.generate_comment(
-        asmt6, "Verifier", "comment A on asmt " + str(asmt6.id),
+        asmt6, "Verifiers", "comment A on asmt " + str(asmt6.id),
         send_notification="true")
     self.generator.generate_comment(
-        asmt4, "Verifier", "comment FOO on asmt " + str(asmt4.id),
+        asmt4, "Verifiers", "comment FOO on asmt " + str(asmt4.id),
         send_notification="true")
     self.generator.generate_comment(
-        asmt4, "Verifier", "comment BAR on asmt " + str(asmt4.id),
+        asmt4, "Verifiers", "comment BAR on asmt " + str(asmt4.id),
         send_notification="true")
     self.generator.generate_comment(
-        asmt1, "Verifier", "comment Y on asmt " + str(asmt1.id),
+        asmt1, "Verifiers", "comment Y on asmt " + str(asmt1.id),
         send_notification="true")
 
     _, notif_data = common.get_daily_notifications()
@@ -146,3 +150,71 @@ class TestCommentNotification(TestCase):
         self.assertEqual(comment["parent_type"], "Assessment")
         expected_suffix = "asmt " + str(parent_obj_key.id)
         self.assertTrue(comment["description"].endswith(expected_suffix))
+
+  @ddt.data(
+      factories.AccessGroupFactory,
+      factories.ClauseFactory,
+      factories.ControlFactory,
+      factories.DataAssetFactory,
+      factories.FacilityFactory,
+      factories.MarketFactory,
+      factories.ObjectiveFactory,
+      factories.OrgGroupFactory,
+      factories.SystemFactory,
+      factories.ProcessFactory,
+      factories.ProductFactory,
+      factories.SectionFactory,
+      factories.VendorFactory,
+      factories.IssueFactory,
+      factories.PolicyFactory,
+      factories.RegulationFactory,
+      factories.StandardFactory,
+      factories.ContractFactory,
+      factories.RiskFactory,
+      factories.ThreatFactory,
+  )
+  @patch("ggrc.notifications.common.send_email")
+  def test_models_comments(self, obj_factory, _):
+    """Test setting notification entries for model comments.
+
+    Check if the correct notification entries are created when a comment gets
+    posted.
+    """
+    recipient_types = ["Admin", "Primary Contacts", "Secondary Contacts"]
+    person = all_models.Person.query.first()
+    person_email = person.email
+
+    with factories.single_commit():
+      obj = obj_factory(
+          recipients=",".join(recipient_types),
+          send_by_default=False,
+      )
+      ac_roles = get_custom_roles_for(obj.type)
+      for acr_id, acr_name in ac_roles.items():
+        if acr_name in recipient_types:
+          factories.AccessControlListFactory(
+              ac_role_id=acr_id, object=obj, person=person
+          )
+
+    self.generator.generate_comment(
+        obj, "", "some comment", send_notification="true")
+
+    notifications, notif_data = common.get_daily_notifications()
+    self.assertEqual(len(notifications), 1,
+                     "Missing comment notification entry.")
+
+    recip_notifs = notif_data.get(person_email, {})
+    comment_notifs = recip_notifs.get("comment_created", {})
+    self.assertEqual(len(comment_notifs), 1)
+
+    # Check if correct revisions count is created
+    revisions = Revision.query.filter(
+        Revision.resource_type == 'Notification',
+        Revision.resource_id.in_([n.id for n in notifications])
+    )
+    self.assertEqual(revisions.count(), 1)
+
+    self.client.get("/_notifications/send_daily_digest")
+    notifications = self._get_notifications(notif_type="comment_created").all()
+    self.assertEqual(len(notifications), 0,
+                     "Found a comment notification that was not sent.")

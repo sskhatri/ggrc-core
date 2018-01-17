@@ -2,15 +2,16 @@
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
+
+import '../../datepicker/datepicker';
+import template from './date-form-field.mustache';
+
 (function (can, GGRC) {
   'use strict';
 
   GGRC.Components('dateFormField', {
     tag: 'date-form-field',
-    template: can.view(
-      GGRC.mustache_path + '/components/form/' +
-        'fields/date-form-field.mustache'
-    ),
+    template: template,
     viewModel: {
       define: {
         _value: {

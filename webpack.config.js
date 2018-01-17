@@ -13,9 +13,19 @@ const _ = require('lodash');
 const path = require('path');
 const ENV = process.env;
 const isProd = ENV.NODE_ENV === 'production';
-var BundleAnalyzerPlugin;
 
 const STATIC_FOLDER = '/static/';
+const enabledModules = _.compact(_.map(ENV.GGRC_SETTINGS_MODULE.split(' '), function (module) {
+  var name;
+  if (/^ggrc/.test(module)) {
+    name = module.split('.')[0];
+  }
+
+  if (!name) {
+    return '';
+  }
+  return name;
+}));
 
 module.exports = function (env) {
   const extractSass = new ExtractTextPlugin({
@@ -27,12 +37,15 @@ module.exports = function (env) {
     entry: {
       vendor: 'entrypoints/vendor',
       styles: 'entrypoints/styles',
-      dashboard: ['entrypoints/dashboard'].concat(getExtraModules())
-        .concat(['entrypoints/dashboard/bootstrap']),
+      dashboard: getEntryModules('dashboard'),
+      import: getEntryModules('import'),
+      export: getEntryModules('export'),
+      admin: getEntryModules('admin'),
       login: 'entrypoints/login',
     },
     output: {
-      filename: isProd ? '[name].[chunkhash].js' : '[name].js',
+      filename: isProd ? '[name].[chunkhash].js' : '[name].js?[hash]',
+      chunkFilename: isProd ? 'chunk.[name].[chunkhash].js' :'chunk.[name].js?[hash]',
       sourceMapFilename: '[file].map',
       path: path.join(__dirname, './src/ggrc/static/'),
       publicPath: STATIC_FOLDER,
@@ -142,10 +155,13 @@ module.exports = function (env) {
         moment: 'moment',
       }),
       new webpack.DefinePlugin({
-        GGRC_SETTINGS_MODULE: JSON.stringify(process.env.GGRC_SETTINGS_MODULE),
-      }),
-      new webpack.optimize.CommonsChunkPlugin({
-        name: 'vendor',
+        IS_RISKS_ENABLED: JSON.stringify(isModuleEnabled('ggrc_risks')),
+        IS_WORKFLOWS_ENABLED: JSON.stringify(isModuleEnabled('ggrc_workflows')),
+        IS_RISK_ASSESSMENTS_ENABLED: JSON.stringify(isModuleEnabled('ggrc_risk_assessments')),
+        IS_PERMISSIONS_ENABLED: JSON.stringify(isModuleEnabled('ggrc_basic_permissions')),
+        IS_GDRIVE_ENABLED: JSON.stringify(isModuleEnabled('ggrc_gdrive_integration')),
+        GOOGLE_ANALYTICS_ID: JSON.stringify(ENV.GOOGLE_ANALYTICS_ID),
+        DEV_MODE: JSON.stringify(!isProd),
       }),
       new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
       new ManifestPlugin({
@@ -161,43 +177,55 @@ module.exports = function (env) {
   };
 
   if (isProd) {
-    config.plugins.push(new UglifyJSPlugin({
-      sourceMap: true,
-      output: {
-        comments: false,
-        beautify: false,
-      },
-    }));
+    config.plugins = [
+      ...config.plugins,
+      new UglifyJSPlugin({
+        sourceMap: true,
+        output: {
+          comments: false,
+          beautify: false,
+        },
+      }),
+      new CleanWebpackPlugin(['./src/ggrc/static/'], {
+        exclude: ['dashboard-templates*'],
+      }),
+    ];
+  }
 
-    config.plugins.push(new CleanWebpackPlugin(['./src/ggrc/static/'], {
-      exclude: ['dashboard-templates*'],
-    }));
+  if (!env || (env && !env.test)) {
+    config.plugins = [
+      ...config.plugins,
+      new webpack.optimize.CommonsChunkPlugin({
+        name: 'common',
+        chunks: ['dashboard', 'import', 'export', 'admin'],
+      }),
+      new webpack.optimize.CommonsChunkPlugin({
+        name: 'vendor',
+      }),
+    ];
   }
 
   if (env && env.debug) {
-    BundleAnalyzerPlugin =
-      require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-    config.plugins.push(new BundleAnalyzerPlugin({
-      analyzerMode: 'static',
-      generateStatsFile: true,
-    }));
+    let BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+
+    config.plugins = [
+      ...config.plugins,
+      new BundleAnalyzerPlugin({
+        analyzerMode: 'static',
+        generateStatsFile: true,
+      }),
+    ];
   }
 
   return config;
 };
 
-function getExtraModules() {
-  var modules = ENV.GGRC_SETTINGS_MODULE.split(' ');
+function isModuleEnabled(name) {
+  return enabledModules.indexOf(name) > -1;
+}
 
-  return _.compact(_.map(modules, function (module) {
-    var name;
-    if (/^ggrc/.test(module)) {
-      name = module.split('.')[0];
-    }
-
-    if (!name) {
-      return '';
-    }
-    return './src/' + name + '/assets/javascripts';
-  }));
+function getEntryModules(entryName) {
+  return [`entrypoints/${entryName}`,
+    ...enabledModules.map(name => `./src/${name}/assets/javascripts`),
+  `entrypoints/${entryName}/bootstrap`]
 }

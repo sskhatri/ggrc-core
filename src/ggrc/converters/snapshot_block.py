@@ -338,6 +338,6 @@ class SnapshotBlockConverter(object):
         for snapshot in self.snapshots
     ] or [[]]
 
-  def to_array(self):
+  def row_data_to_array(self):
     """Get 2D list representing the CSV file."""
     return self._header_list, self._body_list

@@ -7,6 +7,7 @@ import {
   getCustomAttributeType,
   convertFromCaValue,
 } from '../../plugins/utils/ca-utils';
+import Permission from '../../permission';
 
 (function (can, GGRC) {
   'use strict';

@@ -5,8 +5,5 @@
 
 from ggrc import bootstrap
 
+# pylint: disable=invalid-name
 db = bootstrap.get_db()
-
-__all__ = [
-    db
-]

@@ -3,7 +3,9 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-describe('GGRC Utils Snapshots', function () {
+import * as SnapshotUtils from '../utils/snapshot-utils';
+
+describe('SnapshotUtils', function () {
   describe('isSnapshotType() method', function () {
     var instance;
 
@@ -15,18 +17,18 @@ describe('GGRC Utils Snapshots', function () {
     });
 
     it('isSnapshotType() should return true', function () {
-      expect(GGRC.Utils.Snapshots.isSnapshotType(instance))
+      expect(SnapshotUtils.isSnapshotType(instance))
         .toBe(true);
     });
 
     it('isSnapshotType() should return false', function () {
       instance.type = 'Assessment';
-      expect(GGRC.Utils.Snapshots.isSnapshotType(instance))
+      expect(SnapshotUtils.isSnapshotType(instance))
         .toBe(false);
     });
 
     it('isSnapshotType() should return false. Pass empty object', function () {
-      expect(GGRC.Utils.Snapshots.isSnapshotType({}))
+      expect(SnapshotUtils.isSnapshotType({}))
         .toBe(false);
     });
   });
@@ -41,7 +43,7 @@ describe('GGRC Utils Snapshots', function () {
         var childId = 10;
         var childType = 'Control';
 
-        var query = GGRC.Utils.Snapshots
+        var query = SnapshotUtils
           .getSnapshotItemQuery(relevantInstance, childId, childType);
 
         var queryData = query.data[0];
@@ -64,7 +66,7 @@ describe('GGRC Utils Snapshots', function () {
     var toObject;
 
     beforeAll(function () {
-      toObject = GGRC.Utils.Snapshots.toObject;
+      toObject = SnapshotUtils.toObject;
     });
 
     beforeEach(function () {

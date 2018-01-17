@@ -7,12 +7,13 @@ resources.
 """
 
 import datetime
+import collections
 import hashlib
 import itertools
 import json
 import time
+
 from logging import getLogger
-from collections import defaultdict
 from exceptions import TypeError
 from wsgiref.handlers import format_date_time
 from urllib import urlencode
@@ -23,6 +24,7 @@ from flask.ext.sqlalchemy import Pagination
 import sqlalchemy.orm.exc
 from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import class_mapper
 from sqlalchemy.sql.expression import tuple_
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -51,6 +53,7 @@ CACHE_EXPIRY_COLLECTION = 60
 
 
 def _get_cache_manager():
+  """Returns an instance of CacheManager."""
   from ggrc.cache import CacheManager, MemCache
   cache_manager = CacheManager()
   cache_manager.initialize(MemCache())
@@ -83,14 +86,16 @@ def get_cache_key(obj, type=None, id=None):
 
 
 def get_cache_class(obj):
+  """Returns string name of object's class."""
   return obj.__class__.__name__
 
 
 def get_related_keys_for_expiration(context, o):
+  """Returns a list for expiration."""
   cls = get_cache_class(o)
   keys = []
   mappings = context.cache_manager.supported_mappings.get(cls, [])
-  if len(mappings) > 0:
+  if mappings:
     for (cls, attr, polymorph) in mappings:
       if polymorph:
         key = get_cache_key(
@@ -173,23 +178,23 @@ def update_memcache_before_commit(context, modified_objects, expiry_time):
   context.cache_manager = _get_cache_manager()
 
   if modified_objects is not None:
-    if len(modified_objects.new) > 0:
+    if modified_objects.new:
       memcache_mark_for_deletion(context, modified_objects.new.items())
 
-    if len(modified_objects.dirty) > 0:
+    if modified_objects.dirty:
       memcache_mark_for_deletion(context, modified_objects.dirty.items())
 
-    if len(modified_objects.deleted) > 0:
+    if modified_objects.deleted:
       memcache_mark_for_deletion(context, modified_objects.deleted.items())
 
   status_entries = {}
   for key in context.cache_manager.marked_for_delete:
     build_cache_status(status_entries, 'DeleteOp:' + key,
                        expiry_time, 'InProgress')
-  if len(status_entries) > 0:
+  if status_entries:
     logger.info("CACHE: status entries: %s", status_entries)
     ret = context.cache_manager.bulk_add(status_entries, expiry_time)
-    if ret is not None and len(ret) == 0:
+    if ret is not None and not ret:
       pass
     else:
       logger.error('CACHE: Unable to add status for newly created entries %s',
@@ -225,7 +230,7 @@ def update_memcache_after_commit(context):
   memcache_mark_for_deletion(context, related_objs)
 
   # TODO(dan): check for duplicates in marked_for_delete
-  if len(cache_manager.marked_for_delete) > 0:
+  if cache_manager.marked_for_delete:
     delete_result = cache_manager.bulk_delete(
         cache_manager.marked_for_delete, 0)
     # TODO(dan): handling failure including network errors,
@@ -236,7 +241,7 @@ def update_memcache_after_commit(context):
   status_entries = []
   for key in cache_manager.marked_for_delete:
     status_entries.append('DeleteOp:' + str(key))
-  if len(status_entries) > 0:
+  if status_entries:
     delete_result = cache_manager.bulk_delete(status_entries, 0)
     # TODO(dan): handling failure including network errors,
     #            currently we log errors
@@ -272,12 +277,13 @@ def get_modified_objects(session):
   cache = Cache.get_cache()
   if cache:
     return cache.copy()
-  else:
-    return None
+
+  return None
 
 
 def update_snapshot_index(session, cache):
   """Update fulltext index records for cached snapshtos."""
+  del session  # Unused
   from ggrc.snapshotter.indexer import reindex_snapshots
   if cache is None:
     return
@@ -338,21 +344,21 @@ class ModelView(View):
     mapper = model._sa_class_manager.mapper
     if mapper.polymorphic_on is None:
       return True
-    else:
-      mappers = list(mapper.self_and_descendants)
-      polymorphic_on_values = list(
-          val
-          for val, m in mapper.polymorphic_map.items()
-          if m in mappers)
-      return mapper.polymorphic_on.in_(polymorphic_on_values)
+
+    mappers = list(mapper.self_and_descendants)
+    polymorphic_on_values = list(
+        val
+        for val, m in mapper.polymorphic_map.items()
+        if m in mappers)
+    return mapper.polymorphic_on.in_(polymorphic_on_values)
 
   def _get_matching_types(self, model):
     mapper = model._sa_class_manager.mapper
     if len(list(mapper.self_and_descendants)) == 1:
       return mapper.class_.__name__
-    else:
-      # FIXME: Actually needs to use 'self_and_descendants'
-      return [m.class_.__name__ for m in mapper.self_and_descendants]
+
+    # FIXME: Actually needs to use 'self_and_descendants'
+    return [m.class_.__name__ for m in mapper.self_and_descendants]
 
   def get_match_columns(self, model):
     mapper = model._sa_class_manager.mapper
@@ -374,12 +380,12 @@ class ModelView(View):
     return self.filter_query_by_request(
         query, filter_by_contexts=filter_by_contexts)
 
-  def get_resource_match_query(self, model, id):
+  def get_resource_match_query(self, model, obj_id):
     columns = self.get_match_columns(model)
     query = db.session.query(*columns).filter(
         and_(
             self._get_type_where_clause(model),
-            columns[0] == id))
+            columns[0] == obj_id))
     return query
 
   # Default model/DB helpers
@@ -497,14 +503,14 @@ class ModelView(View):
     query = query.distinct()
     return query
 
-  def get_object(self, id):
+  def get_object(self, obj_id):
     # This could also use `self.pk`
     # .one() is required as long as any .eager_load() adds joins using
     #   'contains_eager()' to the core query, because 'LIMIT 1' breaks up
     #   that JOIN result (e.g. Categorizable)
     try:
-      return self.get_collection(filter_by_contexts=False)\
-          .filter(self.model.id == id).one()
+      return self.get_collection(
+          filter_by_contexts=False).filter(self.model.id == obj_id).one()
     except sqlalchemy.orm.exc.NoResultFound:
       return None
 
@@ -548,15 +554,15 @@ class ModelView(View):
   @classmethod
   def url_for(cls, *args, **kwargs):
     url = cls.base_url_for()
-    if len(args) > 0:
+    if args:
       arg = args[0]
-      id = arg if not isinstance(arg, db.Model) else arg.id
-      url = url + '/' + str(id)
+      arg_id = arg if not isinstance(arg, db.Model) else arg.id
+      url = '%s/%s' % (url, arg_id)
     if 'id' in kwargs:
-      url = url + '/' + str(kwargs['id'])
+      url = '%s/%s' % (url, kwargs['id'])
       del kwargs['id']
-    if len(kwargs) > 0:
-      url = url + '?' + urlencode(kwargs)
+    if kwargs:
+      url = '%s?%s' % (url, urlencode(kwargs))
     return url
 
   @classmethod
@@ -575,7 +581,7 @@ class Resource(ModelView):
   """View base class for Views handling.  Will typically be registered with an
   application following a collection style for routes. Collection `GET` and
   `POST` will have a route like `/resources` while collection member
-  resource routes will have routes likej `/resources/<pk:pk_type>`.
+  resource routes will have routes like `/resources/<pk:pk_type>`.
 
   To register a Resource subclass FooCollection with a Flask application:
 
@@ -599,13 +605,11 @@ class Resource(ModelView):
           if method == 'GET':
             if self.pk in kwargs and kwargs[self.pk] is not None:
               return self.get(*args, **kwargs)
-            else:
-              return self.collection_get()
+            return self.collection_get()
           elif method == 'POST':
             if self.pk in kwargs and kwargs[self.pk] is not None:
               return self.post(*args, **kwargs)
-            else:
-              return self.collection_post()
+            return self.collection_post()
           elif method == 'PUT':
             return self.put(*args, **kwargs)
           elif method == 'PATCH':
@@ -706,23 +710,39 @@ class Resource(ModelView):
 
   def _check_put_permissions(self, obj, new_context):
     """Check context and resource permissions for PUT."""
-    if not permissions.is_allowed_update(
-        self.model.__name__, obj.id, obj.context_id)\
-       and not permissions.has_conditions('update', self.model.__name__):
+    if (not permissions.is_allowed_update(
+            self.model.__name__, obj.id, obj.context_id) and
+            not permissions.has_conditions('update', self.model.__name__)):
       raise Forbidden()
     if not permissions.is_allowed_update_for(obj):
       raise Forbidden()
-    if new_context != obj.context_id \
-       and not permissions.is_allowed_update(
-            self.model.__name__, obj.id, new_context)\
-       and not permissions.has_conditions('update', self.model.__name__):
+    if (new_context != obj.context_id and
+            not permissions.is_allowed_update(
+                self.model.__name__, obj.id, new_context) and
+            not permissions.has_conditions('update', self.model.__name__)):
       raise Forbidden()
+
+  def dump_attrs(self, obj):
+    obj_cls = type(obj)
+    mapper = class_mapper(obj_cls)
+    rel_keys = {c.key for c in mapper.relationships}
+    attrs = tuple(
+        p.key
+        for p in mapper.iterate_properties
+        if p.key not in rel_keys)
+    # TODO(anushovan): consider caching class definitions.
+    attrs_cls = collections.namedtuple('Dumped%s' % obj_cls.__name__, attrs)
+    values = tuple(getattr(obj, k, None) for k in attrs)
+    return attrs_cls(*values)
 
   def put(self, id):
     with benchmark("Query for object"):
       obj = self.get_object(id)
     if obj is None:
       return self.not_found_response()
+
+    initial_state = self.dump_attrs(obj)
+
     src = self.request.json
     if self.request.mimetype != 'application/json':
       return current_app.make_response(
@@ -736,9 +756,11 @@ class Resource(ModelView):
     except KeyError:
       raise BadRequest('Required attribute "{0}" not found'.format(
           root_attribute))
+
     with benchmark("Deserialize object"):
       self.json_update(obj, src)
     obj.modified_by_id = get_current_user_id()
+    obj.updated_at = datetime.datetime.now()
     db.session.add(obj)
     with benchmark("Query update permissions"):
       new_context = self.get_context_id_from_json(src)
@@ -760,6 +782,10 @@ class Resource(ModelView):
     with benchmark("Update memcache before commit for collection PUT"):
       update_memcache_before_commit(
           self.request, modified_objects, CACHE_EXPIRY_COLLECTION)
+    with benchmark("Send PUT - before commit event"):
+      signals.Restful.model_put_before_commit.send(
+          obj.__class__, obj=obj, src=src, service=self, event=event,
+          initial_state=initial_state)
     with benchmark("Commit"):
       db.session.commit()
     with benchmark("Query for object"):
@@ -772,7 +798,8 @@ class Resource(ModelView):
       update_memcache_after_commit(self.request)
     with benchmark("Send PUT - after commit event"):
       signals.Restful.model_put_after_commit.send(
-          obj.__class__, obj=obj, src=src, service=self, event=event)
+          obj.__class__, obj=obj, src=src, service=self, event=event,
+          initial_state=initial_state)
       # Note: Some data is created in listeners for model_put_after_commit
       # (like updates to snapshots), so we need to commit the changes
       with benchmark("Get modified objects"):
@@ -872,7 +899,7 @@ class Resource(ModelView):
       database_matches = matches
 
     database_objs = {}
-    if len(database_matches) > 0:
+    if database_matches:
       database_objs = self.get_resources_from_database(matches)
       if self.has_cache():
         with benchmark("Add resources to cache"):
@@ -928,7 +955,7 @@ class Resource(ModelView):
         with benchmark("Filter resources based on permissions"):
           objs = filter_resource(objs)
 
-        cache_op = 'Hit' if len(cache_objs) > 0 else 'Miss'
+        cache_op = 'Hit' if cache_objs else 'Miss'
     with benchmark("dispatch_request > collection_get > Create Response"):
       # Return custom fields specified via `__fields=id,title,description` etc.
       # TODO this can be optimized by filter_resource() not retrieving
@@ -1099,7 +1126,7 @@ class Resource(ModelView):
 
   def _gather_referenced_objects(self, data, accomulator=None):
     if accomulator is None:
-      accomulator = defaultdict(set)
+      accomulator = collections.defaultdict(set)
     if isinstance(data, list):
       for value in data:
         self._gather_referenced_objects(value, accomulator)
@@ -1129,6 +1156,7 @@ class Resource(ModelView):
       no_result: Flag for suppressing results.
       running_async: Flag for async jobs.
     """
+    del running_async  # Unused
 
     with benchmark("Generate objects"):
       objects = []
@@ -1265,7 +1293,7 @@ class Resource(ModelView):
           for res_status, body in res:
             if not 200 <= res_status < 300:
               errors.append((res_status, body))
-          if len(errors) > 0:
+          if errors:
             status = errors[0][0]
             headers[
                 "X-Flash-Error"] = ' || '.join((error for _, error in errors))
@@ -1315,7 +1343,7 @@ class Resource(ModelView):
     # FIXME This needs to be improved to deal with branching paths... if that's
     # desirable or needed.
     if inclusions is not None:
-      if len(inclusions) == 0:
+      if not inclusions:
         raise BadRequest(
             'The __include query parameter requires at least one field to be '
             'included.')

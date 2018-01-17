@@ -4,6 +4,8 @@
 """Tests export of Audit and mapped objects."""
 from collections import defaultdict
 
+from freezegun import freeze_time
+
 from ggrc import utils
 from ggrc.snapshotter.rules import Types
 
@@ -58,3 +60,18 @@ class TestAuditExport(TestCase):
       mapping_name = format_.format(utils.title_from_camelcase(type_))
       self.assertIn(mapping_name, audit_data)
       self.assertEqual(audit_data[mapping_name], "\n".join(sorted(slugs)))
+
+  def test_export_deprecated_date(self):
+    """Test export of audit last deprecated date"""
+    with freeze_time("2017-01-25"):
+      factories.AuditFactory(status="Deprecated")
+
+    last_deprecated_date = self.export_parsed_csv([{
+        "object_name": "Audit",
+        "filters": {
+            "expression": {}
+        },
+        "fields": ["last_deprecated_date"],
+    }])["Audit"][0]["Last Deprecated Date"]
+
+    self.assertEquals("01/25/2017", last_deprecated_date)

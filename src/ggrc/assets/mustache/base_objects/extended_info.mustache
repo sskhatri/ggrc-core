@@ -6,57 +6,23 @@
 
   <div class="row-fluid">
     <div class="span12">
-      {{#if_equals instance.class.table_singular 'person'}}
-        <a class="main-title {{class.category}} oneline" href="{{viewLink}}">
-          {{firstnonempty name email}}
-        </a>
-      {{else}}
-        <a class="main-title {{class.category}} oneline" href="{{viewLink}}">
-          {{title}}
-        </a>
-      {{/if_equals}}
+      <a class="main-title {{class.category}} oneline" href="{{viewLink}}">
+        {{title}}
+      </a>
     </div>
   </div>
 
-  {{^if_equals instance.class.table_singular 'person'}}
-    <div class="row-fluid">
-      <div class="span12">
-        <h6>Description</h6>
-        <div class="rtf">
-          {{{firstnonempty description '<span class="empty-message">None</span>'}}}
-        </div>
+  <div class="row-fluid">
+    <div class="span12">
+      <h6>Description</h6>
+      <div class="rtf">
+        {{{firstnonempty description '<span class="empty-message">None</span>'}}}
       </div>
     </div>
-  {{/if_equals}}
+  </div>
 
-  {{#if_equals instance.class.table_singular 'person'}}
-    <div class="row-fluid">
-      <div class="span12">
-        <h6>Email</h6>
-        <p class="oneline">
-          {{#using person=this}}
-            {{>'/static/mustache/people/popover.mustache'}}
-          {{/using}}
-        </p>
-      </div>
-    </div>
+  {{>'/static/mustache/base_objects/contacts.mustache'}}
 
-    {{#if company.length}}
-      <div class="row-fluid">
-        <div class="span12">
-          <h6>Company</h6>
-          <p class="oneline">
-            {{company}}
-          </p>
-        </div>
-      </div>
-    {{/if}}
-
-  {{/if_equals}}
-
-  {{^if_equals instance.class.table_singular 'person'}}
-    {{>'/static/mustache/base_objects/contacts.mustache'}}
-  {{/if_equals}}
 
   <div class="row-fluid">
     <div class="span5">
@@ -86,15 +52,15 @@
       {{/visibility_delay}}
     </div>
   </div>
-  {{^if_equals instance.class.table_singular 'person'}}
-    <div class="row-fluid">
-      <div class="span12">
-        <div class="code">
-          Code: {{slug}}
-        </div>
+
+  <div class="row-fluid">
+    <div class="span12">
+      <div class="code">
+        Code: {{slug}}
       </div>
     </div>
-  {{/if_equals}}
+  </div>
+
   <div class="links">
     <div class="row-fluid">
       <div class="span6">

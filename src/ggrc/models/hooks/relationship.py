@@ -8,9 +8,15 @@ import functools
 import logging
 import itertools
 
+from collections import defaultdict, namedtuple
 import sqlalchemy as sa
+from sqlalchemy.orm import Session
 
-from ggrc import db
+from ggrc import login, db
+from ggrc.access_control.role import get_custom_roles_for
+from ggrc.models.mixins.assignable import Assignable
+from ggrc.models.hooks import assessment
+from ggrc.models.relationship import Stub
 from ggrc.services import signals
 from ggrc.models import all_models
 from ggrc.models.comment import Commentable
@@ -260,13 +266,276 @@ def unmap_issue_cascade(asmnt, issue):
     db.session.delete(instance)
 
 
-def init_hook():
+def related(base_objects, rel_cache):
+  """Get stubs of related objects
+
+  Args:
+    base_objects(list): Stubs of objects for which related objects
+    should be collected
+    rel_cache(RelationshipsCache): Instance of relationship cache
+
+  Returns:
+    Dict of base objects with their mappings
+  """
+  stubs = [o for o in base_objects if o not in rel_cache.cache]
+  if stubs:
+    rel_cache.populate_cache(stubs)
+
+  return {o: rel_cache.cache[o] for o in base_objects if o in rel_cache.cache}
+
+
+def related_regulation_snaps(snapshot_ids):
+  """Collect all snapshots of Objective and Regulations mapped to
+  snapshot of Control
+
+  Args:
+    snapshot_ids(list): Ids of snapshots of controls.
+
+  Returns:
+    Query with ids of control snapshot and mapped one.
+  """
+  related_snapshots = sa.union_all(
+      db.session.query(
+          all_models.Relationship.destination_id.label("base_snap_id"),
+          all_models.Relationship.source_id.label("rel_snap_id"),
+          all_models.Snapshot.child_type.label("child_type")
+      ).join(
+          all_models.Snapshot,
+          sa.and_(
+              all_models.Relationship.source_id == all_models.Snapshot.id,
+              all_models.Relationship.source_type == "Snapshot",
+              all_models.Relationship.destination_type == "Snapshot",
+          )
+      ),
+      db.session.query(
+          all_models.Relationship.source_id,
+          all_models.Relationship.destination_id,
+          all_models.Snapshot.child_type
+      ).join(
+          all_models.Snapshot,
+          sa.and_(
+              all_models.Relationship.destination_id == all_models.Snapshot.id,
+              all_models.Relationship.source_type == "Snapshot",
+              all_models.Relationship.destination_type == "Snapshot",
+          )
+      )
+  ).alias("related_snapshots")
+
+  return db.session.query(
+      related_snapshots.c.base_snap_id,
+      related_snapshots.c.rel_snap_id,
+  ).join(
+      all_models.Snapshot,
+      related_snapshots.c.base_snap_id == all_models.Snapshot.id,
+  ).filter(
+      all_models.Snapshot.child_type == "Control",
+      related_snapshots.c.base_snap_id.in_(snapshot_ids),
+      related_snapshots.c.child_type.in_(["Objective", "Regulation"]),
+  )
+
+
+def add_related_snapshots(snapshot_ids, related_objects):
+  """Get Stubs of Objective and Regulations snapshots mapped to
+  snapshot of Control
+
+  Args:
+    snapshot_ids(dict): Ids of control snapshots with Stub of assigned object.
+    related_objects(dict): Dict of base assigned objects with Stubs of related.
+  """
+  related_regulations = related_regulation_snaps(snapshot_ids.keys())
+  for base_snap, related_snap in related_regulations:
+    rel_snap_stub = Stub("Snapshot", related_snap)
+    related_objects[snapshot_ids[base_snap]].add(rel_snap_stub)
+
+
+def handle_relationship_creation(session, flush_context):
+  """Create relations for mapped objects."""
+  # pylint: disable=unused-argument
+  base_objects = defaultdict(set)
+  related_objects = defaultdict(set)
+  snapshot_ids = {}
+  for obj in session.new:
+    if isinstance(obj, all_models.Relationship) and (
+        issubclass(type(obj.source), Assignable) or
+        issubclass(type(obj.destination), Assignable)
+    ):
+      assign_obj, other = obj.source, obj.destination
+      if not issubclass(type(obj.source), Assignable):
+        assign_obj, other = other, assign_obj
+      for acl in assign_obj.access_control_list:
+        acr_id = acl.ac_role.id if acl.ac_role else acl.ac_role_id
+        ac_role = get_custom_roles_for(acl.object_type)[acr_id]
+        if ac_role in assign_obj.ASSIGNEE_TYPES:
+          assign_stub = Stub(assign_obj.type, assign_obj.id)
+          other_stub = Stub(other.type, other.id)
+          base_objects[assign_stub].add(acl)
+          related_objects[assign_stub].add(other_stub)
+
+          if other.type == "Snapshot":
+            snapshot_ids[other.id] = assign_stub
+
+  if base_objects:
+    if snapshot_ids:
+      add_related_snapshots(snapshot_ids, related_objects)
+    create_related_roles(base_objects, related_objects)
+
+
+def get_mapped_role(object_type, acr_name, mapped_obj_type):
+  """Get AC role that is mapped to provided one.
+
+  Args:
+    object_type(str): Type of object
+    acr_name(str): Name of AC role
+    mapped_obj_type(str): Type of mapped object
+
+  Returns:
+    Id of AC role with name '<Assignee type> Mapped' or
+    '<Assignee type> Document Mapped' will be returned
+  """
+  obj_roles = {
+      role_name: role_id
+      for role_id, role_name in get_custom_roles_for(object_type).items()
+  }
+  doc_part = " Document" if mapped_obj_type == "Document" else ""
+  return obj_roles.get("{}{} Mapped".format(acr_name, doc_part))
+
+
+def create_related_roles(base_objects, related_objects):
+  """Create mapped roles for related objects
+
+  Args:
+    base_objects(defaultdict(dict)): Objects which have Assignee role
+    related_objects(defaultdict(set)): Objects related to assigned
+  """
+  if not base_objects or not related_objects:
+    return
+
+  acl_row = namedtuple(
+      "acl_row", "person_id object_id object_type ac_role_id parent_id"
+  )
+  acl_parent = namedtuple("acl_parent", "context parent")
+  acl_data = {}
+  for base_stub, related_stubs in related_objects.items():
+    for related_stub in related_stubs:
+      for acl in base_objects[base_stub]:
+        acr_id = acl.ac_role.id if acl.ac_role else acl.ac_role_id
+        mapped_acr_id = get_mapped_role(
+            base_stub.type,
+            get_custom_roles_for(base_stub.type)[acr_id],
+            related_stub.type
+        )
+        if not mapped_acr_id:
+          raise Exception(
+              "Mapped role wasn't found for role with "
+              "id: {}".format(acl.ac_role_id)
+          )
+        acl_data[acl_row(
+            acl.person_id or acl.person.id,
+            related_stub.id,
+            related_stub.type,
+            mapped_acr_id,
+            acl.id,
+        )] = acl_parent(acl.context, acl)
+
+  # Find existing acl instances in db
+  existing_acls = set(db.session.query(
+      all_models.AccessControlList.person_id,
+      all_models.AccessControlList.object_id,
+      all_models.AccessControlList.object_type,
+      all_models.AccessControlList.ac_role_id,
+      all_models.AccessControlList.parent_id,
+  ).filter(
+      sa.tuple_(
+          all_models.AccessControlList.person_id,
+          all_models.AccessControlList.object_id,
+          all_models.AccessControlList.object_type,
+          all_models.AccessControlList.ac_role_id,
+          all_models.AccessControlList.parent_id,
+      ).in_(acl_data.keys())
+  ).all())
+  # Find existing acl instances in session
+  session_acls = {
+      (
+          a.person_id,
+          a.object_id,
+          a.object_type,
+          a.ac_role_id,
+          a.parent.id if a.parent else a.parent_id,
+      ):
+      (a.person_id, a.object_id, a.object_type, a.ac_role_id, a.parent)
+      for a in db.session.new if isinstance(a, all_models.AccessControlList)
+  }
+  existing_acls.update(session_acls.keys())
+
+  current_user_id = login.get_current_user_id()
+  # Create new acl instance only if it absent in db and session
+  for acl in set(acl_data.keys()) - existing_acls:
+    # In some cases parent_id will be None, but parent object is not empty.
+    # that's why we should additionally compare parent objects
+    if (
+        acl.person_id,
+        acl.object_id,
+        acl.object_type,
+        acl.ac_role_id,
+        acl_data[acl].parent
+    ) not in session_acls.values():
+      db.session.add(all_models.AccessControlList(
+          person_id=acl.person_id,
+          ac_role_id=acl.ac_role_id,
+          object_id=acl.object_id,
+          object_type=acl.object_type,
+          context=acl_data[acl].context,
+          modified_by_id=current_user_id,
+          parent=acl_data[acl].parent,
+      ))
+
+
+def handle_relationship_delete(relationship):
+  """Delete mapped AC roles if object unmapped from Assessment."""
+  if (issubclass(type(relationship.source), Assignable) or
+     issubclass(type(relationship.destination), Assignable)):
+    assign_obj, other = relationship.source, relationship.destination
+    if not issubclass(type(relationship.source), Assignable):
+      assign_obj, other = other, assign_obj
+    parent_ids = {acl.id for acl in assign_obj.access_control_list}
+    db.session.query(all_models.AccessControlList).filter(
+        all_models.AccessControlList.parent_id.in_(parent_ids),
+        all_models.AccessControlList.object_type == other.type,
+        all_models.AccessControlList.object_id == other.id,
+    ).delete(synchronize_session='fetch')
+
+
+def copy_snapshot_test_plan(objects, sources):
+  """Append snapshot test plan into assessment test plan"""
+  for obj, src in zip(objects, sources):
+    if (obj.source_type == "Assessment" and
+        obj.destination_type == "Snapshot") or (
+        obj.source_type == "Snapshot" and
+        obj.destination_type == "Assessment"
+    ):
+      asmnt, snapshot = obj.source, obj.destination
+      if asmnt.type != "Assessment":
+        asmnt, snapshot = snapshot, asmnt
+
+      # Test plan of snapshotted object should be copied to
+      # Assessment test plan in case of proper snapshot type
+      # and if copyAssessmentProcedure flag was sent, it should
+      # be set to True
+      if asmnt.assessment_type == snapshot.child_type and \
+         src.get("copyAssessmentProcedure", True):
+        assessment.copy_snapshot_plan(asmnt, snapshot)
+
+
+def init_hook():  # noqa
   """Initialize Relationship-related hooks."""
   # pylint: disable=unused-variable
-  sa.event.listen(all_models.Relationship, "before_insert",
-                  all_models.Relationship.validate_attrs)
-  sa.event.listen(all_models.Relationship, "before_update",
-                  all_models.Relationship.validate_attrs)
+  sa.event.listen(Session, "after_flush", handle_relationship_creation)
+
+  @signals.Restful.model_deleted.connect_via(all_models.Relationship)
+  def relationship_deleted_listener(sender, obj=None, src=None, service=None):
+    """Process relationship removing."""
+    # pylint: disable=unused-argument
+    handle_relationship_delete(obj)
 
   @signals.Restful.collection_posted.connect_via(all_models.Relationship)
   def handle_comment_mapping(sender, objects=None, **kwargs):
@@ -306,3 +575,9 @@ def init_hook():
         asmnt, issue = issue, asmnt
 
       unmap_issue_cascade(asmnt, issue)
+
+  @signals.Restful.collection_posted.connect_via(all_models.Relationship)
+  def handle_asmnt_plan(sender, objects=None, sources=None, **kwargs):
+    """Handle assessment test plan"""
+    # pylint: disable=unused-argument
+    copy_snapshot_test_plan(objects, sources)

@@ -4,9 +4,6 @@
 */
 
 ;(function(CMS, GGRC, can, $) {
-
-
-
   can.Control("GGRC.Controllers.WorkflowPage", {
     defaults: {
     }
@@ -28,55 +25,4 @@
       }
     }
   });
-
-  can.Model.Cacheable("CMS.ModelHelpers.CloneWorkflow", {
-    defaults : {
-      clone_people: true,
-      clone_tasks: true,
-      clone_objects: true
-    }
-  }, {
-    refresh: function() {
-      return $.when(this);
-    },
-    save: function() {
-      var workflow = new CMS.Models.Workflow({
-        clone: this.source_workflow.id,
-        context: null,
-        clone_people: this.clone_people,
-        clone_tasks: this.clone_tasks,
-        clone_objects: this.clone_objects
-      });
-
-      return workflow.save().then(function(workflow) {
-        GGRC.navigate(workflow.viewLink);
-        return this;
-      });
-
-    }
-  });
-
-  can.Model.Cacheable("CMS.ModelHelpers.CloneTaskGroup", {
-    defaults : {
-      clone_objects: true,
-      clone_tasks: true,
-      clone_people: true
-    }
-  }, {
-    refresh: function() {
-      return $.when(this);
-    },
-    save: function() {
-      var task_group = new CMS.Models.TaskGroup({
-        clone: this.source_task_group.id,
-        context: null,
-        clone_objects: this.clone_objects,
-        clone_tasks: this.clone_tasks,
-        clone_people: this.clone_people
-      });
-
-      return task_group.save();
-    }
-  });
-
 })(window.CMS, window.GGRC, window.can, window.can.$);

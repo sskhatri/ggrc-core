@@ -14,7 +14,13 @@
     create: 'POST /api/controls',
     update: 'PUT /api/controls/{id}',
     destroy: 'DELETE /api/controls/{id}',
-    mixins: ['unique_title', 'ca_update', 'timeboxed'],
+    mixins: [
+      'unique_title',
+      'ca_update',
+      'timeboxed',
+      'accessControlList',
+      'base-notifications',
+    ],
     is_custom_attributable: true,
     isRoleable: true,
     attributes: {
@@ -75,7 +81,8 @@
         {attr_title: 'Assertions', attr_name: 'assertions'},
         {attr_title: 'Categories', attr_name: 'categories'}
       ]),
-      display_attr_names: ['title', 'status', 'last_assessment_date'],
+      display_attr_names: ['title', 'status', 'last_assessment_date',
+        'updated_at'],
       add_item_view: GGRC.mustache_path + '/snapshots/tree_add_item.mustache',
       show_related_assessments: true,
       draw_children: true

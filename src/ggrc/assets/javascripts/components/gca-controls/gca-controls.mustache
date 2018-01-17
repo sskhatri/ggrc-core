@@ -1,0 +1,33 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+{{#each items}}
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__row {{#if caError}}field-failure{{/if}}">
+    <label for="form-field-{{id}}" class="form-label required-label ggrc-form-item__label">
+      <span class="ggrc-form-item__label-text">{{title}}</span>
+      {{#if required}}
+	<i class="fa fa-asterisk"></i>
+      {{/if}}
+    </label>
+    <div class="ggrc-form-item__small-text">
+      <small>
+	<em>{{helptext}}</em>
+      </small>
+    </div>
+    <custom-attributes-field
+      {type}="type"
+      {(value)}="value"
+      {field-id}="id"
+      {placeholder}="placeholder"
+      {options}="options"
+      (value-changed)="updateGlobalAttribute(%event, %context)"
+      class="form-field__content {{extraClass type}}"
+    ></custom-attributes-field>
+    {{#if caError}}
+      <label class="help-inline warning">{{caError}}</label>
+    {{/if}}
+  </div>
+</div>
+{{/each}}

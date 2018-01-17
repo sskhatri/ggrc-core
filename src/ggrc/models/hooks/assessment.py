@@ -7,35 +7,107 @@
   We are applying assessment template properties and make
   new relationships and custom attributes
 """
-import logging
-from itertools import izip
-from collections import defaultdict
-
+import collections
+import itertools
 
 from sqlalchemy import orm
 
 from ggrc import db
+from ggrc import access_control
 from ggrc.login import get_current_user_id
 from ggrc.models import all_models
-from ggrc.models import Assessment
-from ggrc.models import Snapshot
 from ggrc.models.hooks import common
+from ggrc.models.hooks import issue_tracker
 from ggrc.services import signals
-from ggrc.access_control import role
 
-logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+def _load_snapshots(snapshot_ids):
+  """Returns snapshots for given IDs."""
+  return {
+      s.id: s for s in all_models.Snapshot.query.options(
+          orm.undefer_group('Snapshot_complete'),
+          orm.Load(all_models.Snapshot).joinedload(
+              'revision'
+          ).undefer_group(
+              'Revision_complete'
+          )
+      ).filter(
+          all_models.Snapshot.id.in_(snapshot_ids)
+      )
+  }
+
+
+def _load_templates(template_ids):
+  """Returns assessment templates for given IDs."""
+  return {
+      t.id: t for t in all_models.AssessmentTemplate.query.options(
+          orm.undefer_group('AssessmentTemplate_complete'),
+      ).filter(
+          all_models.AssessmentTemplate.id.in_(template_ids)
+      )
+  }
+
+
+def _load_audits(audit_ids):
+  """Returns audits for given IDs."""
+  return {
+      a.id: a for a in all_models.Audit.query.options(
+          orm.undefer_group('Audit_complete'),
+      ).filter(
+          all_models.Audit.id.in_(audit_ids)
+      )
+  }
+
+
+def _handle_assessment(assessment, src, snapshots, templates, audits):
+  """Handles auto calculated properties for Assessment model."""
+  snapshot_dict = src.get('object') or {}
+  common.map_objects(assessment, snapshot_dict)
+  common.map_objects(assessment, src.get('audit'))
+  snapshot = snapshots.get(snapshot_dict.get('id'))
+
+  if not src.get('_generated') and not snapshot:
+    return
+
+  template = templates.get(src.get('template', {}).get('id'))
+  audit = audits[src['audit']['id']]
+  relate_assignees(assessment, snapshot, template, audit)
+  relate_ca(assessment, template)
+  assessment.title = u'{} assessment for {}'.format(
+      snapshot.revision.content['title'],
+      audit.title,
+  )
+
+  if not template:
+    # Assessment test plan should inherit test plan of snapshot
+    assessment.test_plan = snapshot.revision.content.get("test_plan")
+    return
+
+  assessment.test_plan = template.procedure_description
+  if template.test_plan_procedure:
+    copy_snapshot_plan(assessment, snapshot)
+  if template.template_object_type:
+    assessment.assessment_type = template.template_object_type
 
 
 def init_hook():
-  """ Initialize hooks"""
-  # pylint: disable=unused-variable
-  @signals.Restful.collection_posted.connect_via(Assessment)
-  def handle_assessment_post(sender, objects=None, sources=None):
-    # pylint: disable=unused-argument
-    """Apply custom attribute definitions and map people roles
-    when generating Assessmet with template"""
-    db.session.flush()
+  """Initializes hooks."""
 
+  # pylint: disable=unused-variable
+  @signals.Restful.collection_posted.connect_via(all_models.Assessment)
+  def handle_assessment_post(sender, objects=None, sources=None, service=None):
+    """Applies custom attribute definitions and maps people roles.
+
+    Applicable when generating Assessment with template.
+
+    Args:
+      sender: A class of Resource handling the POST request.
+      objects: A list of model instances created from the POSTed JSON.
+      sources: A list of original POSTed JSON dictionaries.
+    """
+    del sender, service  # Unused
+
+    db.session.flush()
     audit_ids = []
     template_ids = []
     snapshot_ids = []
@@ -45,61 +117,30 @@ def init_hook():
       audit_ids.append(src.get('audit', {}).get('id'))
       template_ids.append(src.get('template', {}).get('id'))
 
-    snapshot_cache = {
-        s.id: s for s in Snapshot.query.options(
-            orm.undefer_group('Snapshot_complete'),
-            orm.Load(Snapshot).joinedload(
-                "revision"
-            ).undefer_group(
-                'Revision_complete'
-            )
-        ).filter(
-            Snapshot.id.in_(snapshot_ids)
-        )
-    }
-    template_cache = {
-        t.id: t for t in all_models.AssessmentTemplate.query.options(
-            orm.undefer_group('AssessmentTemplate_complete'),
-        ).filter(
-            all_models.AssessmentTemplate.id.in_(template_ids)
-        )
-    }
-    audit_cache = {
-        a.id: a for a in all_models.Audit.query.options(
-            orm.undefer_group('Audit_complete'),
-        ).filter(
-            all_models.Audit.id.in_(audit_ids)
-        )
-    }
+    snapshot_cache = _load_snapshots(snapshot_ids)
+    template_cache = _load_templates(template_ids)
+    audit_cache = _load_audits(audit_ids)
 
-    for assessment, src in izip(objects, sources):
-      snapshot_dict = src.get("object") or {}
-      common.map_objects(assessment, snapshot_dict)
-      common.map_objects(assessment, src.get("audit"))
-      snapshot = snapshot_cache.get(snapshot_dict.get('id'))
-      if not src.get("_generated") and not snapshot:
-        continue
-      template = template_cache.get(src.get("template", {}).get("id"))
-      audit = audit_cache[src["audit"]["id"]]
-      relate_assignees(assessment, snapshot, template, audit)
-      relate_ca(assessment, template)
-      assessment.title = u'{} assessment for {}'.format(
-          snapshot.revision.content['title'],
-          audit.title,
-      )
-      if not template:
-        continue
-      if template.test_plan_procedure:
-        assessment.test_plan = snapshot.revision.content['test_plan']
-      else:
-        assessment.test_plan = template.procedure_description
-      if template.template_object_type:
-        assessment.assessment_type = template.template_object_type
+    for assessment, src in itertools.izip(objects, sources):
+      _handle_assessment(
+          assessment, src, snapshot_cache, template_cache, audit_cache)
 
-  @signals.Restful.model_put.connect_via(Assessment)
+    # Flush roles objects for generated assessments.
+    db.session.flush()
+
+    for assessment, src in itertools.izip(objects, sources):
+      # Handling IssueTracker info here rather than in hooks/issue_tracker
+      # would avoid querying same data (such as snapshots, audits and
+      # templates) twice.
+      issue_tracker.handle_assessment_create(
+          assessment, src, snapshot_cache, template_cache, audit_cache)
+
+  # pylint: disable=unused-variable
+  @signals.Restful.model_put.connect_via(all_models.Assessment)
   def handle_assessment_put(sender, obj=None, src=None, service=None):
-    # pylint: disable=unused-argument
-    common.ensure_field_not_changed(obj, "audit")
+    """Handles assessment update event."""
+    del sender, src, service  # Unused
+    common.ensure_field_not_changed(obj, 'audit')
 
 
 def generate_assignee_relations(assessment,
@@ -118,24 +159,32 @@ def generate_assignee_relations(assessment,
   person_dict = {i.id: i for i in all_models.Person.query.filter(
       all_models.Person.id.in_(people)
   )}
+
+  person_roles = []
   for person_id in people:
     person = person_dict.get(person_id)
     if person is None:
       continue
-    roles = []
     if person_id in assignee_ids:
-      roles.append("Assessor")
+      person_roles.append((person, "Assignees"))
     if person_id in verifier_ids:
-      roles.append("Verifier")
+      person_roles.append((person, "Verifiers"))
     if person_id in creator_ids:
-      roles.append("Creator")
-    rel = all_models.Relationship(
-        source=person,
-        destination=assessment,
-        context=assessment.context,
-    )
-    rel.attrs = {"AssigneeType": ",".join(roles)}
-    db.session.add(rel)
+      person_roles.append((person, "Creators"))
+
+  ac_roles = {
+      acr_name: acr_id
+      for acr_id, acr_name in access_control.role.get_custom_roles_for(
+          assessment.type).iteritems()
+  }
+
+  db.session.add_all(
+      all_models.AccessControlList(
+          ac_role_id=ac_roles[role],
+          person=person,
+          object=assessment
+      ) for person, role in person_roles
+  )
 
 
 def get_people_ids_based_on_role(assignee_role,
@@ -157,8 +206,8 @@ def generate_role_object_dict(snapshot, audit):
   returns dict of roles with key as role name and list of people ids as values.
   """
 
-  acr_dict = role.get_custom_roles_for(snapshot.child_type)
-  acl_dict = defaultdict(list)
+  acr_dict = access_control.role.get_custom_roles_for(snapshot.child_type)
+  acl_dict = collections.defaultdict(list)
   # populated content should have access_control_list
   for acl in snapshot.revision.content["access_control_list"]:
     acl_dict[acr_dict[acl["ac_role_id"]]].append(acl["person_id"])
@@ -182,11 +231,11 @@ def relate_assignees(assessment, snapshot, template, audit):
   if template:
     template_settings = template.default_people
   else:
-    template_settings = {"assessors": "Principal Assignees",
+    template_settings = {"assignees": "Principal Assignees",
                          "verifiers": "Auditors"}
   acl_dict = generate_role_object_dict(snapshot, audit)
-  assignee_ids = get_people_ids_based_on_role("assessors",
-                                              "Audit Lead",  # default assessor
+  assignee_ids = get_people_ids_based_on_role("assignees",
+                                              "Audit Lead",  # default assignee
                                               template_settings,
                                               acl_dict)
   verifier_ids = get_people_ids_based_on_role("verifiers",
@@ -229,3 +278,12 @@ def relate_ca(assessment, template):
         placeholder=definition.placeholder,
     )
     db.session.add(cad)
+
+
+def copy_snapshot_plan(assessment, snapshot):
+  """Copy test plan of Snapshot into Assessment"""
+  if assessment.test_plan and snapshot.revision.content["test_plan"]:
+    assessment.test_plan += "<br>"
+    assessment.test_plan += snapshot.revision.content["test_plan"]
+  elif snapshot.revision.content["test_plan"]:
+    assessment.test_plan = snapshot.revision.content["test_plan"]

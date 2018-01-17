@@ -1,45 +1,45 @@
-/*!
+/*
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
-(function (can, GGRC) {
-  'use strict';
 
-  GGRC.Components('textFormField', {
-    tag: 'text-form-field',
-    template: can.view(
-      GGRC.mustache_path + '/components/form/' +
-        'fields/text-form-field.mustache'
-    ),
-    viewModel: {
-      define: {
-        _value: {
-          set: function (newValue, setValue, onError, oldValue) {
-            setValue(newValue);
-            if (oldValue === undefined ||
-                newValue === oldValue ||
-                newValue.length && !can.trim(newValue).length) {
-              return;
-            }
-            this.valueChanged(newValue);
-          }
-        },
-        value: {
-          set: function (newValue, setValue) {
-            setValue(newValue);
-            this.attr('_value', newValue);
-          }
+import template from './templates/text-form-field.mustache';
+
+const TEXT_FORM_FIELD_VM = {
+  define: {
+    _value: {
+      set(newValue, setValue, onError, oldValue) {
+        setValue(newValue);
+        if (oldValue === undefined ||
+            newValue === oldValue ||
+            newValue.length && !can.trim(newValue).length) {
+          return;
         }
+        this.valueChanged(newValue);
       },
-      fieldId: null,
-      placeholder: '',
-      valueChanged: function (newValue) {
-        this.dispatch({
-          type: 'valueChanged',
-          fieldId: this.fieldId,
-          value: newValue
-        });
-      }
-    }
-  });
-})(window.can, window.GGRC);
+    },
+    value: {
+      set(newValue, setValue) {
+        setValue(newValue);
+        this.attr('_value', newValue);
+      },
+    },
+  },
+  fieldId: null,
+  placeholder: '',
+  valueChanged(newValue) {
+    this.dispatch({
+      type: 'valueChanged',
+      fieldId: this.fieldId,
+      value: newValue,
+    });
+  },
+};
+
+export default can.Component.extend({
+  template,
+  tag: 'text-form-field',
+  viewModel: TEXT_FORM_FIELD_VM,
+});
+
+export {TEXT_FORM_FIELD_VM};

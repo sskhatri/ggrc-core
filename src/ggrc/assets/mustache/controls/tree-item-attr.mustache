@@ -6,24 +6,22 @@
 
 {{#switch attr_name}}
   {{#case 'contact'}}
-      <tree-people-list-field {source}="instance.contact"/>
+      <tree-field {source}="instance.contact" {field}="'email'"/>
   {{/case}}
   {{#case 'secondary_contact'}}
-      <tree-people-list-field {source}="instance.secondary_contact"/>
+      <tree-field {source}="instance.secondary_contact" {field}="'email'"/>
   {{/case}}
   {{#case 'principal_assessor'}}
-      <tree-people-list-field {source}="instance.principal_assessor"/>
+      <tree-field {source}="instance.principal_assessor" {field}="'email'"/>
   {{/case}}
   {{#case 'secondary_assessor'}}
-      <tree-people-list-field {source}="instance.secondary_assessor"/>
+      <tree-field {source}="instance.secondary_assessor" {field}="'email'"/>
   {{/case}}
   {{#case 'modified_by'}}
-      <tree-people-list-field {source}="instance.modified_by"/>
+      <tree-field {source}="instance.modified_by" {field}="'email'"/>
   {{/case}}
   {{#case 'kind'}}
-    {{#using kind=instance.kind}}
-      {{kind.title}}
-    {{/using}}
+    <tree-field {source}="instance.kind" {show-tooltip}="false"/>
   {{/case}}
   {{#case 'fraud_related'}}
     {{#if_equals instance.fraud_related "0"}}
@@ -42,39 +40,23 @@
     {{/if}}
   {{/case}}
   {{#case 'means'}}
-    {{#using means=instance.means}}
-      {{means.title}}
-    {{/using}}
+    <tree-field {source}="instance.means" {show-tooltip}="false"/>
   {{/case}}
   {{#case 'frequency'}}
-    {{#using verify_frequency=instance.verify_frequency}}
-      {{verify_frequency.title}}
-    {{/using}}
+    <tree-field {source}="instance.verify_frequency" {show-tooltip}="false"/>
   {{/case}}
   {{#case 'assertions'}}
     {{#if instance.snapshot}}
-      {{#instance.assertions}}
-        <span class="with-comma">{{display_name}}</span>
-      {{/instance.assertions}}
+      <tree-field {source}="instance.assertions" {field}="'display_name'"/>
     {{else}}
-      {{#using items=instance.assertions}}
-        {{#items}}
-          <span class="with-comma">{{display_name}}</span>
-        {{/items}}
-      {{/using}}
+      <tree-field {source}="instance.assertions" {field}="'name'"/>
     {{/if}}
   {{/case}}
   {{#case 'categories'}}
     {{#if instance.snapshot}}
-      {{#instance.categories}}
-        <span class="with-comma">{{display_name}}</span>
-      {{/instance.categories}}
+      <tree-field {source}="instance.categories" {field}="'display_name'"/>
     {{else}}
-      {{#using items=instance.categories}}
-        {{#items}}
-          <span class="with-comma">{{display_name}}</span>
-        {{/items}}
-      {{/using}}
+      <tree-field {source}="instance.categories" {field}="'name'"/>
     {{/if}}
   {{/case}}
   {{#case 'last_assessment_date'}}

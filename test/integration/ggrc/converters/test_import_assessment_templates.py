@@ -5,6 +5,7 @@
 
 """Test Assessment Template import."""
 
+from collections import OrderedDict
 from ggrc import models
 from ggrc.converters import errors
 from integration.ggrc import TestCase
@@ -40,6 +41,18 @@ class TestAssessmentTemplatesImport(TestCase):
         [people["user3@a.com"], people["user1@a.com"]],
     )
 
+  def test_modify_over_import(self):
+    """Test import modifies Assessment Template and does not fail."""
+    self.import_file("assessment_template_no_warnings.csv")
+    response = self.import_data(OrderedDict([
+        ("object_type", "Assessment_Template"),
+        ("Code*", "T-1"),
+        ("Audit*", "Audit"),
+        ("Title", "Title"),
+        ("Object Under Assessment", 'Control'),
+    ]))
+    self._check_csv_response(response, {})
+
   def test_invalid_import(self):
     """Test invalid import."""
     data = "assessment_template_with_warnings_and_errors.csv"
@@ -52,17 +65,17 @@ class TestAssessmentTemplatesImport(TestCase):
             "created": 3,
             "row_errors": {
                 errors.MISSING_VALUE_ERROR.format(
-                    line=5, column_name="Default Verifier")
+                    line=5, column_name="Default Verifiers")
             },
             "row_warnings": {
                 errors.UNKNOWN_USER_WARNING.format(
                     line=5,
-                    column_name="Default Verifier",
+                    column_name="Default Verifiers",
                     email="user3@a.com",
                 ),
                 errors.UNKNOWN_USER_WARNING.format(
                     line=5,
-                    column_name="Default Verifier",
+                    column_name="Default Verifiers",
                     email="user1@a.com"
                 ),
             },

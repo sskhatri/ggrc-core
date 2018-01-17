@@ -3,6 +3,8 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import RefreshQueue from '../../../../ggrc/assets/javascripts/models/refresh_queue';
+
 ;(function (CMS, GGRC, can, $) {
   GGRC.Components('dashboardWidgets', {
     tag: "dashboard-widgets",

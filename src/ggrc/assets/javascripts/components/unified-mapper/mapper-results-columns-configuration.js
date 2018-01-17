@@ -3,7 +3,9 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../tree/tree-header-selector';
 import tmpl from './templates/mapper-results-columns-configuration.mustache';
+import * as TreeViewUtils from '../../plugins/utils/tree-view-utils';
 
 (function (can, GGRC, CMS) {
   'use strict';
@@ -44,7 +46,7 @@ import tmpl from './templates/mapper-results-columns-configuration.mustache';
       initializeColumns: function () {
         var selectedColumns = this.attr('selectedColumns');
         var availableColumns = this.attr('availableColumns');
-        var columns = GGRC.Utils.TreeView
+        var columns = TreeViewUtils
           .createSelectedColumnsMap(availableColumns, selectedColumns);
 
         this.attr('columns', columns);
@@ -70,7 +72,7 @@ import tmpl from './templates/mapper-results-columns-configuration.mustache';
         });
 
         columns =
-          GGRC.Utils.TreeView.setColumnsForModel(
+          TreeViewUtils.setColumnsForModel(
             this.getModel().model_singular,
             selectedNames,
             this.attr('displayPrefs')

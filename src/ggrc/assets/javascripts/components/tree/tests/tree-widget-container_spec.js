@@ -3,15 +3,21 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import * as TreeViewUtils from '../../../plugins/utils/tree-view-utils';
+import * as SnapshotUtils from '../../../plugins/utils/snapshot-utils';
+import * as CurrentPageUtils from '../../../plugins/utils/current-page-utils';
+import * as AdvancedSearch from '../../../plugins/utils/advanced-search-utils';
+import * as ObjectVersions from '../../../plugins/utils/object-versions-utils';
+
 describe('GGRC.Components.treeWidgetContainer', function () {
   'use strict';
 
   var vm;
-  var CurrentPageUtils;
+  var Component;
 
   beforeEach(function () {
+    Component = GGRC.Components.get('treeWidgetContainer');
     vm = GGRC.Components.getViewModel('treeWidgetContainer');
-    CurrentPageUtils = GGRC.Utils.CurrentPage;
   });
 
   describe('optionsData get() method', function () {
@@ -48,13 +54,11 @@ describe('GGRC.Components.treeWidgetContainer', function () {
         });
       });
 
-      it('returns result of GGRC.Utils.ObjectVersions.getWidgetConfig with ' +
+      it('returns result of ObjectVersions.getWidgetConfig with ' +
       'passed params', function () {
         var expectedResult = {};
-        var getWidgetConfig = spyOn(
-          GGRC.Utils.ObjectVersions,
-          'getWidgetConfig'
-        ).and.returnValue(expectedResult);
+        var getWidgetConfig = spyOn(ObjectVersions, 'getWidgetConfig')
+          .and.returnValue(expectedResult);
         var result = vm.attr('optionsData');
 
         expect(result).toBe(expectedResult);
@@ -143,8 +147,8 @@ describe('GGRC.Components.treeWidgetContainer', function () {
     var isSnapshotModel;
 
     beforeEach(function () {
-      isSnapshotScope = spyOn(GGRC.Utils.Snapshots, 'isSnapshotScope');
-      isSnapshotModel = spyOn(GGRC.Utils.Snapshots, 'isSnapshotModel');
+      isSnapshotScope = spyOn(SnapshotUtils, 'isSnapshotScope');
+      isSnapshotModel = spyOn(SnapshotUtils, 'isSnapshotModel');
     });
 
     describe('if parent_instance is a snapshot scope and ' +
@@ -206,45 +210,15 @@ describe('GGRC.Components.treeWidgetContainer', function () {
 
     it('sets current order properties', function () {
       onSort({
-        field: 'col1'
+        field: 'col1',
+        sortDirection: 'asc',
       });
 
       expect(vm.attr('sortingInfo.sortBy')).toEqual('col1');
-      expect(vm.attr('sortingInfo.sortDirection')).toEqual('desc');
-      expect(vm.attr('pageInfo.current')).toEqual(1);
-      expect(vm.loadItems).toHaveBeenCalled();
-      expect(vm.closeInfoPane).toHaveBeenCalled();
-    });
-
-    it('changes sortDirection for current column', function () {
-      vm.attr('sortingInfo', {
-        sortBy: 'field',
-        sortDirection: 'desc'
-      });
-      onSort({
-        field: 'field'
-      });
-
-      expect(vm.attr('sortingInfo.sortBy')).toEqual('field');
       expect(vm.attr('sortingInfo.sortDirection')).toEqual('asc');
       expect(vm.attr('pageInfo.current')).toEqual(1);
       expect(vm.loadItems).toHaveBeenCalled();
       expect(vm.closeInfoPane).toHaveBeenCalled();
-    });
-
-    it('changes sortBy property', function () {
-      vm.attr('sortingInfo', {
-        sortBy: 'field1',
-        sortDirection: 'asc'
-      });
-      onSort({
-        field: 'newField'
-      });
-
-      expect(vm.attr('sortingInfo.sortBy')).toEqual('newField');
-      expect(vm.attr('sortingInfo.sortDirection')).toEqual('desc');
-      expect(vm.attr('pageInfo.current')).toEqual(1);
-      expect(vm.loadItems).toHaveBeenCalled();
     });
   });
 
@@ -262,7 +236,7 @@ describe('GGRC.Components.treeWidgetContainer', function () {
     });
 
     it('', function (done) {
-      spyOn(GGRC.Utils.TreeView, 'loadFirstTierItems')
+      spyOn(TreeViewUtils, 'loadFirstTierItems')
         .and.returnValue(can.Deferred().resolve({
           total: 100,
           values: []
@@ -450,11 +424,11 @@ describe('GGRC.Components.treeWidgetContainer', function () {
   describe('openAdvancedFilter() method', function () {
     it('copies applied filter and mapping items', function () {
       var appliedFilterItems = new can.List([
-        GGRC.Utils.AdvancedSearch.create.attribute()
+        AdvancedSearch.create.attribute()
       ]);
       var appliedMappingItems = new can.List([
-        GGRC.Utils.AdvancedSearch.create.mappingCriteria({
-          filter: GGRC.Utils.AdvancedSearch.create.attribute()
+        AdvancedSearch.create.mappingCriteria({
+          filter: AdvancedSearch.create.attribute()
         })
       ]);
       vm.attr('advancedSearch.appliedFilterItems', appliedFilterItems);
@@ -481,11 +455,11 @@ describe('GGRC.Components.treeWidgetContainer', function () {
 
   describe('applyAdvancedFilters() method', function () {
     var filterItems = new can.List([
-      GGRC.Utils.AdvancedSearch.create.attribute()
+      AdvancedSearch.create.attribute()
     ]);
     var mappingItems = new can.List([
-      GGRC.Utils.AdvancedSearch.create.mappingCriteria({
-        filter: GGRC.Utils.AdvancedSearch.create.attribute()
+      AdvancedSearch.create.mappingCriteria({
+        filter: AdvancedSearch.create.attribute()
       })
     ]);
     beforeEach(function () {
@@ -494,7 +468,7 @@ describe('GGRC.Components.treeWidgetContainer', function () {
       vm.attr('advancedSearch.appliedFilterItems', can.List());
       vm.attr('advancedSearch.appliedMappingItems', can.List());
       spyOn(vm, 'onFilter');
-      spyOn(GGRC.Utils.AdvancedSearch, 'buildFilter')
+      spyOn(AdvancedSearch, 'buildFilter')
         .and.callFake(function (items, request) {
           request.push({name: 'item'});
         });
@@ -693,5 +667,52 @@ describe('GGRC.Components.treeWidgetContainer', function () {
         expect(vm.attr('loading')).toBeFalsy();
         expect(vm.loadItems).not.toHaveBeenCalled();
       });
+  });
+
+  describe('setSortingConfiguration() method', () => {
+    beforeEach(() => {
+      vm.attr('model', {
+        shortName: 'shortModelName',
+      });
+    });
+
+    it('sets up default sorting configuration', () => {
+      vm.attr('sortingInfo', {});
+      spyOn(TreeViewUtils, 'getSortingForModel')
+        .and.returnValue({
+          key: 'key',
+          direction: 'direction',
+        });
+
+      vm.setSortingConfiguration();
+
+      expect(vm.attr('sortingInfo.sortBy')).toEqual('key');
+      expect(vm.attr('sortingInfo.sortDirection')).toEqual('direction');
+    });
+  });
+
+  describe('init() method', () => {
+    let method;
+
+    beforeEach(() => {
+      vm.attr('model', {
+        shortName: 'shortModelName',
+      });
+      method = Component.prototype.init.bind({viewModel: vm});
+      spyOn(vm, 'setSortingConfiguration');
+      spyOn(vm, 'setColumnsConfiguration');
+      spyOn(CMS.Models.DisplayPrefs, 'getSingleton')
+        .and.returnValue(can.Deferred().resolve());
+    });
+
+    it('sets up columns configuration', () => {
+      method();
+      expect(vm.setColumnsConfiguration).toHaveBeenCalled();
+    });
+
+    it('sets up sorting configuration', () => {
+      method();
+      expect(vm.setSortingConfiguration).toHaveBeenCalled();
+    });
   });
 });

@@ -20,9 +20,7 @@
     {{#with_mapping 'approval_tasks' instance}}
       {{#with_review_task}}
         {{#with_is_reviewer review_task}}
-          {{#if_helpers '\
-            #owned_by_current_user' instance '\
-            or #current_user_is_admin'}}
+          {{#if_helpers '#owned_by_current_user' instance 'or #current_user_is_admin'}}
             {{^if is_reviewer}}
               {{#if_equals review_task.status 'Declined'}}
                 {{#with_most_recent_declining_task_entry review_task}}

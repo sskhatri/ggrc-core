@@ -13,7 +13,7 @@
     root_object: "risk_assessment",
     root_collection: "risk_assessments",
     category: "risk_assessment",
-    mixins: ['ca_update', 'timeboxed'],
+    mixins: ['ca_update', 'timeboxed', 'base-notifications'],
     findAll: "GET /api/risk_assessments",
     findOne: "GET /api/risk_assessments/{id}",
     create: "POST /api/risk_assessments",

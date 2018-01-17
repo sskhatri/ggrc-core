@@ -1,0 +1,73 @@
+{{!
+    Copyright (C) 2017 Google Inc., authors, and contributors
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="flex-box">
+  <related-people-access-control
+    class="width-100"
+    {conflict-roles}="conflictRoles"
+    {order-of-roles}="orderOfRoles"
+    {include-roles}="includeRoles"
+    {exclude-roles}="excludeRoles"
+    {updatable-group-id}="updatableGroupId"
+    {is-new-instance}="isNewInstance"
+    {instance}="instance">
+      <div class="people-groups">
+        {{#groups}}
+          <related-people-access-control-group
+            class="people-group"
+            auto-update="true"
+            (update-roles)="updateRoles(%event)"
+            {is-new-instance}="isNewInstance"
+            {required}="required"
+            {group-id}="groupId"
+            {title}="title"
+            {people}="people"
+            {instance}="instance"
+            {updatable-group-id}="updatableGroupId">
+              <div>
+                <deletable-people-group
+                  show-empty-message="false"
+                  {required}="required"
+                  (unmap)="removePerson(%event)"
+                  {can-unmap}="canEdit"
+                  {is-loading}="isLoading"
+                  {group-id}="groupId"
+                  {instance}="instance"
+                  {people}="people">
+                  <label class="people-group__title-content form-label required-label">
+                    <span class="people-group__title people-group__title--deletable">{{title}}</span>
+                    {{#if required}}
+                      <i class="fa fa-asterisk"></i>
+                    {{/if}}
+                  </label>
+                </deletable-people-group>
+                <div>
+                  {{#if isUpdating}}
+                    <spinner {toggle}="isUpdating"></spinner>
+                  {{else}}
+                    {{#if canEdit}}
+                      {{^if_config_exist 'external_services.Person'}}
+                      <autocomplete
+                          search-items-type="Person"
+                          (item-selected)="addPerson(%event.selectedItem, @groupId)"
+                          placeholder="Add person">
+                      </autocomplete>
+                      {{else}}
+                      <external-data-autocomplete
+                        {type}="'Person'"
+                        {placeholder}="'Add person'"
+                        {min-length}="2"
+                        (item-selected)="addPerson(%event.selectedItem, @groupId)">
+                      </external-data-autocomplete>
+                      {{/if_config_exist}}
+                    {{/if}}
+                  {{/if}}
+                </div>
+              </div>
+          </related-people-access-control-group>
+        {{/groups}}
+      </div>
+  </related-people-access-control>
+</div>

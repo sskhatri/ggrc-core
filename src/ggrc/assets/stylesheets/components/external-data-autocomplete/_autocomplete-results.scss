@@ -5,7 +5,9 @@
   background-color: $white;
   border: 1px solid $midGray;
   padding: 2px;
-  width: 300px;
+  min-width: 300px;
+  width: 100%;
+  box-sizing: border-box;
   z-index: 1000;
 
   &__list {

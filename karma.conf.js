@@ -3,10 +3,7 @@
 // Copyright (C) 2017 Google Inc.
 // Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
-const devConfig = require('./webpack.config')();
-
-const commonsChunkPluginIndex = devConfig.plugins.findIndex(plugin => plugin.chunkNames);
-devConfig.plugins.splice(commonsChunkPluginIndex, 1);
+const devConfig = require('./webpack.config')({test: true});
 
 module.exports = function (config) {
   var configuration = {

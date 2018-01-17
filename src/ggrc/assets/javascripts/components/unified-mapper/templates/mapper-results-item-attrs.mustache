@@ -16,16 +16,8 @@
         {{/case}}
 
         {{#case 'role'}}
-          <div class="roles">
-            {{#peopleWithRole instance attr_name}}
-              {{#each peopleIds}}
-                {{^if_less @index 1}},{{/if}}
-                <person-info
-                  person-id="{{.}}"
-                  editable="'false'"
-                ></person-info>
-              {{/each}}
-            {{/peopleWithRole}}
+          <div class="roles attr-content">
+            <tree-people-with-role-list-field {instance}="instance" {role}="attr_name"/>
           </div>
         {{/case}}
 

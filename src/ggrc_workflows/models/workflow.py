@@ -31,9 +31,17 @@ from ggrc_workflows.models import cycle_task_group
 from ggrc_workflows.services import google_holidays
 
 
-class Workflow(mixins.CustomAttributable, HasOwnContext, mixins.Timeboxed,
-               mixins.Described, mixins.Titled, mixins.Notifiable,
-               mixins.Stateful, mixins.Slugged, Indexed, db.Model):
+class Workflow(mixins.CustomAttributable,
+               HasOwnContext,
+               mixins.Timeboxed,
+               mixins.Described,
+               mixins.Titled,
+               mixins.Notifiable,
+               mixins.Stateful,
+               mixins.Slugged,
+               mixins.Folderable,
+               Indexed,
+               db.Model):
   """Basic Workflow first class object.
   """
   __tablename__ = 'workflows'
@@ -51,7 +59,7 @@ class Workflow(mixins.CustomAttributable, HasOwnContext, mixins.Timeboxed,
   notify_on_change = deferred(
       db.Column(db.Boolean, default=False, nullable=False), 'Workflow')
   notify_custom_message = deferred(
-      db.Column(db.Text, nullable=True), 'Workflow')
+      db.Column(db.Text, nullable=False, default=u""), 'Workflow')
 
   object_approval = deferred(
       db.Column(db.Boolean, default=False, nullable=False), 'Workflow')
@@ -290,13 +298,11 @@ class Workflow(mixins.CustomAttributable, HasOwnContext, mixins.Timeboxed,
       },
       "workflow_owner": {
           "display_name": "Manager",
-          "type": reflection.AttributeInfo.Type.USER_ROLE,
           "mandatory": True,
           "filter_by": "_filter_by_workflow_owner",
       },
       "workflow_member": {
           "display_name": "Member",
-          "type": reflection.AttributeInfo.Type.USER_ROLE,
           "filter_by": "_filter_by_workflow_member",
       },
       "status": None,

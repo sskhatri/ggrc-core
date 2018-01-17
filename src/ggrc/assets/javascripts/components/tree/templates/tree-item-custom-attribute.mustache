@@ -6,5 +6,5 @@
 {{#get_custom_attr_value column instance}}
     {{! because the object can currently only be a
     person there is no need to switch }}
-    <tree-people-list-field {source}="object"/>
+    <tree-field {source}="object" {field}="'email'"/>
 {{/get_custom_attr_value}}

@@ -5,7 +5,6 @@
 # pylint: disable=redefined-builtin
 # pylint: disable=invalid-name
 
-import copy
 import json
 import os
 
@@ -23,21 +22,18 @@ class TemplateProvider(object):
     path = os.path.join(
         os.path.dirname(__file__), "template/{0}.json".format(json_tmpl_name))
     with open(path) as json_file:
-      json_data = json_file.read()
-    json_tmpl = json.loads(json_data)
-    json_tmpl_copy = copy.deepcopy(json_tmpl)
-    json_tmpl_copy.update({k: v for k, v in kwargs.iteritems() if v})
-    return {json_tmpl_name: json_tmpl_copy}
+      json_data = json.load(json_file)
+    json_data.update({k: v for k, v in kwargs.iteritems() if v})
+    return {json_tmpl_name: json_data}
 
   @staticmethod
-  def update_template_as_dict(json_tmpl_name, **kwargs):
-    """Update template as list of dictionary according to
+  def update_template_as_dict(json_data_str, **kwargs):
+    """Update JSON data string as dictionary according to
     attributes (items (kwargs): key=value).
-    Return list of dictionary like as [{type: {key: value, ...}}].
+    Return dictionary like as [{type: {key: value, ...}}].
     """
-    json_tmpl = json.loads(json_tmpl_name)
-    type = json_tmpl.iterkeys().next()
-    value = json_tmpl.itervalues().next()
-    json_tmpl_copy = copy.deepcopy(value)
-    json_tmpl_copy.update(kwargs)
-    return {type: json_tmpl_copy}
+    json_data = json.loads(json_data_str)
+    type = json_data.iterkeys().next()
+    value = json_data.itervalues().next()
+    value.update(kwargs)
+    return {type: value}

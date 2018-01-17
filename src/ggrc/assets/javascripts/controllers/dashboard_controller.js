@@ -3,6 +3,17 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import {
+  isAdmin,
+  getPageType,
+  getCounts,
+} from '../plugins/utils/current-page-utils';
+import {isDashboardEnabled} from '../plugins/utils/dashboards-utils';
+import {isObjectVersion} from '../plugins/utils/object-versions-utils';
+import '../components/add-tab-button/add-tab-button';
+
+import router, {buildUrl} from '../router';
+
 (function (can, $) {
   can.Control('CMS.Controllers.Dashboard', {
     defaults: {
@@ -28,7 +39,6 @@
         this.hide_widget_area();
         this.init_default_widgets();
         this.init_widget_area();
-        this.init_info_pin();
       }.bind(this));
     },
 
@@ -103,11 +113,6 @@
             dashboard_controller: this,
           });
       }
-    },
-
-    init_info_pin: function () {
-      this.info_pin = new CMS.Controllers
-        .InfoPin(this.element.find('.pin-content'));
     },
 
     '.nav-logout click': function (el, ev) {
@@ -194,7 +199,7 @@
       control = new descriptor
         .controller($element, descriptor.controller_options);
 
-      if (GGRC.Utils.CurrentPage.isAdmin()) {
+      if (isAdmin()) {
         control.prepare();
       }
 
@@ -237,6 +242,20 @@
     init: function () {
       this.options.model = this.options.instance.constructor;
       this._super();
+      this.init_info_pin();
+    },
+
+    init_info_pin: function () {
+      this.info_pin = new CMS.Controllers
+        .InfoPin(this.element.find('.pin-content'));
+    },
+
+    hideInfoPin () {
+      const infopinCtr = this.info_pin.element.control();
+
+      if (infopinCtr) {
+        infopinCtr.hideInstance();
+      }
     },
 
     init_page_title: function () {
@@ -268,6 +287,8 @@
       hideTabTitle: 'Hide',
       dividedTabsMode: false,
       priorityTabs: null,
+      counts: null,
+      hasHiddenWidgets: false,
     },
   }, {
     init: function (options) {
@@ -278,30 +299,31 @@
         if (!this.options.widget_list) {
           this.options.attr('widget_list', new can.Observe.List([]));
         }
-
+        this.options.attr('counts', getCounts());
         this.options.attr('instance', instance);
         if (!(this.options.contexts instanceof can.Observe)) {
           this.options.attr('contexts', new can.Observe(this.options.contexts));
         }
 
-        // FIXME: Initialize from `*_widget` hash when hash has no `#!`
-        can.bind.call(window, 'hashchange', function () {
-          this.route(window.location.hash);
-        }.bind(this));
+        router.bind('widget', (ev, newVal)=>{
+          this.route(newVal);
+        });
+
         can.view(this.options.internav_view, this.options, function (frag) {
           const isAuditScope = instance.type === 'Audit';
           const fn = function () {
             this.element.append(frag);
             if (isAuditScope) {
               const priorityTabsNum = 4 +
-                GGRC.Utils.Dashboards.isDashboardEnabled(instance);
+                isDashboardEnabled(instance);
               this.element.addClass(this.options.instance.type.toLowerCase());
               this.options.attr('addTabTitle', 'Add Scope');
               this.options.attr('hideTabTitle', 'Show Audit Scope');
               this.options.attr('dividedTabsMode', true);
               this.options.attr('priorityTabs', priorityTabsNum);
             }
-            this.route(window.location.hash);
+            this.show_hide_titles();
+            this.route(router.attr('widget'));
             delete this.delayed_display;
           }.bind(this);
 
@@ -316,50 +338,30 @@
     },
 
     route: function (path) {
-      var refetchMatches;
-      var refetch = false;
-      if (path.substr(0, 2) === '#!') {
-        path = path.substr(2);
-      } else if (path.substr(0, 1) === '#') {
-        path = path.substr(1);
-      }
-      refetchMatches = path.match(/&refetch|^refetch$/);
-
-      if (refetchMatches && refetchMatches.length === 1) {
-        path = path.replace(refetchMatches[0], '');
-        refetch = true;
-      }
-
-      window.location.hash = path;
-
-      this.display_path(path.length ? path : 'Summary_widget', refetch);
-    },
-
-    display_path: function (path, refetch) {
-      var step = path.split('/')[0];
-      var rest = path.substr(step.length + 1);
       var widgetList = this.options.widget_list;
 
-      // Find and make active the widget specified by `step`
-      var widget = this.find_widget_by_target('#' + step);
+      // Find and make active the widget specified by `path`
+      var widget = this.widget_by_selector('#' + path);
       if (!widget && widgetList.length) {
         // Target was not found, but we can select the first widget in the list
-        widget = widgetList[0];
+        let widgetId = widgetList[0].internav_id + '_widget';
+        router.attr('widget', widgetId);
+        return;
       }
       if (widget) {
         this.set_active_widget(widget);
-        return this.display_widget_path(rest, refetch || widget.forceRefetch);
+        return this.display_widget(widget.forceRefetch);
       }
       return new $.Deferred().resolve();
     },
 
-    display_widget_path: function (path, refetch) {
+    display_widget: function (refetch) {
       var activeWidgetSelector = this.options.contexts.active_widget.selector;
       var $activeWidget = $(activeWidgetSelector);
       var widgetController = $activeWidget.control();
 
-      if (widgetController && widgetController.display_path) {
-        return widgetController.display_path(path, refetch);
+      if (widgetController && widgetController.display) {
+        return widgetController.display(refetch);
       }
       return new $.Deferred().resolve();
     },
@@ -373,44 +375,28 @@
         widget.attr('force_show', true);
         this.update_add_more_link();
         this.options.contexts.attr('active_widget', widget);
-        this.show_active_widget();
+        this.show_active_widget(widget);
       }
     },
 
-    show_active_widget: function (selector) {
-      var panel = selector ||
-        this.options.contexts.attr('active_widget').selector;
-      var widget = $(panel);
+    show_active_widget: function (widgetModel) {
+      var widget = $(widgetModel.selector);
       var dashboardCtr = this.options.dashboard_controller;
-      var infopinCtr = dashboardCtr.info_pin.element.control();
 
-      if (infopinCtr) {
-        infopinCtr.hideInstance();
+      if (dashboardCtr.hideInfoPin) {
+        dashboardCtr.hideInfoPin();
       }
 
       if (widget.length) {
         dashboardCtr.show_widget_area();
         widget.siblings().addClass('hidden').trigger('widget_hidden');
         widget.removeClass('hidden').trigger('widget_shown');
-        this.element.find('li').removeClass('active');
-        $('[href$="' + panel + '"]').closest('li').addClass('active');
-      }
-    },
-
-    find_widget_by_target: function (target) {
-      var i;
-      var widget;
-      for (i = 0; i < this.options.widget_list.length; i++) {
-        widget = this.options.widget_list[i];
-        if (widget.selector === target) {
-          return widget;
-        }
       }
     },
 
     widget_by_selector: function (selector) {
-      return $.map(this.options.widget_list, function (widget) {
-        return widget.selector === selector ? widget : undefined;
+      return this.options.widget_list.filter((widget) => {
+        return widget.selector === selector;
       })[0] || undefined;
     },
 
@@ -458,9 +444,7 @@
       var widgetName;
 
       function getWidgetType(widgetId) {
-        var isObjectVersion = GGRC.Utils.ObjectVersions
-          .isObjectVersion(widgetId);
-        return isObjectVersion ? 'version' : '';
+        return isObjectVersion(widgetId) ? 'version' : '';
       }
 
       if (this.delayed_display) {
@@ -486,6 +470,7 @@
           selector: '#' + $widget.attr('id'),
           count: count,
           has_count: count != null,
+          placeInAddTab: false,
         });
       }
       existingIndex = this.options.widget_list.indexOf(widget);
@@ -494,6 +479,8 @@
         internav_icon: icon,
         widgetType: getWidgetType(widgetOptions.widget_id),
         internav_display: title,
+        internav_id: widgetOptions.widget_id,
+        internav_href: buildUrl({widget: widgetOptions.widget_id + '_widget'}),
         forceRefetch: widgetOptions && widgetOptions.forceRefetch,
         spinner: this.options.spinners['#' + $widget.attr('id')],
         model: widgetOptions && widgetOptions.model,
@@ -532,12 +519,10 @@
         });
       }
       this.update_add_more_link();
-      this.show_hide_titles();
     },
 
     update_add_more_link: function () {
       var hasHiddenWidgets = false;
-      var $hiddenWidgets = $('.hidden-widgets-list:not(.top-space)');
       var instance = this.options.instance || {};
       var model = instance.constructor;
       var showAllTabs = false;
@@ -551,26 +536,24 @@
       }
 
       // Update has hidden widget attr
-      $.map(this.options.widget_list, function (widget) {
+      this.options.widget_list.forEach((widget) => {
         var forceShowList = model.obj_nav_options.force_show_list;
         var forceShow = false;
+        widget.attr('placeInAddTab', false);
         if (forceShowList) {
           forceShow = forceShowList.indexOf(widget.internav_display) > -1;
         }
         if (widget.has_count && widget.count === 0 &&
-            !widget.force_show && !showAllTabs && !forceShow) {
+        !widget.force_show && !showAllTabs && !forceShow) {
+          widget.attr('placeInAddTab', true);
           hasHiddenWidgets = true;
         }
       });
-      if (hasHiddenWidgets) {
-        $hiddenWidgets.find('a').show();
-      } else {
-        $hiddenWidgets.find('a').hide();
-      }
+      this.options.attr('hasHiddenWidgets', hasHiddenWidgets);
     },
 
     show_hide_titles: function () {
-      const pageType = GGRC.Utils.CurrentPage.getPageType();
+      const pageType = getPageType();
       const originalWidgets = this.options.widget_list;
       const priorityTabsNum = this.options.attr('priorityTabs');
       const priorityTabs = originalWidgets.slice(0, priorityTabsNum);
@@ -596,13 +579,13 @@
       }
     },
     '.closed click': function (el, ev) {
-      var $link = el.closest('a');
-      var widget = this.widget_by_selector('#' + $link.attr('href')
-                                                      .split('#')[1]);
+      let widgetSelector = el.data('widget');
+      var widget = this.widget_by_selector(widgetSelector);
       var widgets = this.options.widget_list;
 
       widget.attr('force_show', false);
       this.route(widgets[0].selector); // Switch to the first widget
+      this.update_add_more_link();
       return false; // Prevent the url change back to the widget we are hiding
     },
 
@@ -637,6 +620,9 @@
       } else {
         $hiddenArea.hide();
       }
+    },
+    '{counts} change': function () {
+      this.update_add_more_link();
     },
   });
 })(window.can, window.can.$);

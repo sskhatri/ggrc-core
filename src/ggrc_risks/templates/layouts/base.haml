@@ -18,10 +18,11 @@
       %link{ rel:'stylesheet', type:'text/css', href:"={ASSET_URL|with_static_subdomain}" }
     -endassets
 
+    -if config.get("GOOGLE_ANALYTICS_ID")
+      %script{ type:'text/javascript', async:'async', src:"//www.google-analytics.com/analytics.js" }
+
     %script
       GGRC = window.GGRC || {};
-      -include "scripts/tracker-prefix.js"
-      window.st=Date.now();
       -block extra_javascript
 
     -if config.get("DASHBOARD_INTEGRATION")
@@ -32,22 +33,9 @@
       %script{ type:'text/javascript', src:"={ASSET_URL|with_static_subdomain}" }
     -endassets
 
-    :javascript
-      GGRC.Tracker.timing("dashboard", "exec_scripts", Date.now() - st, "dashboard.js finished executing");
-      window.st=Date.now();
-
     -assets "dashboard-js-templates"
       %script{ type:'text/javascript', src:"={ASSET_URL|with_static_subdomain}" }
     -endassets
-
-    :javascript
-      GGRC.Tracker.timing("dashboard", "load_templates", Date.now() - st, "dashboard-templates.js finished loading and executing");
-      $(function() {
-        $(function() {
-          GGRC.Tracker.timing("dashboard", "exec_ready_handlers", Date.now() - st, "last document.ready handler fired");
-        });
-      })
-
 
     -#FIXME: (?) HTML5 shim?
 
@@ -57,30 +45,6 @@
 
     -# Google Web Font(s)
     -#NOTE: This resource occasionally hangs and prevents page from rendering, so loaded after the fact via jquery
-    :javascript
-      window.onerror = function(message, url, linenumber) {
-        if(window.$) {
-          $(document.body).trigger("ajax:flash", {"error" : message});
-        }
-        if(window.GGRC && window.GGRC.Tracker) {
-          GGRC.Tracker.exception(message + " (at " + url + ":" + linenumber + ")");
-        }
-      };
-
-    -if config.get("GOOGLE_ANALYTICS_ID")
-      :javascript
-        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-        ga('create', '{{config.get("GOOGLE_ANALYTICS_ID")}}', 'auto');
-        //  Presence of appName/appVersion seems to prevent 'Real-Time' metrics
-        //  https://code.google.com/p/analytics-issues/issues/detail?id=366
-        //ga('set', 'appVersion', '{{config.get("VERSION")}}');
-        ga('send', 'pageview');
-
-        GGRC.Tracker.init(ga);
 
     -if config.get("GGRC_Q_INTEGRATION_URL")
       :javascript

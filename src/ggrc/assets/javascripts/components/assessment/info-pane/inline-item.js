@@ -3,11 +3,11 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import './confirm-edit-action';
+import template from './inline-item.mustache';
+
 (function (can) {
   'use strict';
-
-  var template = can.view(GGRC.mustache_path +
-    '/components/assessment/info-pane/inline-item.mustache');
 
   GGRC.Components('assessmentInlineItem', {
     tag: 'assessment-inline-item',
@@ -24,7 +24,9 @@
       dropdownNoValue: false,
       withReadMore: false,
       isEditIconDenied: false,
-      onStateChangeDfd: can.Deferred().resolve()
+      onStateChangeDfd: can.Deferred().resolve(),
+      mandatory: false,
+      isConfirmationNeeded: true,
     }
   });
 })(window.can);

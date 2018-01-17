@@ -3,6 +3,8 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import RefreshQueue from '../../../../ggrc/assets/javascripts/models/refresh_queue';
+
 (function (can) {
   var _mustachePath;
 
@@ -184,22 +186,7 @@
         refreshAttrWrap('cycle_task_group_object_task').bind(this));
       this.validateNonBlank('description');
     }
-  }, {
-    workflowFolder: function () {
-      return this.refresh_all('cycle', 'workflow').then(function (workflow) {
-        if (workflow.has_binding('folders')) {
-          return workflow.refresh_all('folders').then(function (folders) {
-            if (folders.length === 0) {
-              return null;  // workflow folder has not been assigned
-            }
-            return folders[0].instance;
-          }, function (result) {
-            return result;
-          });
-        }
-      });
-    }
-  });
+  }, {});
 
   _mustachePath = GGRC.mustache_path + '/cycle_task_groups';
   can.Model.Cacheable('CMS.Models.CycleTaskGroup', {
@@ -270,6 +257,8 @@
     update: 'PUT /api/cycle_task_group_object_tasks/{id}',
     destroy: 'DELETE /api/cycle_task_group_object_tasks/{id}',
     title_singular: 'Cycle Task',
+    name_singular: 'Task',
+    name_plural: 'Tasks',
     attributes: {
       cycle_task_group: 'CMS.Models.CycleTaskGroup.stub',
       task_group_task: 'CMS.Models.TaskGroupTask.stub',
@@ -337,9 +326,10 @@
           attr_sort_field: 'task last updated by'
         }
       ],
-      display_attr_names: ['title', 
-                           'Task Assignees', 
-                           'start_date', 
+      display_attr_names: ['title',
+                           'status',
+                           'Task Assignees',
+                           'start_date',
                            'end_date'],
       mandatory_attr_name: ['title'],
       draw_children: true

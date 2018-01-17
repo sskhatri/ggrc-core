@@ -2,6 +2,18 @@
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
+
+import {
+  confirm,
+  BUTTON_VIEW_OK_CLOSE,
+} from '../../plugins/utils/modals';
+import {
+  isSnapshotModel,
+} from '../../plugins/utils/snapshot-utils';
+import {
+  refreshCounts,
+} from '../../plugins/utils/current-page-utils';
+
 (function (GGRC, can, $) {
   'use strict';
 
@@ -11,14 +23,14 @@
     viewModel: {
       instance: null,
       upsertIt: function (scope, el, ev) {
-        GGRC.Controllers.Modals.confirm({
+        confirm({
           instance: scope.instance,
           modal_title: 'Update to latest version',
           modal_description:
             'Do you want to update all objects of this Audit' +
             ' to the latest version?',
           modal_confirm: 'Update',
-          button_view: GGRC.Controllers.Modals.BUTTON_VIEW_OK_CLOSE,
+          button_view: BUTTON_VIEW_OK_CLOSE,
           skip_refresh: true
         },
           this._success.bind(this),
@@ -26,7 +38,7 @@
         );
       },
       _refreshContainers: function () {
-        return GGRC.Utils.CurrentPage.refreshCounts()
+        return refreshCounts()
           .then(function () {
           // tell each container with snapshots that it should refresh own data
             $('tree-widget-container')
@@ -34,7 +46,7 @@
                 var vm = $(this).viewModel();
                 var modelName = vm.model.model_singular;
 
-                if (!GGRC.Utils.Snapshots.isSnapshotModel(modelName)) {
+                if (!isSnapshotModel(modelName)) {
                   return true;
                 }
                 vm.setRefreshFlag(true);

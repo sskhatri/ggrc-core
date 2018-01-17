@@ -1,0 +1,140 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.ggrc-form .ggrc-form-item .ggrc-form-item__multiple-row.multi-select-label-container {
+  max-width: calc(100% - 280px);
+  margin: 0;
+}
+
+multi-select-label {
+  position: relative;
+  box-sizing: border-box;
+
+  .autocomplete-result-wrapper {
+    position: relative;
+  }
+
+  .autocomplete-result {
+    position: absolute;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background-color: $white;
+    box-shadow: 0 1px 4px 2px rgba(0, 0, 0, 0.075);
+    max-height: 200px;
+    overflow-y: auto;
+
+    ul {
+      margin: 0;
+    }
+
+    .header {
+      color: $gray;
+      font-size: 12px;
+    }
+
+    .header, li, .add-new-item {
+      display: block;
+      padding: 4px 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-sizing: border-box;
+      height: auto;
+      font-size: 13px;
+      line-height: 20px;
+      border: none;
+      float: none;
+
+      &.autocomplete-item:hover, &.add-new-item:hover {
+        color: $white;
+        background-color: $lightBlueBtn;
+      }
+    }
+
+    .add-new-item {
+      &:not(:first-child) {
+        border-top: 1px solid #ccc;
+      }
+      line-height: 24px;
+    }
+  }
+
+  .labels {
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    background-color: $white;
+
+    .label-box {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: bottom;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+      padding: 0px 5px 0 5px;
+      background-color: $light-grey-background;
+      margin: 0 4px 4px 0;
+
+      .remove-label {
+        display: none;
+      }
+    }
+
+    autocomplete-input {
+      display: inline-block;
+      margin: 0 0 4px 0;
+      flex: 1 1 126px;
+
+      input.autocomplete-input {
+        display: inline;
+        width: 100%;
+        outline: none;
+        border: none;
+        @include box-shadow(none);
+        height: 20px;
+        min-height: auto;
+        line-height: inherit;
+        margin: 0;
+        padding: 0;
+        color: $darkText;
+
+        &:focus {
+          @include box-shadow(none);
+        }
+      }
+    }
+  }
+
+  .edit-mode {
+    .labels {
+      border: 1px solid #ccc;
+      border-radius: 2px;
+      padding: 4px 5px 0 5px;
+
+      .label-box {
+        padding: 0px 18px 0 5px;
+
+        .remove-label {
+          display: inline;
+          position: absolute;
+          right: 5px;
+          top: 0;
+
+          .fa-times {
+            font-size: inherit;
+          }
+        }
+      }
+    }
+  }
+}

@@ -3,12 +3,13 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../object-list-item/editable-document-object-list-item';
+import template from './folder-attachments-list.mustache';
+
 (function (GGRC, can) {
   'use strict';
 
   var tag = 'folder-attachments-list';
-  var template = can.view(GGRC.mustache_path +
-    '/components/folder-attachments-list/folder-attachments-list.mustache');
 
   /**
    * Wrapper Component for rendering and managing of folder and
@@ -26,12 +27,24 @@
         readonly: {
           type: 'boolean',
           value: false
+        },
+        /**
+         * Indicates whether uploading files without parent folder allowed
+         * @type {boolean}
+         */
+        isNoFolderUploadingAllowed: {
+          type: 'boolean',
+          get: function () {
+            return !this.attr('denyNoFolder') && !this.attr('folderError');
+          }
         }
       },
       title: '@',
       tooltip: '@',
       subLabel: '@',
       instance: null,
+      currentFolder: null,
+      folderError: null,
       isFilesLoaded: false,
       itemsUploadedCallback: function () {
         if (this.instance instanceof CMS.Models.Control) {

@@ -3,6 +3,8 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import {getDashboards} from '../plugins/utils/dashboards-utils';
+
 (function (can, $) {
   can.Control('GGRC.Controllers.DashboardWidget', {
     defaults: {
@@ -25,7 +27,7 @@
     init: function () {
       var frag;
       var dashboards =
-        GGRC.Utils.Dashboards.getDashboards(this.options.instance);
+        getDashboards(this.options.instance);
 
       this.options.context = new can.Map({
         model: this.options.model,

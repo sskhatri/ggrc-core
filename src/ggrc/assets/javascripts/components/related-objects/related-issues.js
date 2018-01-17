@@ -3,16 +3,16 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import './related-objects';
 import '../add-issue-button/add-issue-button';
+import template from './related-issues.mustache';
 
 (function (can, GGRC) {
   'use strict';
-  var tpl = can.view(GGRC.mustache_path +
-    '/components/related-objects/related-issues.mustache');
 
   GGRC.Components('relatedIssues', {
     tag: 'related-issues',
-    template: tpl,
+    template: template,
     viewModel: {
       define: {
         orderBy: {

@@ -9,7 +9,7 @@ from lib import base, decorator, environment
 from lib.constants import locator, url, objects
 from lib.entities.entity import CustomAttributeEntity
 from lib.utils import selenium_utils
-from lib.utils.string_utils import get_bool_value_from_arg
+from lib.utils.string_utils import StringMethods
 
 
 class _Modal(base.Modal):
@@ -45,7 +45,9 @@ class CustomAttributesItemContent(base.Component):
 
   def __init__(self, driver, item_text):
     super(CustomAttributesItemContent, self).__init__(driver)
-    self.add_btn = base.Button(driver, self._locators.ADD_BTN_CSS)
+    self.item_el = selenium_utils.get_when_visible(
+        self._driver, self._locators.TREE_ITEM_EL_OPENED_CSS)
+    self.add_btn = base.Button(self.item_el, self._locators.ADD_BTN_CSS)
     self.custom_attributes_list = []
     self._item_name = item_text
 
@@ -77,7 +79,7 @@ class CustomAttributesItemContent(base.Component):
               title=attrs[0],
               type=objects.get_singular(objects.CUSTOM_ATTRIBUTES),
               attribute_type=attrs[1],
-              mandatory=get_bool_value_from_arg(attrs[2]),
+              mandatory=StringMethods.get_bool_value_from_arg(attrs[2]),
               definition_type=self._item_name))
 
   def get_ca_list_from_group(self):
@@ -88,7 +90,7 @@ class CustomAttributesItemContent(base.Component):
   def open_add_new_ca_modal(self):
     """Open Add Attribute modal and return Custom Attribute Modal."""
     selenium_utils.wait_until_stops_moving(self.add_btn.element)
-    selenium_utils.scroll_into_view(self._driver, self.add_btn.element)
+    selenium_utils.scroll_into_view(self._driver, self.item_el)
     selenium_utils.get_when_clickable(self._driver, self._locators.ADD_BTN_CSS)
     selenium_utils.wait_until_not_present(
         self._driver, self._locators.TREE_SPINNER_CSS)

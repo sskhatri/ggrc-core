@@ -3,6 +3,8 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import * as CurrentPageUtils from '../../plugins/utils/current-page-utils';
+
 describe('CMS.Controllers.InnerNav', function () {
   'use strict';
 
@@ -111,7 +113,7 @@ describe('CMS.Controllers.InnerNav', function () {
         .and
         .returnValue([]);
 
-      spyOn(GGRC.Utils.CurrentPage, 'getPageType')
+      spyOn(CurrentPageUtils, 'getPageType')
         .and
         .returnValue('Assessment');
 

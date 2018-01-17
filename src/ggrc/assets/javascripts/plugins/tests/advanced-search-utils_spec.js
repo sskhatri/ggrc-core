@@ -3,13 +3,15 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import * as AdvancedSearch from '../../plugins/utils/advanced-search-utils';
+
 'use strict';
 
-describe('GGRC.Utils.AdvancedSearch', function () {
+describe('AdvancedSearch', function () {
   describe('buildFilter() method', function () {
     it('builds correct statuses with "ANY" operator', function () {
       var items = [
-        GGRC.Utils.AdvancedSearch.create.state({
+        AdvancedSearch.create.state({
           items: ['Active', 'Draft', 'Deprecated'],
           operator: 'ANY'
         })
@@ -18,46 +20,82 @@ describe('GGRC.Utils.AdvancedSearch', function () {
                            'OR "Status"="Draft" ' +
                            'OR "Status"="Deprecated")';
 
-      expect(GGRC.Utils.AdvancedSearch.buildFilter(items))
+      expect(AdvancedSearch.buildFilter(items))
         .toBe(expectedResult);
     });
 
+    it(`builds correct statuses with "ANY" operator for
+      CycleTaskGroupObjectTask`,
+      function () {
+        var items = [
+          AdvancedSearch.create.state({
+            items: ['Active', 'Draft', 'Deprecated'],
+            operator: 'ANY',
+            modelName: 'CycleTaskGroupObjectTask',
+          }),
+        ];
+        var expectedResult = '("Task State"="Active" ' +
+                             'OR "Task State"="Draft" ' +
+                             'OR "Task State"="Deprecated")';
+
+        expect(AdvancedSearch.buildFilter(items))
+          .toBe(expectedResult);
+      });
+
     it('builds correct statuses with "NONE" operator', function () {
       var items = [
-        GGRC.Utils.AdvancedSearch.create.state({
+        AdvancedSearch.create.state({
           items: ['Active', 'Draft', 'Deprecated'],
-          operator: 'NONE'
-        })
+          operator: 'NONE',
+        }),
       ];
       var expectedResult = '("Status"!="Active" ' +
                            'AND "Status"!="Draft" ' +
                            'AND "Status"!="Deprecated")';
 
-      expect(GGRC.Utils.AdvancedSearch.buildFilter(items))
+      expect(AdvancedSearch.buildFilter(items))
         .toBe(expectedResult);
     });
 
+    it(`builds correct statuses with "NONE" operator for
+      CycleTaskGroupObjectTask`,
+      function () {
+        var items = [
+          AdvancedSearch.create.state({
+            items: ['Active', 'Draft', 'Deprecated'],
+            operator: 'NONE',
+            modelName: 'CycleTaskGroupObjectTask',
+          }),
+        ];
+        var expectedResult = '("Task State"!="Active" ' +
+                             'AND "Task State"!="Draft" ' +
+                             'AND "Task State"!="Deprecated")';
+
+        expect(AdvancedSearch.buildFilter(items))
+          .toBe(expectedResult);
+      });
+
     it('builds correct filter string', function () {
       var items = [
-        GGRC.Utils.AdvancedSearch.create.state({
+        AdvancedSearch.create.state({
           items: ['Active', 'Draft'],
           operator: 'ANY'
         }),
-        GGRC.Utils.AdvancedSearch.create.operator('AND'),
-        GGRC.Utils.AdvancedSearch.create.attribute({
+        AdvancedSearch.create.operator('AND'),
+        AdvancedSearch.create.attribute({
           field: 'Title',
           operator: '~',
           value: ' test'
         }),
-        GGRC.Utils.AdvancedSearch.create.operator('OR'),
-        GGRC.Utils.AdvancedSearch.create.group([
-          GGRC.Utils.AdvancedSearch.create.attribute({
+        AdvancedSearch.create.operator('OR'),
+        AdvancedSearch.create.group([
+          AdvancedSearch.create.attribute({
             field: 'Para',
             operator: '=',
             value: 'meter'
           }),
-          GGRC.Utils.AdvancedSearch.create.operator('AND'),
-          GGRC.Utils.AdvancedSearch.create.attribute({
+          AdvancedSearch.create.operator('AND'),
+          AdvancedSearch.create.attribute({
             field: 'Other',
             operator: '~=',
             value: 'value '
@@ -67,49 +105,49 @@ describe('GGRC.Utils.AdvancedSearch', function () {
       var expectedResult = '("Status"="Active" OR "Status"="Draft") ' +
                            'AND "Title" ~ "test" ' +
                            'OR ("Para" = "meter" AND "Other" ~= "value")';
-      expect(GGRC.Utils.AdvancedSearch.buildFilter(items))
+      expect(AdvancedSearch.buildFilter(items))
         .toBe(expectedResult);
     });
 
     it('builds correct mapping filters', function () {
       var items = [
-        GGRC.Utils.AdvancedSearch.create.mappingCriteria({
+        AdvancedSearch.create.mappingCriteria({
           objectName: 'product',
-          filter: GGRC.Utils.AdvancedSearch.create.attribute({
+          filter: AdvancedSearch.create.attribute({
             field: 'title',
             operator: '~',
             value: 'A'
           }),
-          mappedTo: GGRC.Utils.AdvancedSearch.create.mappingCriteria({
+          mappedTo: AdvancedSearch.create.mappingCriteria({
             objectName: 'system',
-            filter: GGRC.Utils.AdvancedSearch.create.attribute({
+            filter: AdvancedSearch.create.attribute({
               field: 'title',
               operator: '~',
               value: 'B'
             })
           })
         }),
-        GGRC.Utils.AdvancedSearch.create.operator('AND'),
-        GGRC.Utils.AdvancedSearch.create.mappingCriteria({
+        AdvancedSearch.create.operator('AND'),
+        AdvancedSearch.create.mappingCriteria({
           objectName: 'control',
-          filter: GGRC.Utils.AdvancedSearch.create.attribute({
+          filter: AdvancedSearch.create.attribute({
             field: 'title',
             operator: '~',
             value: 'C'
           }),
-          mappedTo: GGRC.Utils.AdvancedSearch.create.group([
-            GGRC.Utils.AdvancedSearch.create.mappingCriteria({
+          mappedTo: AdvancedSearch.create.group([
+            AdvancedSearch.create.mappingCriteria({
               objectName: 'system',
-              filter: GGRC.Utils.AdvancedSearch.create.attribute({
+              filter: AdvancedSearch.create.attribute({
                 field: 'title',
                 operator: '~',
                 value: 'D'
               })
             }),
-            GGRC.Utils.AdvancedSearch.create.operator('OR'),
-            GGRC.Utils.AdvancedSearch.create.mappingCriteria({
+            AdvancedSearch.create.operator('OR'),
+            AdvancedSearch.create.mappingCriteria({
               objectName: 'system',
-              filter: GGRC.Utils.AdvancedSearch.create.attribute({
+              filter: AdvancedSearch.create.attribute({
                 field: 'title',
                 operator: '~',
                 value: 'E'
@@ -232,7 +270,7 @@ describe('GGRC.Utils.AdvancedSearch', function () {
       ];
       var request = [];
 
-      var result = GGRC.Utils.AdvancedSearch.buildFilter(items, request);
+      var result = AdvancedSearch.buildFilter(items, request);
 
       expect(result).toBe(expectedFilters);
       expect(JSON.parse(JSON.stringify(request))).toEqual(expectedRequest);

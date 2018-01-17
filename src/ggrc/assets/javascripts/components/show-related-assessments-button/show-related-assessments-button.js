@@ -3,12 +3,11 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../related-objects/related-assessments';
+import template from './show-related-assessments-button.mustache';
+
 (function (can, GGRC) {
   'use strict';
-
-  var template = can.view(GGRC.mustache_path +
-    '/components/show-related-assessments-button' +
-    '/show-related-assessments-button.mustache');
 
   can.Component.extend({
     tag: 'show-related-assessments-button',

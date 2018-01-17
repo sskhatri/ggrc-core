@@ -380,7 +380,6 @@ def send_email(user_email, subject, body):
   message = mail.EmailMessage(sender=sender, subject=subject)
 
   message.to = user_email
-  message.body = "TODO: add email in text mode."
   message.html = body
 
   message.send()

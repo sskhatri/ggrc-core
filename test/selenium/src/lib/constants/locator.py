@@ -93,7 +93,7 @@ class PageHeader(object):
   BUTTON_SEARCH = (
       By.CSS_SELECTOR, _CONTENT + ' [data-toggle="unified-search"]')
   BUTTON_MY_TASKS = (
-      By.CSS_SELECTOR, _CONTENT + ' [href="/dashboard#task_widget"]')
+      By.CSS_SELECTOR, _CONTENT + ' [href="/dashboard#!task_widget"]')
   BUTTON_ALL_OBJECTS = (
       By.CSS_SELECTOR, _CONTENT + ' [href^="/objectBrowser"]')
   TOGGLE_USER_DROPDOWN = (By.CSS_SELECTOR, _CONTENT + " .dropdown-toggle")
@@ -109,7 +109,7 @@ class PageHeader(object):
   NOTIFICATIONS = (By.CSS_SELECTOR, USER_MENU + ' .notify-wrap')
   BUTTON_ADMIN_DASHBOARD = (
       By.CSS_SELECTOR,
-      Common.DROPDOWN_MENU + ' [href="/admin#people_list_widget"]')
+      Common.DROPDOWN_MENU + ' [href="/admin#!people_list_widget"]')
   CHECKBOX_DAILY_DIGEST = (By.CSS_SELECTOR, USER_MENU + ' input')
   CHECKBOX_DISABLED = (By.CSS_SELECTOR, USER_MENU + ' input.disabled')
 
@@ -384,7 +384,7 @@ class ModalCreateNewControl(BaseModalCreateNew):
     """Locators for Create new Control modals visible when creating from LHN.
     """
     @staticmethod
-    def get_assessor_row(first_id, second_id):
+    def get_assignee_row(first_id, second_id):
       return (
           By.CSS_SELECTOR,
           '.modal-body div>form>div>div:nth-child({})>div:nth-child({}) '
@@ -476,7 +476,7 @@ class ModalCreateNewAsmt(BaseModalCreateNew, CommonAssessment):
 class ModalCreateNewAsmtTmpl(BaseModalCreateNew):
   """Locators for Create new Assessment Template modals."""
   ASSIGNEE_DROPDOWN = (
-      By.CSS_SELECTOR, 'select[can-value="instance.default_people.assessors"]')
+      By.CSS_SELECTOR, 'select[can-value="instance.default_people.assignees"]')
 
 
 class ModalEditObject(BaseModalCreateNew):
@@ -547,9 +547,8 @@ class WidgetBar(object):
     """Locators for Menu in header."""
     @staticmethod
     def get_widget(object_name):
-      return (
-          By.CSS_SELECTOR,
-          '.object-nav [href$="#{}_widget"]'.format(object_name))
+      return (By.CSS_SELECTOR,
+              '.object-nav [href$="#!{}_widget"]'.format(object_name))
 
   class __metaclass__(type):
     def __init__(cls, *args):
@@ -564,6 +563,7 @@ class WidgetBar(object):
   ADMIN_ROLES = _Locator.get_widget("roles_list")
   ADMIN_EVENTS = _Locator.get_widget("events_list")
   ADMIN_CUSTOM_ATTRIBUTE = _Locator.get_widget("custom_attribute")
+  ADMIN_CUSTOM_ROLES = _Locator.get_widget("custom_roles")
   INFO = _Locator.get_widget("info")
   CUSTOM_ATTRIBUTES = _Locator.get_widget("custom_attribute")
   EVENTS = _Locator.get_widget("events_list")
@@ -690,6 +690,8 @@ class CommonWidgetInfo(object):
   PEOPLE_VALUE_CSS = (By.CSS_SELECTOR, _PEOPLE_ITEM + " object-list")
   # user input elements
   BUTTON_3BBS = (By.XPATH, _INFO_WIDGET_XPATH + "//*[@data-toggle='dropdown']")
+  # controllers
+  TAB_CONTAINER_CSS = (By.CSS_SELECTOR, "tab-container")
 
 
 class WidgetInfoPanel(CommonWidgetInfo):
@@ -809,7 +811,6 @@ class WidgetInfoAssessment(WidgetInfoPanel, CommonAssessment):
       [_ASMT_PANEL, "related-objects[related-items-type='Assessment']"]))
   RELATED_ISSUES_CSS = (By.CSS_SELECTOR, " ".join(
       [_ASMT_PANEL, "related-objects[related-items-type='Issue']"]))
-  ASMT_TAB_CONTAINER_CSS = (By.CSS_SELECTOR, "tab-container")
   # state section
   _PNL_STATE = ".pane-header__toolbar"
   BUTTON_COMPLETE = (By.CSS_SELECTOR, _PNL_STATE + " button.btn-darkBlue")
@@ -817,9 +818,10 @@ class WidgetInfoAssessment(WidgetInfoPanel, CommonAssessment):
   BUTTON_NEEDS_REWORK = (By.CSS_SELECTOR, _PNL_STATE + " button.btn-red")
   ICON_VERIFIED = (By.CSS_SELECTOR, "i.verified-icon")
 
-  class TabContainer(object):
-    TAB_CONTROLLER = (By.CSS_SELECTOR, "ul.nav.nav-tabs")
-    TAB_CONTENT = (By.CSS_SELECTOR, '.tab-pane.active')
+
+class TabContainer(object):
+  TAB_CONTROLLER_CSS = (By.CSS_SELECTOR, "ul.nav.nav-tabs")
+  TAB_CONTENT_CSS = (By.CSS_SELECTOR, '.tab-pane.active')
 
 
 class WidgetInfoAssessmentTemplate(WidgetInfoPanel):
@@ -1103,6 +1105,8 @@ class AdminCustomAttributes(object):
 class CustomAttributesItemContent(AdminCustomAttributes):
   """Locators for expanded view of custom attribute group
   in admin dashboard."""
+  _TREE_ITEM = ".tree-item.cms_controllers_tree_view_node"
+  TREE_ITEM_EL_OPENED_CSS = (By.CSS_SELECTOR, _TREE_ITEM + ".item-open")
   CONTENT_OPEN = ".content-open .tier-2-info-content"
   TREE_STRUCTURE = (
       CONTENT_OPEN + " .tree-structure .cms_controllers_tree_view_node")
@@ -1165,6 +1169,6 @@ class AssessmentRelatedTable(object):
 class DashboardWidget(object):
   """Locators for DashboardWidget."""
   _TAB_CONTAINER = ".dashboard-widget.info"
-  TAB_CONTAINER = (By.CSS_SELECTOR, _TAB_CONTAINER)
-  TAB_CONTROLLER = (By.CSS_SELECTOR, ".dashboard-list")
-  TAB_CONTENT = (By.CSS_SELECTOR, _TAB_CONTAINER + " iframe")
+  TAB_CONTAINER_CSS = (By.CSS_SELECTOR, _TAB_CONTAINER)
+  TAB_CONTROLLER_CSS = (By.CSS_SELECTOR, ".dashboard-list")
+  TAB_CONTENT_CSS = (By.CSS_SELECTOR, _TAB_CONTAINER + " iframe")

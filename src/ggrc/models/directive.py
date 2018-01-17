@@ -33,7 +33,8 @@ class Directive(HasObjectState, LastDeprecatedTimeboxed,
 
   version = deferred(db.Column(db.String), 'Directive')
   organization = deferred(db.Column(db.String), 'Directive')
-  scope = deferred(db.Column(db.Text), 'Directive')
+  scope = deferred(db.Column(db.Text, nullable=False, default=u""),
+                   'Directive')
   kind_id = deferred(db.Column(db.Integer), 'Directive')
   audit_start_date = deferred(db.Column(db.DateTime), 'Directive')
   audit_frequency_id = deferred(db.Column(db.Integer), 'Directive')

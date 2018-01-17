@@ -52,6 +52,7 @@ class Converter(object):
       "delete",
       "task_type",
       "audit",
+      "workflow_owner",
   ]
 
   def __init__(self, **kwargs):
@@ -68,19 +69,17 @@ class Converter(object):
   def to_array(self):
     with benchmark("Create block converters"):
       self.block_converters_from_ids()
-    with benchmark("Handle row data"):
-      self.handle_row_data()
-    with benchmark("Make block array"):
+    with benchmark("Handle block converters"):
       return self.to_block_array()
 
   def to_block_array(self):
-    """ exporting each in it's own block separated by empty lines
+    """Export each block separated by empty lines
 
     Generate 2d array where each cell represents a cell in a csv file
     """
     csv_data = []
     for block_converter in self.block_converters:
-      csv_header, csv_body = block_converter.to_array()
+      csv_header, csv_body = block_converter.row_data_to_array()
       # multi block csv must have first column empty
       two_empty_lines = [[], []]
       block_data = csv_header + csv_body + two_empty_lines
@@ -113,18 +112,15 @@ class Converter(object):
       for block_converter in self.block_converters:
         block_converter.handle_row_data(attr_name)
 
-  def handle_row_data(self):
-    for converter in self.block_converters:
-      converter.handle_row_data()
-
   def row_converters_from_csv(self):
     for converter in self.block_converters:
       converter.row_converters_from_csv()
 
   def block_converters_from_ids(self):
-    """ fill the block_converters class variable
+    """Generate block converters.
 
-    Generate block converters from a list of tuples with an object name and ids
+    Generate block converters from a list of tuples with an object name and
+    ids and store it to an instance variable.
     """
     object_map = {o.__name__: o for o in self.exportable.values()}
     for object_data in self.ids_by_type:
@@ -140,7 +136,6 @@ class Converter(object):
                                          fields=fields, object_ids=object_ids,
                                          class_name=class_name)
         block_converter.check_block_restrictions()
-        block_converter.row_converters_from_ids()
         self.block_converters.append(block_converter)
 
   def block_converters_from_csv(self):
@@ -172,7 +167,7 @@ class Converter(object):
 
   def import_secondary_objects(self):
     for converter in self.block_converters:
-      converter.import_secondary_objects(self.new_objects)
+      converter.import_secondary_objects()
 
   def get_info(self):
     for converter in self.block_converters:

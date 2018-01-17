@@ -2,6 +2,9 @@
  * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
+
+@import "./tree-view-animations";
+
 sub-tree-wrapper {
   display: flex;
   flex-direction: column;
@@ -68,8 +71,7 @@ sub-tree-item {
     width: 200px;
 
     .item-actions.disabled {
-      pointer-events: none;
-      opacity: 0.25;
+      @include disabled();
     }
   }
 

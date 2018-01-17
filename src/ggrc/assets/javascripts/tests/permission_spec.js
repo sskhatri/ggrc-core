@@ -3,6 +3,8 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import Permission from '../permission';
+
 describe('Permission', function () {
   describe('_admin_permission_for_context() method', function () {
     it('returns new admin permission for specified context_id',

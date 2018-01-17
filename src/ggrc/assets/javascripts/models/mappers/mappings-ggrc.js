@@ -3,6 +3,8 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import RefreshQueue from '../refresh_queue';
+
 (function (GGRC, can) {
   var Proxy = GGRC.MapperHelpers.Proxy;
   var Direct = GGRC.MapperHelpers.Direct;
@@ -438,13 +440,7 @@
       audits: TypeFilter('related_objects', 'Audit'),
       related_controls: TypeFilter('related_objects', 'Control'),
       related_regulations: TypeFilter('related_objects', 'Regulation'),
-      related_creators:
-        AttrFilter('related_objects', 'AssigneeType', 'Creator', 'Person'),
-      related_assessors:
-        AttrFilter('related_objects', 'AssigneeType', 'Assessor', 'Person'),
-      related_verifiers:
-        AttrFilter('related_objects', 'AssigneeType', 'Verifier', 'Person'),
-      people: AttrFilter('related_objects', 'AssigneeType', null, 'Person')
+      people: AttrFilter('related_objects', null, 'Person')
     },
     AssessmentTemplate: {
       _mixins: ['related_object']
@@ -492,7 +488,8 @@
     Roleable: {
       access_control_roles: Search(function (binding) {
           return CMS.Models.AccessControlRole.findAll({
-            object_type: binding.instance.model_singular
+            object_type: binding.instance.model_singular,
+            internal: false,
           });
       }, 'AccessControlRole')
     },

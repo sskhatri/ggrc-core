@@ -4,6 +4,7 @@
 """Module provides basic class to wrap communication integration service."""
 # pylint: disable=too-few-public-methods
 
+import functools
 import json
 import logging
 import urlparse
@@ -13,6 +14,55 @@ from google.appengine.api import urlfetch_errors
 
 from ggrc import settings
 from ggrc.integrations import integrations_errors
+
+
+def value_for_http_error(func=None, predicates=None):
+  """Decorator to return predefined value for given HTTP error codes.
+
+  Example:
+    @value_for_http_error({404: 'Default value'})
+    def get(self):
+      raise HttpError('Not Found', 404)
+
+  the function above returns a string 'Default value' instead of
+  raising HttpError.
+
+  Default value might be a callable object which is used as value generator.
+
+  Example:
+    @value_for_http_error({404: list})
+    def get(self):
+      raise HttpError('Not Found', 404)
+
+  the function above returns an empty list instead of raising HttpError.
+
+  Args:
+    func: A callable to decorate.
+    predicates: A dict with HTTP return codes as keys and the values to return
+        for these codes accordingly if there is an HttpError raised.
+
+  Returns:
+    Decorated callable.
+  """
+  if not func:
+    return functools.partial(value_for_http_error, predicates=predicates)
+
+  predicates = predicates or {}
+
+  @functools.wraps(func)
+  def wrapper(*args, **kwargs):
+    try:
+      return func(*args, **kwargs)
+    except integrations_errors.HttpError as e:
+      if e.status not in predicates:
+        raise
+      value = predicates[e.status]
+      if hasattr(value, '__call__'):
+        return value()
+      else:
+        return value
+      raise
+  return wrapper
 
 
 class BaseClient(object):
@@ -68,9 +118,18 @@ class BaseClient(object):
       logging.exception('Unable to perform urlfetch request: %s', error)
       raise integrations_errors.HttpError('Unable to perform a request')
 
+  def _get(self, url, headers=None):
+    """Performs GET HTTP request to given URL."""
+    return self._perform_request(url, method=urlfetch.GET, headers=headers)
+
   def _post(self, url, payload=None, headers=None):
     """Performs POST HTTP request to given URL with given data."""
     return self._perform_request(url, method=urlfetch.POST, payload=payload,
+                                 headers=headers)
+
+  def _put(self, url, payload=None, headers=None):
+    """Performs PUT HTTP request to given URL with given data."""
+    return self._perform_request(url, method=urlfetch.PUT, payload=payload,
                                  headers=headers)
 
 

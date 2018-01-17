@@ -12,7 +12,10 @@
   </h2>
   {{#if allowedToCreate}}
     {{#is_allowed 'create' model.singular context='any'}}
-      {{#if_equals type 'AssessmentTemplate'}}
+      {{#if_helpers '\
+        #if_equals' type 'AssessmentTemplate' '\
+        or #if_equals' type 'RiskAssessment'}}
+
         <span class="create-new-object">
           Map existing object or
           <a class="btn btn-link create-control"
@@ -20,18 +23,18 @@
               data-toggle="modal-ajax-form"
               data-unique-id="{{join_object_id}}"
               data-modal-class="modal-wide"
-              data-object-singular="{{model_info 'AssessmentTemplate' 'model_singular'}}"
-              data-object-plural="{{model_info 'AssessmentTemplate' 'root_collection'}}"
+              data-object-singular="{{model_info type 'model_singular'}}"
+              data-object-plural="{{model_info type 'root_collection'}}"
               data-object-params='{
-                "audit": {
+                "{{parentInstance.class.root_object}}": {
                   "id": {{parentInstance.id}},
-                  "type": "{{parentInstance.type}}"
+                  "type": "{{parentInstance.type}}",
+                  "title": "{{json_escape parentInstance.title}}"
                 },
                 "context": {
                   "id": {{parentInstance.context.id}},
                   "type": "{{json_escape parentInstance.context.type}}"
-                },
-              "audit_title": "{{json_escape parentInstance.title}}"
+                }
             }'
             data-join-object-id="{{join_object_id}}">
             Create and map new object

@@ -40,8 +40,9 @@ class AssertionMessages(CommonMessages):
     and keys to make result error comparison message.
     """
     return (
-        isinstance(left and right, Entity.all_entities_classes()) and
-        hasattr(left and right, "diff_info") and
+        isinstance(left, Entity.all_entities_classes()) and
+        isinstance(right, Entity.all_entities_classes()) and
+        hasattr(left, "diff_info") and hasattr(right, "diff_info") and
         getattr(left, "diff_info") and getattr(right, "diff_info"))
 
   @classmethod
@@ -59,14 +60,16 @@ class AssertionMessages(CommonMessages):
     # comparison of entities
     assertion_error_msg = cls.err_common.format(left, right)
     # processing of entity
-    if isinstance(left and right, Entity.all_entities_classes()):
+    if (isinstance(left, Entity.all_entities_classes()) and
+            isinstance(right, Entity.all_entities_classes())):
       if not cls.is_entities_have_err_info(left, right):
         cls.set_entities_diff_info(left, right)
       assertion_error_msg = cls.diff_error_msg(left, right)
     # processing list of entities
-    if (isinstance(left and right, list) and
-        all(isinstance(_left and _right, Entity.all_entities_classes())
-            for _left, _right in zip(left, right))):
+    if (isinstance(left, list) and isinstance(right, list) and
+        all(isinstance(_left, Entity.all_entities_classes()) and
+        isinstance(_right, Entity.all_entities_classes()) for
+            _left, _right in zip(left, right))):
       assertion_error_msg = ""
       for _left, _right in zip(sorted(left), sorted(right)):
         if not cls.is_entities_have_err_info(_left, _right):
@@ -83,7 +86,8 @@ class AssertionMessages(CommonMessages):
     # comparison of entities
     assertion_error_msg = cls.err_contains.format(left, right)
     # processing of entity
-    if isinstance(left and right, Entity.all_entities_classes()):
+    if (isinstance(left, Entity.all_entities_classes()) and
+            isinstance(right, Entity.all_entities_classes())):
       if not cls.is_entities_have_err_info(left, right):
         cls.set_entities_diff_info(left, right)
       assertion_error_msg = cls.diff_error_msg(left, right)
@@ -111,7 +115,9 @@ class ExceptionsMessages(CommonMessages):
   err_switch_to_new_window = "New window target doesn't exist\n"
   err_csv_format = "CSV file has unexpected structure: {}\n"
   err_comments_count = "Comments's count." + CommonMessages.err_common
-  err_server_response = "Server response: (code: {}, message: {})\n"
+  err_server_req_resp = ("Server request body:\n{}\n"
+                         "Server response text:\ncode: {}, message: {}\n")
+  err_server_resp = "Server response (is not correct):\n{}\n"
   err_pagination_count = "Count of pagination controllers is not {}\n"
   err_pagination_elements = "Pagination controllers were not found {}\n"
   err_counters_are_different = (

@@ -1024,4 +1024,118 @@ describe('GGRC.Components.revisionLog', function () {
         ._getRoleAtTime(null, new Date(2016, 1, 2))).toEqual('none');
     });
   });
+
+  describe('"_isEqualArrays" method', () => {
+    let viewModel;
+
+    beforeEach(() => {
+      viewModel = GGRC.Components.getViewModel('revisionLog');
+    });
+
+    it('should return TRUE. empty arrays', () => {
+      let result = viewModel._isEqualArrays([], [], 'id');
+      expect(result).toBeTruthy();
+    });
+
+    it('should return TRUE. equals arrays', () => {
+      let arr1 = [{id: 1}, {id: 3}, {id: 5}];
+      let arr2 = [{id: 3}, {id: 5}, {id: 1}];
+      let result = viewModel._isEqualArrays(arr1, arr2, 'id');
+      expect(result).toBeTruthy();
+    });
+
+    it('should return FALSE. different length', () => {
+      let arr1 = [{id: 1}, {id: 3}, {id: 5}];
+      let arr2 = [{id: 3}, {id: 5}, {id: 1}, {id: 6}];
+      let result = viewModel._isEqualArrays(arr1, arr2, 'id');
+      expect(result).toBeFalsy();
+    });
+
+    it('should return FALSE. one empty array', () => {
+      let arr1 = [{id: 1}, {id: 3}, {id: 5}];
+      let arr2 = [];
+      let result = viewModel._isEqualArrays(arr1, arr2, 'id');
+      expect(result).toBeFalsy();
+    });
+
+    it('should return FALSE. different data', () => {
+      let arr1 = [{id: 1}, {id: 3}, {id: 5}];
+      let arr2 = [{id: 1}, {id: 3}, {id: 55}];
+      let result = viewModel._isEqualArrays(arr1, arr2, 'id');
+      expect(result).toBeFalsy();
+    });
+  });
+
+  describe('"_buildPeopleEmails" method', () => {
+    let viewModel;
+
+    beforeEach(() => {
+      viewModel = GGRC.Components.getViewModel('revisionLog');
+    });
+
+    it('should return array with users emails', () => {
+      const userEmail = 'user@example.com';
+      let result;
+
+      spyOn(CMS.Models.Person, 'findInCacheById')
+        .and.returnValue({email: userEmail});
+
+      result = viewModel._buildPeopleEmails([{id: 1}, {id: 2}]);
+      expect(result.length).toBe(2);
+      expect(result[0]).toEqual(userEmail);
+      expect(result[1]).toEqual(userEmail);
+    });
+
+    it('should return array with empty "diff" value. empty array', () => {
+      let emptyDiffValue = '—';
+      let result = viewModel._buildPeopleEmails([]);
+      expect(result.length).toBe(1);
+      expect(result[0]).toEqual(emptyDiffValue);
+    });
+  });
+
+  describe('"_getPeopleForRole" method', () => {
+    let viewModel;
+
+    beforeEach(() => {
+      viewModel = GGRC.Components.getViewModel('revisionLog');
+    });
+
+    it('should return empty list. ACL is undefined', () => {
+      let revisionContent = {};
+      let role = {id: 1};
+
+      let result = viewModel._getPeopleForRole(role, revisionContent);
+      expect(result.length).toBe(0);
+    });
+
+    it('should return empty list', () => {
+      let revisionContent = {
+        access_control_list: [
+          {ac_role_id: 5, person: {id: 1}},
+          {ac_role_id: 3, person: {id: 55}},
+        ],
+      };
+      let role = {id: 1};
+      let result = viewModel._getPeopleForRole(role, revisionContent);
+
+      expect(result.length).toBe(0);
+    });
+
+    it('should return 2 persons', () => {
+      let revisionContent = {
+        access_control_list: [
+          {ac_role_id: 5, person: {id: 1}},
+          {ac_role_id: 3, person: {id: 55}},
+          {ac_role_id: 5, person: {id: 55}},
+        ],
+      };
+      let role = {id: 5};
+      let result = viewModel._getPeopleForRole(role, revisionContent);
+
+      expect(result.length).toBe(2);
+      expect(result[0].id).toBe(1);
+      expect(result[1].id).toBe(55);
+    });
+  });
 });

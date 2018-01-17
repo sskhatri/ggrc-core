@@ -51,6 +51,7 @@
       }
       this.validateNonBlank('title');
       this.validateNonBlank('contact');
+      this.validateNonBlank('workflow');
       this.validateContact(['_transient.contact', 'contact']);
 
       // Refresh workflow people:

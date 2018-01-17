@@ -3,6 +3,11 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import {
+  buildCountParams,
+  batchRequests,
+} from '../../plugins/utils/query-api-utils';
+
 (function (can, GGRC) {
   'use strict';
 
@@ -45,7 +50,6 @@
     type: '@',
     count: 0,
     load: function () {
-      var QueryAPI = GGRC.Utils.QueryAPI;
       var instance = this.attr('instance');
       var type = this.attr('type');
       var relevant = {
@@ -53,10 +57,8 @@
         type: instance.type
       };
       var types = type ? [type] : GGRC.Mappings.getMappingList(instance.type);
-      var countQuery = QueryAPI.buildCountParams(types, relevant);
-      var dfds = countQuery.map(function (query) {
-        return QueryAPI.batchRequests(query);
-      });
+      var countQuery = buildCountParams(types, relevant);
+      var dfds = countQuery.map(batchRequests);
 
       return $.when.apply($, dfds).then(function () {
         var counts = Array.prototype.slice.call(arguments);

@@ -9,6 +9,16 @@ import '../components/info-pane/info-pane-footer';
 import '../components/assessment/info-pane/info-pane';
 import '../components/folder-attachments-list/folder-attachments-list';
 import '../components/unmap-button/unmap-person-button';
+import '../components/issue-tracker/info-issue-tracker-fields';
+import '../components/comment/comment-data-provider';
+import '../components/comment/comment-add-form';
+import '../components/comment/mapped-comments';
+import '../components/object-list-item/document-object-list-item';
+import '../components/object-list-item/editable-document-object-list-item';
+import '../components/show-related-assessments-button/show-related-assessments-button';
+import '../components/unarchive_link';
+import * as TreeViewUtils from '../plugins/utils/tree-view-utils';
+import {confirm} from '../plugins/utils/modals';
 
 can.Control('CMS.Controllers.InfoPin', {
   defaults: {
@@ -42,25 +52,6 @@ can.Control('CMS.Controllers.InfoPin', {
     }
     return options;
   },
-  loadChildTrees: function () {
-    var childTreeDfds = [];
-    var that = this;
-    var $el;
-    var childTreeControl;
-
-    this.element.find('.' + CMS.Controllers.TreeView._fullName)
-      .each(function (_, el) {
-        $el = $(el);
-
-        //  Ensure this targets only direct child trees, not sub-tree trees
-        if ($el.closest('.' + that.constructor._fullName).is(that.element)) {
-          childTreeControl = $el.control();
-          if (childTreeControl) {
-            childTreeDfds.push(childTreeControl.display());
-          }
-        }
-      });
-  },
   getPinHeight: function (maximizedState) {
     if (maximizedState) {
       return Math.floor($(window).height() * 3 / 4);
@@ -84,24 +75,27 @@ can.Control('CMS.Controllers.InfoPin', {
     var instance = opts.attr('instance');
     var parentInstance = opts.attr('parent_instance');
     var self = this;
-    this.element.html(can.view(view, {
-      instance: instance,
-      isSnapshot: !!instance.snapshot || instance.isRevision,
-      parentInstance: parentInstance,
-      model: instance.class,
-      confirmEdit: confirmEdit,
-      is_info_pin: true,
-      options: options,
-      result: options.result,
-      page_instance: GGRC.page_instance(),
-      maximized: maximizedState,
-      onChangeMaximizedState: function () {
-        return self.changeMaximizedState.bind(self);
-      },
-      onClose: function () {
-        return self.close.bind(self);
-      }
-    }));
+    import(/* webpackChunkName: "modalsCtrls" */'./modals')
+      .then(() => {
+        this.element.html(can.view(view, {
+          instance: instance,
+          isSnapshot: !!instance.snapshot || instance.isRevision,
+          parentInstance: parentInstance,
+          model: instance.class,
+          confirmEdit: confirmEdit,
+          is_info_pin: true,
+          options: options,
+          result: options.result,
+          page_instance: GGRC.page_instance(),
+          maximized: maximizedState,
+          onChangeMaximizedState: function () {
+            return self.changeMaximizedState.bind(self);
+          },
+          onClose: function () {
+            return self.close.bind(self);
+          }
+        }));
+      });
   },
   prepareView: function (opts, el, maximizedState, setHtml) {
     var instance = opts.attr('instance');
@@ -133,11 +127,9 @@ can.Control('CMS.Controllers.InfoPin', {
 
     opts.attr('options.isDirectlyRelated',
       !isSubtreeItem ||
-      GGRC.Utils.TreeView.isDirectlyRelated(instance));
+      TreeViewUtils.isDirectlyRelated(instance));
 
     this.prepareView(opts, el, maximizedState, true);
-    // Load trees inside info pin
-    this.loadChildTrees();
 
     if (instance.info_pane_preload) {
       instance.info_pane_preload();
@@ -215,7 +207,7 @@ can.Control('CMS.Controllers.InfoPin', {
   confirmEdit: function (instance, modalDetails) {
     var confirmDfd = $.Deferred();
     var renderer = can.view.mustache(modalDetails.description);
-    GGRC.Controllers.Modals.confirm({
+    confirm({
       modal_description: renderer(instance).textContent,
       modal_confirm: modalDetails.button,
       modal_title: modalDetails.title,

@@ -51,7 +51,7 @@ class Notification(Base, db.Model):
   object_type = db.Column(db.String, nullable=False)
   send_on = db.Column(db.DateTime, nullable=False)
   sent_at = db.Column(db.DateTime, nullable=True)
-  custom_message = db.Column(db.Text, nullable=True)
+  custom_message = db.Column(db.Text, nullable=False, default=u"")
   force_notifications = db.Column(db.Boolean, default=False, nullable=False)
   repeating = db.Column(db.Boolean, nullable=False, default=False)
   notification_type_id = db.Column(

@@ -3,6 +3,8 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import {confirm} from '../plugins/utils/modals';
+
 (function ($) {
   'use strict';
 
@@ -189,7 +191,7 @@
         }
         if (this.is_form_dirty() || changedInstance || hasPending) {
           // Confirm that the user wants to lose the data prior to hiding
-          GGRC.Controllers.Modals.confirm({
+          confirm({
             modal_title: 'Discard Changes',
             modal_description: 'Are you sure that you want' +
             ' to discard your changes?',
@@ -197,6 +199,7 @@
             skip_refresh: true
           }, function () {
             can.trigger(instance, 'modal:dismiss');
+            can.trigger(instance, 'modal:discard');
             this.$element
               .find("[data-dismiss='modal'], [data-dismiss='modal-reset']")
               .trigger('click');

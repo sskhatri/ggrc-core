@@ -26,6 +26,8 @@ from ggrc.builder.json import publish_representation
 from ggrc.converters import get_importables, get_exportables
 from ggrc.extensions import get_extension_modules
 from ggrc.fulltext import get_indexer, mixin
+from ggrc.integrations import issues
+from ggrc.integrations import integrations_errors
 from ggrc.login import get_current_user
 from ggrc.login import login_required
 from ggrc.login import admin_required
@@ -83,6 +85,52 @@ def compute_attributes(args):
     return app.make_response(("success", 200, [("Content-Type", "text/html")]))
 
 
+@app.route('/_background_tasks/update_audit_issues', methods=['POST'])
+@queued_task
+def update_audit_issues(args):
+  """Web hook to update the issues associated with an audit."""
+  audit_id = args.parameters['audit_id']
+  message = args.parameters['message']
+
+  if not audit_id or not message:
+    logger.warning(
+        'One or more of required parameters (audit_id, message) is empty.')
+    return app.make_response((
+        'Parameters audit_id and message are required.',
+        400, [('Content-Type', 'text/html')]))
+
+  issue_tracker = all_models.IssuetrackerIssue
+  relationships = all_models.Relationship
+  query = db.session.query(
+      issue_tracker.enabled,
+      issue_tracker.issue_id,
+      issue_tracker.object_id
+  ).join(
+      relationships,
+      relationships.source_id == issue_tracker.object_id
+  ).filter(
+      relationships.source_type == 'Assessment',
+      relationships.destination_type == 'Audit',
+      relationships.destination_id == audit_id
+  )
+  cli = issues.Client()
+  issue_params = {
+      'comment': message,
+  }
+  for enabled, issue_id, assessment_id in query.all():
+    if not enabled:
+      continue
+
+    try:
+      cli.update_issue(issue_id, issue_params)
+    except integrations_errors.Error as error:
+      logger.error(
+          'Unable to update IssueTracker issue ID=%s '
+          'for Assessment ID=%s while archiving/unarchiving Audit ID=%s: %s',
+          issue_id, assessment_id, audit_id, error)
+  return app.make_response(('success', 200, [('Content-Type', 'text/html')]))
+
+
 def start_compute_attributes(revision_ids):
   """Start a background task for computed attributes."""
   task = create_task(
@@ -91,6 +139,21 @@ def start_compute_attributes(revision_ids):
       parameters={"revision_ids": revision_ids},
       method=u"POST",
       queued_callback=compute_attributes
+  )
+  task.start()
+
+
+def start_update_audit_issues(audit_id, message):
+  """Start a background task to update IssueTracker issues related to Audit."""
+  task = create_task(
+      name='update_audit_issues',
+      url=url_for(update_audit_issues.__name__),
+      parameters={
+          'audit_id': audit_id,
+          'message': message,
+      },
+      method=u'POST',
+      queued_callback=update_audit_issues
   )
   task.start()
 
@@ -204,7 +267,7 @@ def get_access_control_roles_json():
   with benchmark("Get access roles JSON"):
     attrs = all_models.AccessControlRole.query.options(
         sqlalchemy.orm.undefer_group("AccessControlRole_complete")
-    ).all()
+    ).filter(~all_models.AccessControlRole.internal).all()
     published = []
     for attr in attrs:
       published.append(publish(attr))
@@ -310,8 +373,8 @@ def index():
   """The initial entry point of the app
   """
   if not settings.PRODUCTION:
-    flash(u"""<b>WARNING</b> - This is not the production instance
-              of the GGRC application.<br><br>
+    flash(u"""This is not the production instance
+              of the GGRC application.<br>
               Company confidential, sensitive or personally identifiable
               information <b>*MUST NOT*</b> be entered or stored here.
               For any questions, please contact your administrator.""",

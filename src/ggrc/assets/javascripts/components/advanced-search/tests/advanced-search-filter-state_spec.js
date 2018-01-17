@@ -4,14 +4,15 @@
 */
 
 import * as StateUtils from '../../../plugins/utils/state-utils';
+import Component from '../advanced-search-filter-state';
 
 describe('GGRC.Components.advancedSearchFilterState', function () {
   'use strict';
 
   var viewModel;
 
-  beforeEach(function () {
-    viewModel = GGRC.Components.getViewModel('advancedSearchFilterState');
+  beforeEach(() => {
+    viewModel = new Component.prototype.viewModel();
   });
 
   describe('stateModel set() method', function () {
@@ -37,7 +38,7 @@ describe('GGRC.Components.advancedSearchFilterState', function () {
       viewModel.attr('modelName', 'Section');
 
       viewModel.attr('stateModel', {
-        items: []
+        items: [],
       });
 
       viewModel.attr('filterStates').each(function (item) {
@@ -50,7 +51,7 @@ describe('GGRC.Components.advancedSearchFilterState', function () {
       var selectedItems;
       viewModel.attr('modelName', 'Section');
       viewModel.attr('stateModel', {
-        items: ['Active']
+        items: ['Active'],
       });
 
       selectedItems = _.filter(viewModel.attr('filterStates'), function (it) {
@@ -66,7 +67,7 @@ describe('GGRC.Components.advancedSearchFilterState', function () {
       var items;
       var selectedStates = [{value: 'Active'}, {value: 'Draft'}];
       viewModel.attr('stateModel', new can.Map({
-        items: []
+        items: [],
       }));
 
       viewModel.saveTreeStates(selectedStates);

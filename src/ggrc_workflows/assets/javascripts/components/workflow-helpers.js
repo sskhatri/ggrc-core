@@ -1,14 +1,16 @@
-  /*!
+/*!
   Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
+
+import {confirm} from '../../../../ggrc/assets/javascripts/plugins/utils/modals';
 
 export default {
   generateCycle: function (workflow) {
     var dfd = new $.Deferred();
     var cycle;
 
-    GGRC.Controllers.Modals.confirm({
+    confirm({
       modal_title: 'Confirm',
       modal_confirm: 'Proceed',
       skip_refresh: true,

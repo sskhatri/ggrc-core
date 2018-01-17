@@ -174,119 +174,8 @@ describe('can.Model.Cacheable', function () {
         .then(function () {
           expect(CMS.Models.DummyModel.resolve_deferred_bindings)
             .toHaveBeenCalledWith(obj);
-          setTimeout(function () {
-            done();
-          }, 10);
+          setTimeout(done, 10);
         }, failAll(done));
-    });
-
-    describe('update conflict', function () {
-/*      it('triggers error flash when one property has an update conflict', function (done) {
-        var obj = _obj;
-        obj.attr('foo', 'bar');
-        obj.backup();
-        expect(obj._backupStore).toEqual(jasmine.objectContaining({id: obj.id, foo: 'bar'}));
-        obj.attr('foo', 'plonk');
-        spyOn($.fn, 'trigger').and.callThrough();
-        spyOn(obj, 'save').and.callFake(function () {
-          return new $.Deferred(function (dfd) {
-            setTimeout(function () {
-              dfd.resolve(obj);
-            }, 10);
-          });
-        });
-        spyOn(obj, 'refresh').and.callFake(function () {
-          obj.attr('foo', 'thud'); // uh-oh!  The same attr has been changed locally and remotely!
-          return new $.Deferred(function (dfd) {
-            setTimeout(function () {
-              dfd.resolve(obj);
-            }, 10);
-          });
-        });
-        spyOn(can, 'ajax')// .and.returnValue(new $.Deferred().reject({status: 409}, 409, "CONFLICT"));
-        .and.callFake(function () {
-          return new $.Deferred(function (dfd) {
-            setTimeout(function () {
-              dfd.reject({status: 409}, 409, 'CONFLICT');
-            }, 10);
-          });
-        });
-
-        CMS.Models.DummyModel.update(obj.id.toString(), obj.serialize()).then(function () {
-          fail("The update handler isn't supposed to resolve here.");
-          done();
-        }, function () {
-          expect($.fn.trigger).toHaveBeenCalledWith('ajax:flash', {warning: [jasmine.any(String)]});
-          setTimeout(function () {
-            done();
-          }, 10);
-        });
-
-      });
-*/
-      it('does not refresh model', function (done) {
-        var obj = _obj;
-        spyOn(obj, 'refresh').and.returnValue($.when(obj));
-        spyOn(can, 'ajax').and.returnValue(
-          new $.Deferred().reject({status: 409}, 409, 'CONFLICT'));
-        CMS.Models.DummyModel.update(obj.id, obj.serialize()).then(function () {
-          done();
-        }, function () {
-          expect(obj.refresh).not.toHaveBeenCalled();
-          done();
-        });
-      });
-
-      it('sets timeout id to XHR-response', function (done) {
-        var obj = _obj;
-        spyOn(obj, 'refresh').and.returnValue($.when(obj));
-        spyOn(window, 'setTimeout').and.returnValue(999);
-        spyOn(can, 'ajax').and.returnValue(
-          new $.Deferred().reject({status: 409}, 409, 'CONFLICT'));
-        CMS.Models.DummyModel.update(obj.id, obj.serialize()).then(function () {
-          done();
-        }, function (xhr) {
-          expect(xhr.warningId).toEqual(999);
-          done();
-        });
-      });
-
-/*
-      it('merges changed properties and saves', function (done) {
-        var obj = _obj;
-        obj.attr('foo', 'bar');
-        obj.backup();
-        expect(obj._backupStore).toEqual(jasmine.objectContaining({id: obj.id, foo: 'bar'}));
-        obj.attr('foo', 'plonk');
-        spyOn(obj, 'save').and.returnValue($.when(obj));
-        spyOn(obj, 'refresh').and.callFake(function () {
-          obj.attr('baz', 'quux');
-          return $.when(obj);
-        });
-        spyOn(can, 'ajax').and.returnValue(new $.Deferred().reject({status: 409}, 409, 'CONFLICT'));
-        CMS.Models.DummyModel.update(obj.id, obj.serialize()).then(function () {
-          expect(obj).toEqual(jasmine.objectContaining({id: obj.id, foo: 'plonk', baz: 'quux'}));
-          expect(obj.save).toHaveBeenCalled();
-          setTimeout(function () {
-            done();
-          }, 10);
-        }, failAll(done));
-      });
-*/
-
-      it('lets other error statuses pass through', function (done) {
-        var obj = new CMS.Models.DummyModel({id: 1});
-        var xhr = {status: 400};
-        spyOn(obj, 'refresh').and.returnValue($.when(obj.serialize()));
-        spyOn(can, 'ajax').and.returnValue(new $.Deferred().reject(xhr, 400, 'BAD REQUEST'));
-        CMS.Models.DummyModel.update(1, obj.serialize()).then(
-          failAll(done),
-          function (_xhr) {
-            expect(_xhr).toBe(xhr);
-            done();
-          }
-        );
-      });
     });
   });
 
@@ -416,11 +305,9 @@ describe('can.Model.Cacheable', function () {
       // we want to see how our observable list gets items over time, so spy on the push method
       spyOn(list, 'push').and.callThrough();
       spyOn(can, 'ajax').and.returnValue($.when(dummy_models));
-      var st = 4; // preload Date.now() because it's called once before we even get to modelizing
+      var st = 3; // preload Date.now() because it's called once before we even get to modelizing
       spyOn(Date, 'now').and.callFake(function () {
-        // Date.now() is called once at the start of modelizeMS (internal function in findAll)
-        //  once in an unknown location
-        //  and once per item.
+        // Date.now() is called once per item.
         if ((++st % 5) === 0)
           st += 100; // after three, push the time ahead 100ms to force a new call to modelizeMS
         return st;

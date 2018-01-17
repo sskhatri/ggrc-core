@@ -49,7 +49,7 @@ class CustomAttributeValue(Base, Indexed, db.Model):
   )
   attributable_id = db.Column(db.Integer)
   attributable_type = db.Column(db.String)
-  attribute_value = db.Column(db.String)
+  attribute_value = db.Column(db.String, nullable=False, default=u"")
 
   # When the attibute is of a mapping type this will hold the id of the mapped
   # object while attribute_value will hold the type name.
@@ -61,6 +61,7 @@ class CustomAttributeValue(Base, Indexed, db.Model):
   # This is just a mapping for accessing local functions so protected access
   # warning is a false positive
   _validator_map = {
+      "Text": lambda self: self._validate_text(),
       "Date": lambda self: self._validate_date(),
       "Dropdown": lambda self: self._validate_dropdown(),
       "Map:Person": lambda self: self._validate_map_person(),
@@ -271,6 +272,11 @@ class CustomAttributeValue(Base, Indexed, db.Model):
           utils.DATE_FORMAT_ISO,
           utils.DATE_FORMAT_ISO,
       )
+
+  def _validate_text(self):
+    """Trim whitespaces."""
+    if self.attribute_value:
+      self.attribute_value = self.attribute_value.strip()
 
   def validate(self):
     """Validate custom attribute value."""

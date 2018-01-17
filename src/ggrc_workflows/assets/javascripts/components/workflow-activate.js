@@ -4,6 +4,9 @@
 */
 
 import workflowHelpers from './workflow-helpers';
+import {
+  initCounts,
+} from '../../../../ggrc/assets/javascripts/plugins/utils/current-page-utils';
 
 export default can.Component.extend({
   tag: 'workflow-activate',
@@ -79,8 +82,7 @@ export default can.Component.extend({
                 return extension.name === 'workflows';
               });
 
-            return GGRC.Utils.CurrentPage
-              .initCounts([
+            return initCounts([
                 WorkflowExtension.countsMap.activeCycles,
               ],
                 workflow.type,

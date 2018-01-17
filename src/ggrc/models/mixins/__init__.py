@@ -170,9 +170,18 @@ class ChangeTracked(object):
   ]
 
   _aliases = {
-      "updated_at": "Last Updated",
-      "created_at": "Created Date",
-      "modified_by": "Last Updated By",
+      "updated_at": {
+          "display_name": "Last Updated",
+          "mandatory": False,
+      },
+      "modified_by": {
+          "display_name": "Last Updated By",
+          "mandatory": False,
+      },
+      "created_at": {
+          "display_name": "Created Date",
+          "mandatory": False,
+      },
   }
 
   @classmethod
@@ -231,7 +240,8 @@ class Described(object):
 
   @declared_attr
   def description(cls):  # pylint: disable=no-self-argument
-    return deferred(db.Column(db.Text), cls.__name__)
+    return deferred(db.Column(db.Text, nullable=False, default=u""),
+                    cls.__name__)
 
   # REST properties
   _api_attrs = reflection.ApiAttributes('description')
@@ -251,7 +261,8 @@ class Noted(object):
 
   @declared_attr
   def notes(cls):  # pylint: disable=no-self-argument
-    return deferred(db.Column(db.Text), cls.__name__)
+    return deferred(db.Column(db.Text, nullable=False, default=u""),
+                    cls.__name__)
 
   # REST properties
   _api_attrs = reflection.ApiAttributes('notes')
@@ -340,6 +351,55 @@ class Timeboxed(object):
     return super(Timeboxed, cls).indexed_query().options(
         orm.Load(cls).load_only("start_date", "end_date"),
     )
+
+
+class WithLastDeprecatedDate(object):
+  """Mixin that defines `last_deprecated_date` field."""
+
+  # pylint: disable=method-hidden ; pylint thinks that last_deprecated_date
+  # is overwritten in validate_status
+  @declared_attr
+  def last_deprecated_date(cls):  # pylint: disable=no-self-argument
+    return deferred(db.Column(db.Date), cls.__name__)
+
+  # pylint: disable=unused-argument,no-self-use
+  @validates('last_deprecated_date')
+  def validate_date(self, key, value):
+    return value.date() if isinstance(value, datetime.datetime) else value
+  # pylint: enable=unused-argument,no-self-use
+
+  _api_attrs = reflection.ApiAttributes(
+      reflection.Attribute('last_deprecated_date', create=False, update=False),
+  )
+
+  _aliases = {
+      "last_deprecated_date": {
+          "display_name": "Last Deprecated Date",
+          "view_only": True,
+      },
+  }
+
+  _fulltext_attrs = [
+      attributes.DateFullTextAttr('last_deprecated_date',
+                                  'last_deprecated_date'),
+  ]
+
+  @classmethod
+  def indexed_query(cls):
+    return super(WithLastDeprecatedDate, cls).indexed_query().options(
+        orm.Load(cls).load_only("last_deprecated_date"),
+    )
+
+  AUTO_SETUP_STATUS = "Deprecated"
+
+  @validates('status')
+  def validate_status(self, key, value):
+    """Autosetup current date as last_deprecated_date
+      if 'Deprecated' status will setup."""
+    # pylint: disable=unused-argument; key is unused but passed in by ORM
+    if value != self.status and value == self.AUTO_SETUP_STATUS:
+      self.last_deprecated_date = datetime.datetime.now()
+    return value
 
 
 class LastDeprecatedTimeboxed(Timeboxed):
@@ -594,8 +654,6 @@ class Base(ChangeTracked, ContextRBAC, Identifiable):
   case.
   """
   _people_log_mappings = [
-      "principal_assessor_id",
-      "secondary_assessor_id",
       "contact_id",
       "secondary_contact_id",
       "modified_by_id",
@@ -908,7 +966,8 @@ class TestPlanned(object):
 
   @declared_attr
   def test_plan(cls):  # pylint: disable=no-self-argument
-    return deferred(db.Column(db.Text), cls.__name__)
+    return deferred(db.Column(db.Text, nullable=False, default=u""),
+                    cls.__name__)
 
   # REST properties
   _api_attrs = reflection.ApiAttributes('test_plan')
@@ -921,6 +980,25 @@ class TestPlanned(object):
     return super(TestPlanned, cls).indexed_query().options(
         orm.Load(cls).load_only("test_plan"),
     )
+
+
+class Folderable(object):
+  """Mixin adding the ability to attach folders to an object"""
+
+  @declared_attr
+  def folder(cls):
+    return deferred(db.Column(db.Text, nullable=False, default=""),
+                    cls.__name__)
+
+  @classmethod
+  def indexed_query(cls):
+    return super(Folderable, cls).indexed_query().options(
+        orm.Load(cls).load_only("folder"),
+    )
+
+  _api_attrs = reflection.ApiAttributes('folder')
+  _fulltext_attrs = ['folder']
+  _aliases = {"folder": "Folder"}
 
 
 __all__ = [
@@ -942,4 +1020,5 @@ __all__ = [
     "Titled",
     "VerifiedDate",
     "WithContact",
+    "Folderable",
 ]

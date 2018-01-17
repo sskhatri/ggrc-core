@@ -8,7 +8,6 @@
                      (expand)="onExpand()"
                      (preview)="select($element)"
                      {expanded}="expanded"
-                     {child-models-list}="childModelsList"
                      {deep-limit}="limitDepthTree"
   ></tree-item-actions>
   <div class="flex-box columns" ($click)="onClick($element)">
@@ -33,8 +32,8 @@
 <div class="sub-tier">
   <sub-tree-wrapper {parent}="instance"
                     {limit-depth-tree}="limitDepthTree"
-                    {child-models}="selectedChildModels"
                     {get-depth-filter}="@getDepthFilter"
                     {is-open}="expanded"
+                    (collapse-subtree)="collapseAndHighlightItem()"
   ></sub-tree-wrapper>
 </div>

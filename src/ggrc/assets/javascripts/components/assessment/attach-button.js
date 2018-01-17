@@ -3,12 +3,13 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import Permission from '../../permission';
+import template from './attach-button.mustache';
+
 (function (GGRC, can) {
   'use strict';
 
   var tag = 'attach-button';
-  var template = can.view(GGRC.mustache_path +
-    '/components/assessment/attach-button.mustache');
 
   GGRC.Components('attachButton', {
     tag: tag,
@@ -33,7 +34,6 @@
       assessmentTypeObjects: [],
       canAttach: false,
       isFolderAttached: false,
-      checksPassed: false,
       error: {},
       instance: null,
       isAttachActionDisabled: false,
@@ -52,42 +52,31 @@
         var self = this;
 
         return this.findFolder().then(function (folder) {
-          if (folder) {
+          /*
+            during processing of the request to GDrive instance can be updated
+            and folder can become null. In this case isFolderAttached value
+            should not be updated after request finishing.
+          */
+          if (folder && self.attr('instance.folder')) {
             self.attr('isFolderAttached', true);
+          } else {
+            self.attr('isFolderAttached', false);
           }
           self.attr('canAttach', true);
         }, function (err) {
-          console.log(err);
           self.attr('error', err);
           self.attr('canAttach', false);
-        }).always(function () {
-          self.attr('checksPassed', true);
-        });
-      },
-      findFolderId: function () {
-        var self = this;
-        var auditId = this.attr('instance.audit.id');
-        var foldersDfd = CMS.Models.ObjectFolder.findAll({
-          folderable_id: auditId,
-          folderable_type: 'Audit'});
-
-        return foldersDfd.then(function (folders) {
-          if (folders.length > 0) {
-            return folders[0].folder_id;
-          }
-          self.attr('canAttach', true);
         });
       },
       findFolder: function () {
         var GFolder = CMS.Models.GDriveFolder;
+        var folderId = this.attr('instance.folder');
 
-        return this.findFolderId().then(function (id) {
-          if (!id) {
-            return can.Deferred().resolve();
-          }
+        if (!folderId) {
+          return can.Deferred().resolve();
+        }
 
-          return GFolder.findOne({id: id});
-        });
+        return GFolder.findOne({id: folderId});
       }
     }
   });

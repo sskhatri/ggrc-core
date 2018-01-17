@@ -2,15 +2,16 @@
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
+
+import '../../dropdown/dropdown';
+import template from './dropdown-form-field.mustache';
+
 (function (can, GGRC) {
   'use strict';
 
   GGRC.Components('dropdownFormField', {
     tag: 'dropdown-form-field',
-    template: can.view(
-      GGRC.mustache_path + '/components/form/' +
-        'fields/dropdown-form-field.mustache'
-    ),
+    template: template,
     viewModel: {
       define: {
         isNoneSelected: {

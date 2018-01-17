@@ -10,6 +10,7 @@ import os
 import tempfile
 import csv
 from StringIO import StringIO
+from mock import patch
 
 from sqlalchemy import exc
 from sqlalchemy import func
@@ -18,6 +19,8 @@ from flask.ext.testing import TestCase as BaseTestCase
 
 from ggrc import db
 from ggrc.app import app
+from ggrc.converters.import_helper import read_csv_file
+from ggrc.views.converters import check_import_file
 from ggrc.models import Revision
 from integration.ggrc.api_helper import Api
 from integration.ggrc.models import factories
@@ -28,6 +31,11 @@ logging.disable(logging.CRITICAL)
 
 
 THIS_ABS_PATH = os.path.abspath(os.path.dirname(__file__))
+
+
+def read_imported_file(file_data):  # pylint: disable=unused-argument
+  csv_file = check_import_file()
+  return read_csv_file(csv_file)
 
 
 class SetEncoder(json.JSONEncoder):
@@ -231,19 +239,25 @@ class TestCase(BaseTestCase, object):
     dry_run = kwargs.get("dry_run", False)
     person = kwargs.get("person")
     with tempfile.NamedTemporaryFile(dir=cls.CSV_DIR, suffix=".csv") as tmp:
+      writer = csv.writer(tmp)
+      object_type = None
       for data in import_data:
-        tmp.write('Object type,\n')
         data = data.copy()
-        object_type = data.pop("object_type")
+        data_object_type = data.pop("object_type")
         keys = data.keys()
-        tmp.write('{0},{1}\n'.format(object_type, ','.join(keys)))
-        line = ','.join(u"\"{}\"".format(data[k]) for k in keys)
-        tmp.write(',{0}\n'.format(line))
-        tmp.write(',\n')
+        if data_object_type != object_type:
+          if object_type is not None:
+            writer.writerow([])
+          object_type = data_object_type
+          writer.writerow(["Object type"])
+          writer.writerow([data_object_type] + keys)
+        writer.writerow([""] + [data[k] for k in keys])
       tmp.seek(0)
       return cls._import_file(os.path.basename(tmp.name), dry_run, person)
 
   @classmethod
+  @patch("ggrc_gdrive_integration.file_actions.get_gdrive_file",
+         new=read_imported_file)
   def _import_file(cls, filename, dry_run=False, person=None):
     """Function that handle sending file to import_csv service"""
     data = {"file": (open(os.path.join(cls.CSV_DIR, filename)), filename)}
@@ -409,3 +423,36 @@ class TestCase(BaseTestCase, object):
   def refresh_object(cls, obj, id_=None):
     """Returns a new instance of a model, fresh and warm from the database."""
     return obj.query.filter_by(id=obj.id if id_ is None else id_).first()
+
+  @classmethod
+  def create_assignees(cls, obj, persons):
+    """Create assignees for object.
+
+    This is used only during object creation because we cannot create
+    assignees at that point yet.
+
+    Args:
+      obj: Assignable object.
+      persons: [("(string) email", "Assignee roles"), ...] A list of people
+        and their roles
+    Returns:
+      [(person, acr_role), ...] A list of persons with their roles.
+    """
+    from ggrc.access_control.role import get_custom_roles_for
+    ac_roles = {
+        acr_name: acr_id
+        for acr_id, acr_name in get_custom_roles_for(obj.type).items()
+    }
+    assignees = []
+    with factories.single_commit():
+      for person, roles in persons:
+        person = factories.PersonFactory(email=person)
+
+        for role in roles.split(","):
+          factories.AccessControlListFactory(
+              person=person,
+              ac_role_id=ac_roles[role],
+              object=obj
+          )
+          assignees.append((person, role))
+    return assignees

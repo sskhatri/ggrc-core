@@ -4,6 +4,7 @@
  */
 
 import * as StateUtils from '../../plugins/utils/state-utils';
+import router from '../../router';
 
 let viewModel = can.Map.extend({
   define: {
@@ -15,28 +16,6 @@ let viewModel = can.Map.extend({
       type: Boolean,
       value: false,
     },
-    useLocalStorage: {
-      type: Boolean,
-      value: true,
-    },
-    selectedStates: {
-      type: '*',
-      set: function (selected) {
-        let statuses = this.attr('filterStates');
-        let filter = '';
-
-        statuses.forEach(function (item) {
-          item.attr('checked', (selected.indexOf(item.value) > -1));
-        });
-
-        if (selected.length && statuses.length !== selected.length) {
-          filter = StateUtils.statusFilter(selected, '',
-            this.attr('modelName'));
-        }
-
-        this.attr('options.filter', filter);
-      },
-    },
   },
   disabled: false,
   options: {},
@@ -45,60 +24,64 @@ let viewModel = can.Map.extend({
   widgetId: null,
   modelName: null,
   displayPrefs: null,
-  loadTreeStates: function (modelName) {
-    // Get the status list from local storage
-    var savedStates = this.attr('displayPrefs')
-      .getTreeViewStates(modelName);
-    var actualStates = StateUtils.getStatesForModel(modelName);
-    var selectedStates = savedStates.filter(function (state) {
-      return actualStates.includes(state);
+  initializeFilter(states) {
+    let statuses = this.attr('filterStates');
+    statuses.forEach((item) => {
+      item.attr('checked', (states.indexOf(item.value) > -1));
     });
-
-    if (selectedStates.length === 0) {
-      selectedStates = StateUtils.getDefaultStatesForModel(modelName);
-    }
-
-    this.attr('selectedStates', selectedStates);
+    this.setFilter(states);
   },
-  saveTreeStates: function (selectedStates) {
-    var stateToSave;
-    var filterName = this.attr('widgetId') ||
-      this.attr('modelName');
+  loadDefaultStates(modelName) {
+    // Get the status list from local storage
+    let savedStates = this.attr('displayPrefs').getTreeViewStates(modelName);
+    // Get the status list from query string
+    let queryStates = router.attr('state');
 
-    // in this case we save previous states
-    if (!selectedStates) {
-      return;
-    }
-
-    stateToSave = selectedStates.map(function (state) {
-      return state.value;
+    let allStates = StateUtils.getStatesForModel(modelName);
+    let defaultStates = (queryStates || savedStates).filter((state) => {
+      return allStates.includes(state);
     });
 
-    this.attr('selectedStates', stateToSave);
-
-    if (this.attr('useLocalStorage')) {
-      this.attr('displayPrefs').setTreeViewStates(filterName, stateToSave);
+    if (defaultStates.length === 0) {
+      defaultStates = StateUtils.getDefaultStatesForModel(modelName);
     }
+
+    return defaultStates;
+  },
+  saveTreeStates(selectedStates) {
+    this.setFilter(selectedStates);
+
+    let filterName = this.attr('widgetId') || this.attr('modelName');
+    this.attr('displayPrefs').setTreeViewStates(filterName, selectedStates);
+  },
+  setFilter(selected) {
+    let statuses = this.attr('filterStates');
+    let filter = '';
+
+    if (selected.length && statuses.length !== selected.length) {
+      filter = StateUtils.statusFilter(selected, '', this.attr('modelName'));
+      router.attr('state', selected);
+    } else {
+      router.removeAttr('state');
+    }
+
+    this.attr('options.filter', filter);
   },
 });
 
-/**
- *
- */
-export default GGRC.Components('treeStatusFilter', {
+export default can.Component.extend({
   tag: 'tree-status-filter',
-  template: '<content/>',
   viewModel: viewModel,
   events: {
-    inserted: function () {
-      var vm = this.viewModel;
-      var options = vm.attr('options');
-      var filter = vm.attr('filter');
-      var operation = vm.attr('operation');
-      var depth = vm.attr('depth');
-      var filterName = vm.attr('widgetId') || vm.attr('modelName');
-      var filterStates = StateUtils.getStatesForModel(vm.attr('modelName'))
-        .map(function (state) {
+    inserted() {
+      let vm = this.viewModel;
+      let options = vm.attr('options');
+      let filter = vm.attr('filter');
+      let operation = vm.attr('operation');
+      let depth = vm.attr('depth');
+      let filterName = vm.attr('widgetId') || vm.attr('modelName');
+      let filterStates = StateUtils.getStatesForModel(vm.attr('modelName'))
+        .map((state) => {
           return {
             value: state,
           };
@@ -115,25 +98,35 @@ export default GGRC.Components('treeStatusFilter', {
 
       vm.attr('filterStates', filterStates);
 
-      if (vm.attr('useLocalStorage')) {
-        CMS.Models.DisplayPrefs.getSingleton().then(function (displayPrefs) {
-          vm.attr('displayPrefs', displayPrefs);
+      CMS.Models.DisplayPrefs.getSingleton().then((displayPrefs) => {
+        vm.attr('displayPrefs', displayPrefs);
 
-          vm.loadTreeStates(filterName);
-        });
-      }
+        let defaultStates = vm.loadDefaultStates(filterName);
+        vm.initializeFilter(defaultStates);
+
+        // Start listening route events only after full initialization.
+        vm.attr('router', router);
+      });
     },
-    'multiselect-dropdown multiselect:closed': function (el, ev, selected) {
+    'multiselect-dropdown multiselect:closed'(el, ev, selected) {
       ev.stopPropagation();
-      this.viewModel.saveTreeStates(selected);
-      this.viewModel.dispatch('filter');
+      let selectedStates = selected.map((state) => state.value);
+
+      this.viewModel.saveTreeStates(selectedStates);
     },
-    '{viewModel} disabled': function () {
+    '{viewModel} disabled'() {
       if (this.viewModel.attr('disabled')) {
         this.viewModel.attr('selectedStates', []);
       } else {
         this.viewModel.loadTreeStates(this.viewModel.attr('modelName'));
       }
+    },
+    '{viewModel.router} state'(router, event, newValue) {
+      let states = newValue ||
+        this.viewModel.attr('filterStates').map((state) => state.value);
+
+      this.viewModel.initializeFilter(states);
+      this.viewModel.dispatch('filter');
     },
   },
 });

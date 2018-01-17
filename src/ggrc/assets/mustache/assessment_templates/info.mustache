@@ -57,13 +57,13 @@
           <div class="row-fluid wrap-row">
             <div class="span4">
               <h6>Default Assignees</h6>
-              {{#if default_people.assessors}}
-                {{#if_string default_people.assessors}}
-                  {{get_item DEFAULT_PEOPLE_LABELS default_people.assessors}}
+              {{#if default_people.assignees}}
+                {{#if_string default_people.assignees}}
+                  {{get_item DEFAULT_PEOPLE_LABELS default_people.assignees}}
                 {{else}}
-                  {{#if default_people.assessors.length}}
+                  {{#if default_people.assignees.length}}
                     <ul>
-                      {{#each default_people.assessors}}
+                      {{#each default_people.assignees}}
                         <li>
                           <person-info editable="true" person-id="{{.}}"></person-info>
                         </li>
@@ -106,6 +106,30 @@
               <span class="empty-message">{{slug}}</span>
             </div>
           </div>
+
+          {{#displayAssessmentIssueTracker instance.can_use_issue_tracker true}}
+            <div class="row-fluid wrap-row">
+              <div class="expanded-area">
+                <div class="info-expand">
+                  <a class="show-hidden-fields info-show-hide active" href="javascript://">
+                    <span class="out">
+                      <i class="fa fa-caret-right"></i>
+                      SHOW
+                    </span>
+                    <span class="in">
+                      <i class="fa fa-caret-down"></i>
+                      HIDE
+                    </span>
+                    BUGANIZER INFO
+                  </a>
+                </div>
+                <div class="hidden-fields-area">
+                  <info-issue-tracker-fields {instance}="instance">
+                  </info-issue-tracker-fields>
+                </div>
+              </div>
+            </div>
+          {{/displayAssessmentIssueTracker}}
 
         </tab-panel>
         <tab-panel {(panels)}="panels" title-text="Change Log">

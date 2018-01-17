@@ -1,5 +1,5 @@
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
-Program,Code*,Title*,Description,Notes,Manager*,Editor,Reader,Effective Date,Last Deprecated Date,State,,,,,map:control,map:person,,,,
+Program,Code*,Title*,Description,Notes,Manager*,Editor,Reader,Effective Date,State,,,,,map:control,map:person,,,,,
 ,PMRBACPROGRAM-1,Program Manager Audit RBAC Test,,,"user@example.com
 creatorpm@test.com
 readerpm@test.com
@@ -10,7 +10,7 @@ Editorpe@test.com
 adminpe@test.com","creatorpr@test.com
 readerpr@test.com
 editorpr@test.com
-Adminpr@test.com",,,Draft,,,,,PMRBACCONTROL-1,"creatorpm@test.com
+Adminpr@test.com",,Draft,,,,,PMRBACCONTROL-1,"creatorpm@test.com
 readerpm@test.com
 editorpm@test.com
 adminpm@test.com
@@ -21,7 +21,7 @@ Adminpe@test.com
 Creatorpr@test.com
 readerpr@test.com
 Editorpr@test.com
-adminpr@test.com",,,,
+adminpr@test.com",,,,,
 ,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
@@ -51,23 +51,23 @@ Person,Name,Email*,Company,Role,map:clause,map:contract,map:control,map:objectiv
 ,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
-Assessment,Code*,Audit*,Title*,Description,Notes,Assessment Procedure,Assignees*,Creators*,Verifiers,Due Date,Stop Date,State*,,Conclusion: Design,Conclusion: Operation,,,,Finished Date,Verified Date
-,PMRBACASSESSMENT-1,AUDIT-1,Program Manager Audit RBAC Test,,,,user@example.com,user@example.com,,,,In Progress,,,,,,,,
-,PMRBACASSESSMENT-2,AUDIT-2,Program Manager Audit RBAC Test Archived,,,,user@example.com,user@example.com,,,,In Progress,,,,,,,,
+Assessment,Code*,Audit*,Title*,Description,Notes,Assessment Procedure,Assignees*,Creators*,Verifiers,Due Date,State*,,Conclusion: Design,Conclusion: Operation,,,,Finished Date,Verified Date
+,PMRBACASSESSMENT-1,AUDIT-1,Program Manager Audit RBAC Test,,,,user@example.com,user@example.com,,,In Progress,,,,,,,,
+,PMRBACASSESSMENT-2,AUDIT-2,Program Manager Audit RBAC Test Archived,,,,user@example.com,user@example.com,,,In Progress,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
-Clause,Code*,Title*,Text of Clause,Notes,Admin*,Effective Date,Last Deprecated Date,State,,,,,,,,,,,,
-,PMRBACCLAUSE-1,Program Manager Audit RBAC Test Clause,,,user@example.com,,,Draft,,,,,,,,,,,,
-,,,,,,,,,,,,,,,,,,,,
-,,,,,,,,,,,,,,,,,,,,
-Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
-Contract,Code*,Title*,Description,Notes,Admin*,Effective Date,Last Deprecated Date,State,,,,,,,,,,,,
-,PMRBACCONTRACT-1,Program Manager Audit RBAC Test Contract,,,user@example.com,,,Draft,,,,,,,,,,,,
+Clause,Code*,Title*,Text of Clause,Notes,Admin*,Effective Date,State,,,,,,,,,,,,,
+,PMRBACCLAUSE-1,Program Manager Audit RBAC Test Clause,,,user@example.com,,Draft,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
-Control,Code*,Title*,Description,Notes,Assessment Procedure,Admin*,Effective Date,Last Deprecated Date,State,Assertions,Categories,Fraud Related,Significance,Kind/Nature,Type/Means,,,Frequency,map:program,
-,PMRBACCONTROL-1,Program Manager Audit RBAC Test,,,,user@example.com,,,Draft,,,--,--,,,,,,PMRBACPROGRAM-1,
+Contract,Code*,Title*,Description,Notes,Admin*,Effective Date,State,,,,,,,,,,,,,
+,PMRBACCONTRACT-1,Program Manager Audit RBAC Test Contract,,,user@example.com,,Draft,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,
+Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
+Control,Code*,Title*,Description,Notes,Assessment Procedure,Admin*,Effective Date,State,Assertions,Categories,Fraud Related,Significance,Kind/Nature,Type/Means,,,Frequency,map:program,,
+,PMRBACCONTROL-1,Program Manager Audit RBAC Test,,,,user@example.com,,Draft,,,--,--,,,,,,PMRBACPROGRAM-1,,
 ,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
@@ -76,13 +76,13 @@ Objective,Code*,Title*,Description,Notes,Admin*,State,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
-Policy,Code*,Title*,Description,Notes,Admin*,Effective Date,Last Deprecated Date,State,Kind/Type,,,,,,,,,,,
-,PMRBACPOLICY-1,Program Manager Audit RBAC Test Policy,,,user@example.com,,,Draft,,,,,,,,,,,,
+Policy,Code*,Title*,Description,Notes,Admin*,Effective Date,State,Kind/Type,,,,,,,,,,,,
+,PMRBACPOLICY-1,Program Manager Audit RBAC Test Policy,,,user@example.com,,Draft,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
-Regulation,Code*,Title*,Description,Notes,Admin*,Effective Date,Last Deprecated Date,State,,,map:section,,,,,,,,,
-,PMRBACREGULATION-1,Program Manager Audit RBAC Test Regulation,,,user@example.com,,,Draft,,,PMRBACSECTION-1,,,,,,,,,
+Regulation,Code*,Title*,Description,Notes,Admin*,Effective Date,State,,,map:section,,,,,,,,,,
+,PMRBACREGULATION-1,Program Manager Audit RBAC Test Regulation,,,user@example.com,,Draft,,,PMRBACSECTION-1,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
@@ -91,10 +91,10 @@ Section,Code*,Title*,Text of Section,Notes,Admin*,State,Policy / Regulation / St
 ,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
-Standard,Code*,Title*,Description,Notes,Admin*,Effective Date,Last Deprecated Date,State,,,,,,,,,,,,
-,PMRBACSTANDARD-1,Program Manager Audit RBAC Test Standard,,,user@example.com,,,Draft,,,,,,,,,,,,
+Standard,Code*,Title*,Description,Notes,Admin*,Effective Date,State,,,,,,,,,,,,,
+,PMRBACSTANDARD-1,Program Manager Audit RBAC Test Standard,,,user@example.com,,Draft,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,
 Object type,"Must be unique. Can be left empty for autogeneration. If updating or deleting, code is required",,,,,,,,,,,,,,,,,,,
-Issue,Code*,Title*,Description,Notes,Remediation Plan,Admin*,Effective Date,Last Deprecated Date,State,,,Map:Audit,,,,,,,,
-,PMRBACISSUE-1,Program Manager Audit RBAC Test,,,,user@example.com,,,Draft,,,AUDIT-1,,,,,,,,
-,PMRBACISSUE-2,Program Manager Audit RBAC Test Archived,,,,user@example.com,,,Draft,,,AUDIT-2,,,,,,,,
+Issue,Code*,Title*,Description,Notes,Remediation Plan,Admin*,Effective Date,State,,,Map:Audit,,,,,,,,,
+,PMRBACISSUE-1,Program Manager Audit RBAC Test,,,,user@example.com,,Draft,,,AUDIT-1,,,,,,,,,
+,PMRBACISSUE-2,Program Manager Audit RBAC Test Archived,,,,user@example.com,,Draft,,,AUDIT-2,,,,,,,,,

@@ -1,0 +1,31 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.inline-input-form-field {
+  display: block;
+
+  .input-wrapper {
+    input {
+      margin-bottom: 0;
+      width: 100%;
+      box-sizing: border-box;
+      height: 28px;
+      border-radius: 2px;
+    }
+  }
+
+  &.inline__content-input {
+    .input-wrapper {
+      input {
+        background: #fff;
+        &:focus {
+          border-color: #ccc;
+          box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+          transition: border linear .2s, box-shadow linear .2s;
+        }
+      }
+    }
+  }
+}

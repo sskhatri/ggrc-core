@@ -32,9 +32,10 @@ import yaml
 
 from webassets.filter.jst import JSTemplateFilter
 
+MANIFEST = os.path.join(settings.BASE_DIR, 'ggrc', 'assets', 'assets.manifest')
+
 environment = webassets.Environment()
-manifest = os.path.join(settings.BASE_DIR, 'ggrc', 'assets', 'assets.manifest')
-environment.manifest = 'file:' + manifest
+environment.manifest = 'file:' + MANIFEST
 environment.versions = 'hash:32'
 
 # `asset-debug` mode doesn't merge bundles into a single file

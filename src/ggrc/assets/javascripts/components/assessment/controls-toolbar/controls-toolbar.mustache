@@ -1,0 +1,16 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#unless instance.archived}}
+  {{#is_allowed 'update' instance context='for'}}
+      <custom-attributes-actions
+        {(form-edit-mode)}="editMode">
+      </custom-attributes-actions>
+      <object-state-toolbar {verifiers}="verifiers"
+                            {instance}="instance"
+                            (on-state-change)="onStateChange(%event)">
+      </object-state-toolbar>
+  {{/is_allowed}}
+{{/unless}}

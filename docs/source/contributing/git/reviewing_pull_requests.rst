@@ -69,6 +69,10 @@ them.
 The meaning of the labels and their intended usage is as follows (sorted
 alphabetically):
 
+- ``kokoro:run`` - mark the PR to run kokoro automated tests, Should be added
+  after any new code push to a PR.
+- ``kokoro:force-run`` - mark the PR to run the kokoro tests again even without
+  any new code changes
 - ``code freeze`` - the PR should not be merged due to the ongoing QA testing.
   Used at the end of the sprint, when extensive QA testing is started,
 - ``critical`` - the PR has the highest possible priority and should thus be
@@ -80,6 +84,10 @@ alphabetically):
 - ``migration`` - the PR contains a migration script that changes the
   database schema. Such pull requests require additional setup and
   verification steps,
+- ``check migration chain`` - the revision numbers in the migration must be
+  verified, because another PR with a migration has been merged. This label
+  must always be used together with `kokoro:force-run` on all open PRs with
+  migration after any migration is merged.
 - ``mising tests`` - the changes submitted are not sufficiently covered with
   automated tests, and the latter need to be added,
 - ``needs work`` - a reviewer or the PR author has concluded that the PR

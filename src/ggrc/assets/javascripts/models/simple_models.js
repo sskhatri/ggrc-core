@@ -29,7 +29,13 @@
     create: 'POST /api/programs',
     update: 'PUT /api/programs/{id}',
     destroy: 'DELETE /api/programs/{id}',
-    mixins: ['unique_title', 'ca_update', 'timeboxed'],
+    mixins: [
+      'unique_title',
+      'ca_update',
+      'timeboxed',
+      'accessControlList',
+      'base-notifications',
+    ],
     is_custom_attributable: true,
     isRoleable: true,
     attributes: {
@@ -123,7 +129,13 @@
     create: 'POST /api/objectives',
     update: 'PUT /api/objectives/{id}',
     destroy: 'DELETE /api/objectives/{id}',
-    mixins: ['ownable', 'unique_title', 'ca_update'],
+    mixins: [
+      'ownable',
+      'unique_title',
+      'ca_update',
+      'accessControlList',
+      'base-notifications',
+    ],
     is_custom_attributable: true,
     isRoleable: true,
     attributes: {
@@ -147,7 +159,8 @@
         },
         {attr_title: 'Reference URL', attr_name: 'reference_url'}
       ]),
-      display_attr_names: ['title', 'owner', 'status', 'last_assessment_date'],
+      display_attr_names: ['title', 'owner', 'status', 'last_assessment_date',
+        'updated_at'],
       add_item_view: GGRC.mustache_path + '/snapshots/tree_add_item.mustache',
       create_link: true,
       show_related_assessments: true,
@@ -175,6 +188,18 @@
     update: 'PUT /api/help/{id}',
     destroy: 'DELETE /api/help/{id}',
     create: 'POST /api/help'
+  }, {});
+
+  can.Model.Cacheable('CMS.Models.Label', {
+    root_object: 'label',
+    root_collection: 'labels',
+    title_singular: 'Label',
+    title_plural: 'Labels',
+    findOne: 'GET /api/labels/{id}',
+    findAll: 'GET /api/labels',
+    update: 'PUT /api/labels/{id}',
+    destroy: 'DELETE /api/labels/{id}',
+    create: 'POST /api/labels',
   }, {});
 
   can.Model.Cacheable('CMS.Models.Event', {

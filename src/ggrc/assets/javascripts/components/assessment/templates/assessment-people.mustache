@@ -1,0 +1,35 @@
+{{!
+    Copyright (C) 2017 Google Inc., authors, and contributors
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="flex-box flex-box-multi">
+  <div class="flex-box width-100">
+    {{#if rolesConflict}}
+      <div class="width-100">
+        <div class="alert alert-verifier">
+          <p>
+              Please be informed that Assignee and Verifier are the same person.
+          </p>
+        </div>
+      </div>
+    {{/if}}
+  </div>
+
+  <div class="width-100">
+    {{#if infoPaneMode}}
+      <custom-roles {instance}="instance"
+        {order-of-roles}="orderOfRoles"
+        {include-roles}="assessmentMainRoles"
+        {conflict-roles}="conflictRoles">
+      </custom-roles>
+    {{else}}
+      <custom-roles-modal
+        {instance}="instance"
+        {order-of-roles}="orderOfRoles"
+        {conflict-roles}="conflictRoles"
+        {is-new-instance}="new_object_form">
+      </custom-roles-modal>
+    {{/if}}
+  </div>
+</div>

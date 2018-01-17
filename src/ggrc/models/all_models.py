@@ -43,6 +43,7 @@ from ggrc.models.event import Event
 from ggrc.models.facility import Facility
 from ggrc.models.help import Help
 from ggrc.models.issue import Issue
+from ggrc.models.issuetracker_issue import IssuetrackerIssue
 from ggrc.models.market import Market
 from ggrc.models.meeting import Meeting
 from ggrc.models.notification import Notification
@@ -57,7 +58,6 @@ from ggrc.models.product import Product
 from ggrc.models.program import Program
 from ggrc.models.project import Project
 from ggrc.models.relationship import Relationship
-from ggrc.models.relationship import RelationshipAttr
 from ggrc.models.revision import Revision
 from ggrc.models.section import Section
 from ggrc.models.snapshot import Snapshot
@@ -66,6 +66,8 @@ from ggrc.models.system import System
 from ggrc.models.system import SystemOrProcess
 from ggrc.models.vendor import Vendor
 from ggrc.models.maintenance import Maintenance
+from ggrc.models.label import Label
+from ggrc.models.object_label import ObjectLabel
 
 all_models = [  # pylint: disable=invalid-name
     # data platform models
@@ -104,9 +106,11 @@ all_models = [  # pylint: disable=invalid-name
     Document,
     Facility,
     Help,
+    Label,
     Market,
     Meeting,
     Objective,
+    ObjectLabel,
     ObjectPerson,
     Option,
     OrgGroup,
@@ -116,7 +120,6 @@ all_models = [  # pylint: disable=invalid-name
     Program,
     Project,
     Relationship,
-    RelationshipAttr,
     Section,
     Clause,
     SystemOrProcess,
@@ -129,6 +132,7 @@ all_models = [  # pylint: disable=invalid-name
     NotificationType,
     Notification,
     Issue,
+    IssuetrackerIssue,
     Snapshot,
     Maintenance,
 ]

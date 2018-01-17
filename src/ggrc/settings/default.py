@@ -1,6 +1,8 @@
 # Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
+"""Module defines application settings."""
+
 import os
 import jinja2
 
@@ -19,7 +21,7 @@ DEBUG_ASSETS = False
 FULLTEXT_INDEXER = None
 USER_PERMISSIONS_PROVIDER = None
 EXTENSIONS = []
-exports = []
+exports = []  # pylint: disable=invalid-name
 
 # Deployment-specific variables
 COMPANY = "Company, Inc."
@@ -32,10 +34,15 @@ BUILD_NUMBER = ""
 try:
   import build_number
   BUILD_NUMBER = " ({0})".format(build_number.BUILD_NUMBER[:7])
-except (ImportError):
+except ImportError:
   pass
 
-VERSION = "0.10.36-Raspberry" + BUILD_NUMBER
+# NOTE: This version name is used for GAE deployments along with the current
+# commit hash. The version and hash are trimmed to 30 characters (see do_deploy
+# for more info) and if the version name were to exceed 30 characters, all
+# deployments would go to the same GAE app version. Please take that into
+# consideration when modifying this string.
+VERSION = "1.0.0-Strawberry" + BUILD_NUMBER
 
 # Migration owner
 MIGRATOR = os.environ.get(
@@ -77,7 +84,7 @@ CALENDAR_MECHANISM = False
 
 MAX_INSTANCES = os.environ.get('MAX_INSTANCES', '3')
 
-exports = ['VERSION', 'MAX_INSTANCES']
+exports = ['VERSION', 'MAX_INSTANCES']  # pylint: disable=invalid-name
 
 # Users with authorized domain will automatically get Creator role.
 AUTHORIZED_DOMAIN = os.environ.get('AUTHORIZED_DOMAIN', "")
@@ -130,6 +137,12 @@ INTEGRATION_SERVICE_URL = os.environ.get('INTEGRATION_SERVICE_URL')
 
 # Integration service mandatory header value
 URLFETCH_SERVICE_ID = os.environ.get('URLFETCH_SERVICE_ID')
+
+# Flag defining whether integration with issue tracker is enabled or not.
+ISSUE_TRACKER_ENABLED = bool(os.environ.get('ISSUE_TRACKER_ENABLED'))
+
+# URL template for composing Issue Tracker ticker URL.
+ISSUE_TRACKER_BUG_URL_TMPL = os.environ.get('ISSUE_TRACKER_BUG_URL_TMPL')
 
 # Dashboard integration
 _DEFAULT_DASHBOARD_INTEGRATION_CONFIG = {

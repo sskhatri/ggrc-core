@@ -3,6 +3,12 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import * as TreeViewUtils from '../../../plugins/utils/tree-view-utils';
+import * as SnapshotUtils from '../../../plugins/utils/snapshot-utils';
+import * as AdvancedSearch from '../../../plugins/utils/advanced-search-utils';
+import * as QueryAPI from '../../../plugins/utils/query-api-utils';
+import Pagination from '../../base-objects/pagination';
+
 describe('GGRC.Components.mapperResults', function () {
   'use strict';
 
@@ -18,7 +24,7 @@ describe('GGRC.Components.mapperResults', function () {
     });
     viewModel.attr('submitCbs', $.Callbacks());
     viewModel.attr('paging',
-      new GGRC.VM.Pagination({pageSizeSelect: [5, 10, 15]}));
+      new Pagination({pageSizeSelect: [5, 10, 15]}));
     Component.prototype.viewModel.init = init;
     viewModel.init = init;
   });
@@ -107,7 +113,7 @@ describe('GGRC.Components.mapperResults', function () {
         selected: 'mock2',
         disableConfiguration: 'mock3'
       };
-      spyOn(GGRC.Utils.TreeView, 'getColumnsForModel')
+      spyOn(TreeViewUtils, 'getColumnsForModel')
         .and.returnValue(mockColumns);
       spyOn(viewModel, 'getDisplayModel')
         .and.returnValue({
@@ -131,6 +137,36 @@ describe('GGRC.Components.mapperResults', function () {
       viewModel.attr('disableColumnsConfiguration', 'configuration');
       viewModel.setColumnsConfiguration();
       expect(viewModel.attr('disableColumnsConfiguration')).toEqual('mock3');
+    });
+  });
+
+  describe('setSortingConfiguration() method', () => {
+    beforeEach(function () {
+      viewModel.attr('columns', {});
+      spyOn(TreeViewUtils, 'getSortingForModel')
+        .and.returnValue(
+        {
+          key: 'key',
+          direction: 'direction',
+        });
+      spyOn(viewModel, 'getDisplayModel')
+        .and.returnValue({
+          model_singular: '',
+        });
+    });
+
+    it('updates sort key', () => {
+      viewModel.attr('sort.key', null);
+      viewModel.setSortingConfiguration();
+
+      expect(viewModel.attr('sort.key')).toEqual('key');
+    });
+
+    it('updates sort direction', () => {
+      viewModel.attr('sort.direction', null);
+      viewModel.setSortingConfiguration();
+
+      expect(viewModel.attr('sort.direction')).toEqual('direction');
     });
   });
 
@@ -162,12 +198,15 @@ describe('GGRC.Components.mapperResults', function () {
   });
 
   describe('resetSearchParams() method', function () {
-    var DEFAULT_PAGE_SIZE = 5;
-    var DEFAULT_SORT_DIRECTION = 'asc';
+    const DEFAULT_PAGE_SIZE = 10;
 
     beforeEach(function () {
       viewModel.attr('paging', {});
       viewModel.attr('sort', {});
+      spyOn(viewModel, 'getDisplayModel')
+        .and.returnValue({
+          model_singular: '',
+        });
     });
 
     it('sets 1 to current of paging', function () {
@@ -182,16 +221,11 @@ describe('GGRC.Components.mapperResults', function () {
       expect(viewModel.attr('paging.pageSize')).toEqual(DEFAULT_PAGE_SIZE);
     });
 
-    it('sets empty string to key of sort', function () {
-      viewModel.attr('sort.key', 'mockKey');
-      viewModel.resetSearchParams();
-      expect(viewModel.attr('sort.key')).toEqual('');
-    });
+    it('sets default sorting', () => {
+      spyOn(viewModel, 'setSortingConfiguration');
 
-    it('sets default sort direction to direction of sort', function () {
-      viewModel.attr('sort.direction', 'across:)');
       viewModel.resetSearchParams();
-      expect(viewModel.attr('sort.direction')).toEqual(DEFAULT_SORT_DIRECTION);
+      expect(viewModel.setSortingConfiguration).toHaveBeenCalled();
     });
   });
 
@@ -250,7 +284,7 @@ describe('GGRC.Components.mapperResults', function () {
         type: 'mockType',
         id: 123
       });
-      spyOn(GGRC.Utils.QueryAPI, 'buildRelevantIdsQuery')
+      spyOn(QueryAPI, 'buildRelevantIdsQuery')
         .and.returnValue('mockQuery');
       result = viewModel.prepareRelatedQuery();
       expect(result).toEqual('mockQuery');
@@ -282,8 +316,8 @@ describe('GGRC.Components.mapperResults', function () {
     var mockMappingItems = ['mappingItem'];
     var mockStatusItem = new can.Map({
       value: {
-        items: ['statusItem']
-      }
+        items: ['statusItem'],
+      },
     });
 
     beforeEach(function () {
@@ -299,28 +333,28 @@ describe('GGRC.Components.mapperResults', function () {
       spyOn(viewModel, 'prepareRelatedQuery')
         .and.returnValue({mockData: 'related'});
 
-      spyOn(GGRC.Utils.QueryAPI, 'buildParam')
+      spyOn(QueryAPI, 'buildParam')
         .and.returnValue({});
-      spyOn(GGRC.Utils.AdvancedSearch, 'buildFilter');
+      spyOn(AdvancedSearch, 'buildFilter');
       spyOn(GGRC.query_parser, 'parse');
       spyOn(GGRC.query_parser, 'join_queries');
     });
 
     it('builds advanced filters', function () {
       viewModel.getQuery('values', true);
-      expect(GGRC.Utils.AdvancedSearch.buildFilter.calls.argsFor(0)[0].attr())
+      expect(AdvancedSearch.buildFilter.calls.argsFor(0)[0].attr())
         .toEqual(mockFilterItems);
     });
 
     it('builds advanced mappings', function () {
       viewModel.getQuery('values', true);
-      expect(GGRC.Utils.AdvancedSearch.buildFilter.calls.argsFor(1)[0].attr())
+      expect(AdvancedSearch.buildFilter.calls.argsFor(1)[0].attr())
         .toEqual(mockMappingItems);
     });
 
     it('builds advanced status', function () {
       viewModel.getQuery('values', true);
-      expect(GGRC.Utils.AdvancedSearch.buildFilter.calls.argsFor(2)[0][0])
+      expect(AdvancedSearch.buildFilter.calls.argsFor(2)[0][0])
         .toEqual(mockStatusItem);
     });
 
@@ -328,13 +362,13 @@ describe('GGRC.Components.mapperResults', function () {
     function () {
       viewModel.attr('statusItem', {});
       viewModel.getQuery('values', true);
-      expect(GGRC.Utils.AdvancedSearch.buildFilter.calls.count()).toBe(2);
+      expect(AdvancedSearch.buildFilter.calls.count()).toBe(2);
     });
 
     it('adds paging to query if addPaging is true', function () {
       viewModel.removeAttr('sort.key');
       viewModel.getQuery('values', true);
-      expect(GGRC.Utils.QueryAPI.buildParam.calls.argsFor(0)[1])
+      expect(QueryAPI.buildParam.calls.argsFor(0)[1])
         .toEqual({
           current: 'mock1',
           pageSize: 'mock2'
@@ -343,7 +377,7 @@ describe('GGRC.Components.mapperResults', function () {
 
     it('adds paging with sort to query if sort.key is defined', function () {
       viewModel.getQuery('values', true);
-      expect(GGRC.Utils.QueryAPI.buildParam.calls.argsFor(0)[1])
+      expect(QueryAPI.buildParam.calls.argsFor(0)[1])
         .toEqual({
           current: 'mock1',
           pageSize: 'mock2',
@@ -366,7 +400,7 @@ describe('GGRC.Components.mapperResults', function () {
     it('transform query to snapshot if useSnapshots is true', function () {
       var result;
       viewModel.attr('useSnapshots', true);
-      spyOn(GGRC.Utils.Snapshots, 'transformQuery')
+      spyOn(SnapshotUtils, 'transformQuery')
         .and.returnValue({mockData: 'snapshot'});
       result = viewModel.getQuery();
       expect(result.request[0]).toEqual(jasmine.objectContaining({
@@ -395,6 +429,30 @@ describe('GGRC.Components.mapperResults', function () {
 
       expect(GGRC.query_parser.join_queries.calls.argsFor(2)[1])
         .toBe('unlocked');
+    });
+
+    it('prepare request for owned items if flag was set', function () {
+      var mockUser = {
+        id: -1,
+      };
+      var oldUser = GGRC.current_user;
+      GGRC.current_user = mockUser;
+      spyOn(GGRC.current_user, 'id').and.returnValue(-1);
+      viewModel.attr('applyOwnedFilter', true);
+
+      viewModel.getQuery();
+
+      expect(GGRC.query_parser.join_queries.calls.argsFor(2)[1]).toEqual({
+        expression: {
+          object_name: 'Person',
+          op: {
+            name: 'owned',
+          },
+          ids: [mockUser.id],
+        },
+      });
+
+      GGRC.current_user = oldUser;
     });
   });
 
@@ -541,7 +599,7 @@ describe('GGRC.Components.mapperResults', function () {
             content: 'transformedValue'
           }
         };
-        spyOn(GGRC.Utils.Snapshots, 'toObject')
+        spyOn(SnapshotUtils, 'toObject')
           .and.returnValue('snapshot');
         viewModel.attr('useSnapshots', true);
         result = viewModel.transformValue(value);
@@ -581,7 +639,7 @@ describe('GGRC.Components.mapperResults', function () {
       spyOn(viewModel, 'setSelectedItems');
       spyOn(viewModel, 'setDisabledItems');
       dfdRequest = $.Deferred();
-      spyOn(GGRC.Utils.QueryAPI, 'makeRequest')
+      spyOn(QueryAPI, 'makeRequest')
         .and.returnValue(dfdRequest.promise());
     });
 
@@ -665,7 +723,7 @@ describe('GGRC.Components.mapperResults', function () {
     beforeEach(function () {
       viewModel.attr({});
       dfdRequest = can.Deferred();
-      spyOn(GGRC.Utils.QueryAPI, 'makeRequest')
+      spyOn(QueryAPI, 'makeRequest')
         .and.returnValue(dfdRequest.promise());
       spyOn(viewModel, 'getModelKey')
         .and.returnValue('program');

@@ -128,6 +128,7 @@ misspell :
 		! -path "./test/*.xml"\
 		! -path "./src/ggrc/assets/stylesheets/dashboard.css"\
 		! -path "./src/packages/*"\
+		! -path "./package-lock.json"\
 		| xargs $(GOLANG_PACKAGES)/misspell -error -locale US
 
 ## Deployment!

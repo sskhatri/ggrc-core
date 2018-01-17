@@ -149,7 +149,7 @@ class UserRole(Base, db.Model):
 
     query = super(UserRole, cls).eager_query()
     return query.options(
-        orm.subqueryload('role'),
+        orm.joinedload('role'),
         orm.subqueryload('person'),
         orm.subqueryload('context'))
 

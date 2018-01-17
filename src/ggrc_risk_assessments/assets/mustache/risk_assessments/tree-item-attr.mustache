@@ -5,10 +5,10 @@
 
 {{#switch attr_name}}
   {{#case 'ra_manager'}}
-      <tree-people-list-field {source}="instance.ra_manager"/>
+      <tree-field {source}="instance.ra_manager" {field}="'email'"/>
   {{/case}}
   {{#case 'ra_counsel'}}
-      <tree-people-list-field {source}="instance.ra_counsel"/>
+      <tree-field {source}="instance.ra_counsel" {field}="'email'"/>
   {{/case}}
   {{#case 'status'}}
     {{#using status=instance.status}}

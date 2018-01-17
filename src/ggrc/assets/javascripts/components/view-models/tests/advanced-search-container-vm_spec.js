@@ -3,13 +3,16 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-describe('GGRC.VM.AdvancedSearchContainer', function () {
+import * as AdvancedSearch from '../../../plugins/utils/advanced-search-utils';
+import AdvancedSearchContainer from '../../view-models/advanced-search-container-vm';
+
+describe('AdvancedSearchContainer', function () {
   'use strict';
 
   var viewModel;
 
   beforeEach(function () {
-    viewModel = new GGRC.VM.AdvancedSearchContainer();
+    viewModel = new AdvancedSearchContainer();
   });
 
   describe('removeItem() method', function () {
@@ -17,9 +20,9 @@ describe('GGRC.VM.AdvancedSearchContainer', function () {
     function () {
       var viewItems;
       viewModel.attr('items', [
-        GGRC.Utils.AdvancedSearch.create.attribute({field: 'first'}),
-        GGRC.Utils.AdvancedSearch.create.operator(),
-        GGRC.Utils.AdvancedSearch.create.attribute({field: 'second'})
+        AdvancedSearch.create.attribute({field: 'first'}),
+        AdvancedSearch.create.operator(),
+        AdvancedSearch.create.attribute({field: 'second'})
       ]);
       viewItems = viewModel.attr('items');
 
@@ -34,9 +37,9 @@ describe('GGRC.VM.AdvancedSearchContainer', function () {
     function () {
       var viewItems;
       viewModel.attr('items', [
-        GGRC.Utils.AdvancedSearch.create.attribute({field: 'first'}),
-        GGRC.Utils.AdvancedSearch.create.operator(),
-        GGRC.Utils.AdvancedSearch.create.attribute({field: 'second'})
+        AdvancedSearch.create.attribute({field: 'first'}),
+        AdvancedSearch.create.operator(),
+        AdvancedSearch.create.attribute({field: 'second'})
       ]);
       viewItems = viewModel.attr('items');
 
@@ -51,7 +54,7 @@ describe('GGRC.VM.AdvancedSearchContainer', function () {
     function () {
       var viewItems;
       viewModel.attr('items', [
-        GGRC.Utils.AdvancedSearch.create.attribute({field: 'single'})
+        AdvancedSearch.create.attribute({field: 'single'})
       ]);
       viewItems = viewModel.attr('items');
       spyOn(viewModel, 'remove');
@@ -66,7 +69,7 @@ describe('GGRC.VM.AdvancedSearchContainer', function () {
     function () {
       var viewItems;
       viewModel.attr('items', [
-        GGRC.Utils.AdvancedSearch.create.attribute({field: 'single'})
+        AdvancedSearch.create.attribute({field: 'single'})
       ]);
       viewItems = viewModel.attr('items');
       spyOn(viewModel, 'remove');

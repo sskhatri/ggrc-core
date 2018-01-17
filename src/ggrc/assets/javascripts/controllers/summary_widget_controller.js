@@ -1,9 +1,14 @@
-/*!
+/*
     Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import '../components/add-object-button/add-object-button';
+import '../components/assessment_generator';
+import {
+  getCounts,
+} from '../plugins/utils/current-page-utils';
+import router from '../router';
 
 export default can.Control({
   defaults: {
@@ -114,12 +119,10 @@ export default can.Control({
   },
   reloadChart: function (type, elementId) {
     var that = this;
-    var query = GGRC.Utils.CurrentPage;
     var chartOptions = this.options.context.charts[type];
     // Note that chart will be refreshed only if counts were changed.
     // State changes are not checked.
-    var countsChanged = query.getCounts().attr(type) !==
-                        chartOptions.attr('total');
+    var countsChanged = getCounts().attr(type) !== chartOptions.attr('total');
     if (chartOptions.attr('isInitialized') && !countsChanged &&
     !this.options.forceRefresh) {
       return;
@@ -156,6 +159,17 @@ export default can.Control({
     chart = new google.visualization.PieChart(
       document.getElementById(elementId));
     this.options.chart = chart;
+
+    google.visualization.events.addListener(chart, 'select', () => {
+      let selectedItem = chart.getSelection()[0];
+      if (selectedItem) {
+        let topping = data.getValue(selectedItem.row, 0);
+        router.attr({
+          widget: 'assessment_widget',
+          state: [topping],
+        });
+      }
+    });
 
     chart.draw(data, options);
     setTimeout(function () {

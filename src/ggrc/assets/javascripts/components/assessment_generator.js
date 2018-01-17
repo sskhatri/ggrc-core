@@ -3,6 +3,9 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import tracker from '../tracker';
+import RefreshQueue from '../models/refresh_queue';
+
 (function (_, can, $, GGRC, CMS) {
   'use strict';
 
@@ -18,19 +21,26 @@
       'a click': function (el, ev) {
         var instance = this.scope.attr('audit') || GGRC.page_instance();
         this._results = null;
-        GGRC.Controllers.ObjectGenerator.launch(el, {
-          object: 'Audit',
-          type: 'Control',
-          'join-object-id': instance.id,
-          'join-mapping': 'program_controls',
-          relevantTo: [{
-            readOnly: true,
-            type: instance.type,
-            id: instance.id,
-            title: instance.title
-          }],
-          callback: this.generateAssessments.bind(this)
+        tracker.start(tracker.FOCUS_AREAS.ASSESSMENT,
+          tracker.USER_JOURNEY_KEYS.LOADING,
+          tracker.USER_ACTIONS.ASSESSMENT.OPEN_ASMT_GEN_MODAL);
+
+        import(/*webpackChunkName: "mapper"*/ '../controllers/mapper/mapper').then(mapper => {
+          mapper.ObjectGenerator.launch(el, {
+            object: 'Audit',
+            type: 'Control',
+            'join-object-id': instance.id,
+            'join-mapping': 'program_controls',
+            relevantTo: [{
+              readOnly: true,
+              type: instance.type,
+              id: instance.id,
+              title: instance.title
+            }],
+            callback: this.generateAssessments.bind(this)
+          });
         });
+
       },
       showFlash: function (statuses) {
         var flash = {};
@@ -102,6 +112,7 @@
         }.bind(this));
       },
       generateModel: function (object, template, type) {
+        let assessmentModel;
         var title = 'Generated Assessment for ' + this.scope.audit.title;
         var data = {
           _generated: true,
@@ -124,7 +135,12 @@
             type: 'AssessmentTemplate'
           };
         }
-        return new CMS.Models.Assessment(data).save();
+        assessmentModel = new CMS.Models.Assessment(data);
+
+        // force remove issue_tracker field
+        delete assessmentModel.issue_tracker;
+
+        return assessmentModel.save();
       },
       notify: function () {
         var success;

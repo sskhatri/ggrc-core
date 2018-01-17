@@ -5,8 +5,10 @@
 
 import itertools
 
-from ggrc import builder
+from sqlalchemy import orm
+
 from ggrc import db
+from ggrc import builder
 from ggrc.access_control.roleable import Roleable
 from ggrc.models.comment import Commentable
 from ggrc.models.deferred import deferred
@@ -42,6 +44,7 @@ class Issue(Roleable, HasObjectState, TestPlanned, CustomAttributable,
       reflection.Attribute("allow_map_to_audit", create=False, update=False),
       reflection.Attribute("allow_unmap_from_audit",
                            create=False, update=False),
+      reflection.Attribute('folder', create=False, update=False),
   )
 
   _aliases = {
@@ -59,6 +62,10 @@ class Issue(Roleable, HasObjectState, TestPlanned, CustomAttributable,
   audit_id = deferred(
       db.Column(db.Integer, db.ForeignKey('audits.id'), nullable=True),
       'Issue')
+
+  @builder.simple_property
+  def folder(self):
+    return self.audit.folder if self.audit else ""
 
   @builder.simple_property
   def allow_map_to_audit(self):
@@ -81,3 +88,22 @@ class Issue(Roleable, HasObjectState, TestPlanned, CustomAttributable,
                         for rel in self.related_destinations
                         if rel not in db.session.deleted)
     return not any(itertools.chain(restricting_srcs, restricting_dsts))
+
+  def log_json(self):
+    out_json = super(Issue, self).log_json()
+    out_json["folder"] = self.folder
+    return out_json
+
+  @classmethod
+  def _populate_query(cls, query):
+    return query.options(
+        orm.Load(cls).joinedload("audit").undefer_group("Audit_complete"),
+    )
+
+  @classmethod
+  def indexed_query(cls):
+    return cls._populate_query(super(Issue, cls).indexed_query())
+
+  @classmethod
+  def eager_query(cls):
+    return cls._populate_query(super(Issue, cls).eager_query())

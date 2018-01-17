@@ -3,6 +3,8 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import {DESTINATION_UNMAPPED} from '../../events/eventTypes';
+
 (function (can, GGRC, CMS) {
   'use strict';
 
@@ -17,16 +19,16 @@
       source: {},
       preventClick: false,
       unmapInstance: function () {
-        var self = this;
         this.dispatch({type: 'beforeUnmap', item: this.attr('source')});
         this.getMapping()
           .refresh()
-          .done(function (item) {
+          .done((item) => {
             item.destroy()
-              .then(function () {
-                self.dispatch('unmapped');
-                self.attr('destination').dispatch('refreshInstance');
-                self.dispatch('afterUnmap');
+              .then(() => {
+                this.dispatch('unmapped');
+                this.attr('destination').dispatch('refreshInstance');
+                this.attr('destination').dispatch(DESTINATION_UNMAPPED);
+                this.dispatch('afterUnmap');
               });
           });
       },

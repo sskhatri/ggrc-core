@@ -5,16 +5,39 @@
 
 import '../controls-toolbar/controls-toolbar';
 import '../assessment-local-ca';
+import '../assessment-custom-attributes';
+import '../assessment-people';
+import '../assessment-object-type-dropdown';
+import '../attach-button';
+import '../info-pane-save-status';
+import '../../comment/comment-add-form';
+import '../../comment/mapped-comments';
+import '../mapped-objects/mapped-controls';
+import '../../assessment/map-button-using-assessment-type';
+import '../../ca-object/ca-object-modal-content';
+import '../../comment/comment-add-form';
 import '../../custom-attributes/custom-attributes';
 import '../../custom-attributes/custom-attributes-field';
 import '../../custom-attributes/custom-attributes-status';
-import '../mapped-objects/mapped-related-information';
-import '../mapped-objects/mapped-comments';
-import '../mapped-objects/mapped-controls';
+import '../../prev-next-buttons/prev-next-buttons';
 import '../../inline/inline-form-control';
+import '../../object-change-state/object-change-state';
+import '../../related-objects/related-assessments';
+import '../../related-objects/related-issues';
+import '../../issue-tracker/issue-tracker-switcher';
+import '../../object-list-item/editable-document-object-list-item';
+import '../../object-state-toolbar/object-state-toolbar';
+import '../../loading/loading-status';
+import './info-pane-issue-tracker-fields';
+import '../../tabs/tab-container';
 import './inline-item';
 import './create-url';
-import '../../object-change-state/object-change-state';
+import './confirm-edit-action';
+import '../../multi-select-label/multi-select-label';
+import {
+  buildParam,
+  batchRequests,
+} from '../../../plugins/utils/query-api-utils';
 import {
   getCustomAttributes,
   CUSTOM_ATTRIBUTE_TYPE,
@@ -22,18 +45,22 @@ import {
   convertValuesToFormFields,
   applyChangesToCustomAttributeValue,
 } from '../../../plugins/utils/ca-utils';
+import DeferredTransaction from '../../../plugins/utils/deferred-transaction-utils';
+import tracker from '../../../tracker';
+import {REFRESH_TAB_CONTENT} from '../../../events/eventTypes';
+import Permission from '../../../permission';
+import template from './info-pane.mustache';
 
 (function (can, GGRC, CMS) {
   'use strict';
-  var tpl = can.view(GGRC.mustache_path +
-    '/components/assessment/info-pane/info-pane.mustache');
+  const editableStatuses = ['Not Started', 'In Progress', 'Rework Needed'];
 
   /**
    * Assessment Specific Info Pane View Component
    */
   GGRC.Components('assessmentInfoPane', {
     tag: 'assessment-info-pane',
-    template: tpl,
+    template: template,
     viewModel: {
       documentTypes: {
         evidences: CMS.Models.Document.EVIDENCE,
@@ -41,6 +68,29 @@ import {
         referenceUrls: CMS.Models.Document.REFERENCE_URL,
       },
       define: {
+        verifiers: {
+          get: function () {
+            let acl = this.attr('instance.access_control_list');
+            let verifierRoleId = this.attr('_verifierRoleId');
+            let verifiers;
+
+            if (!verifierRoleId) {
+              return [];
+            }
+
+            verifiers = acl
+              .filter((item) => item.ac_role_id == verifierRoleId)
+              .map((item) => item.person);
+
+            return verifiers;
+          },
+        },
+        showProcedureSection: {
+          get: function () {
+            return this.instance.attr('test_plan') ||
+              this.instance.attr('issue_tracker.issue_url');
+          },
+        },
         isSaving: {
           type: 'boolean',
           value: false,
@@ -99,9 +149,10 @@ import {
         editMode: {
           type: 'boolean',
           get: function () {
-            return this.attr('instance.status') !== 'Completed' &&
-              this.attr('instance.status') !== 'In Review' &&
-              !this.attr('instance.archived');
+            let status = this.attr('instance.status');
+
+            return !this.attr('instance.archived') &&
+              editableStatuses.includes(status);
           },
           set: function () {
             this.onStateChange({state: 'In Progress', undo: false});
@@ -132,12 +183,14 @@ import {
       modal: {
         open: false,
       },
+      _verifierRoleId: undefined,
       isUpdatingRelatedItems: false,
       isAssessmentSaving: false,
       onStateChangeDfd: {},
       formState: {},
       noItemsText: '',
       initialState: 'Not Started',
+      assessmentMainRoles: ['Creators', 'Assignees', 'Verifiers'],
       setUrlEditMode: function (value, type) {
         this.attr(type + 'EditMode', value);
       },
@@ -150,8 +203,7 @@ import {
           id: this.attr('instance.id'),
           operation: 'relevant',
         }];
-        return GGRC.Utils.QueryAPI
-          .buildParam(type,
+        return buildParam(type,
             sortObj || {},
             relevantFilters,
             [],
@@ -175,8 +227,8 @@ import {
         var dfd = can.Deferred();
         type = type || '';
         this.attr('isUpdating' + can.capitalize(type), true);
-        GGRC.Utils.QueryAPI
-          .batchRequests(query)
+
+        batchRequests(query)
           .done(function (response) {
             var type = Object.keys(response)[0];
             var values = response[type].values;
@@ -188,9 +240,9 @@ import {
           .always(function () {
             this.attr('isUpdating' + can.capitalize(type), false);
 
-            if (this.attr('isUpdatingRelatedItems')) {
-              this.attr('isUpdatingRelatedItems', false);
-            }
+            tracker.stop(this.attr('instance.type'),
+              tracker.USER_JOURNEY_KEYS.NAVIGATION,
+              tracker.USER_ACTIONS.OPEN_INFO_PANE);
           }.bind(this));
         return dfd;
       },
@@ -334,16 +386,20 @@ import {
       updateRelatedItems: function () {
         this.attr('isUpdatingRelatedItems', true);
 
-        this.attr('mappedSnapshots')
-          .replace(this.loadSnapshots());
-        this.attr('comments')
-          .replace(this.loadComments());
-        this.attr('evidences')
-          .replace(this.loadEvidences());
-        this.attr('urls')
-          .replace(this.loadUrls());
-        this.attr('referenceUrls')
-          .replace(this.loadReferenceUrls());
+        this.attr('instance').getRelatedObjects()
+          .then((data) => {
+            this.attr('mappedSnapshots').replace(data.Snapshot);
+            this.attr('comments').replace(data.Comment);
+            this.attr('evidences').replace(data['Document:EVIDENCE']);
+            this.attr('urls').replace(data['Document:URL']);
+            this.attr('referenceUrls').replace(data['Document:REFERENCE_URL']);
+
+            this.attr('isUpdatingRelatedItems', false);
+
+            tracker.stop(this.attr('instance.type'),
+              tracker.USER_JOURNEY_KEYS.NAVIGATION,
+              tracker.USER_ACTIONS.OPEN_INFO_PANE);
+          });
       },
       initializeFormFields: function () {
         var cavs =
@@ -368,7 +424,7 @@ import {
         );
       },
       initializeDeferredSave: function () {
-        this.attr('deferredSave', new GGRC.Utils.DeferredTransaction(
+        this.attr('deferredSave', new DeferredTransaction(
           function (resolve, reject) {
             this.attr('instance').save().done(resolve).fail(reject);
           }.bind(this), 1000, true));
@@ -377,8 +433,16 @@ import {
         var isUndo = event.undo;
         var newStatus = event.state;
         var instance = this.attr('instance');
-        var self = this;
         var previousStatus = instance.attr('previousStatus') || 'In Progress';
+        let stopFn = tracker.start(instance.type,
+          tracker.USER_JOURNEY_KEYS.NAVIGATION,
+          tracker.USER_ACTIONS.ASSESSMENT.CHANGE_STATUS);
+        const resetStatusOnConflict = (object, xhr) => {
+          if (xhr && xhr.status === 409 && xhr.remoteObject) {
+            instance.attr('status', xhr.remoteObject.status);
+          }
+        };
+
         this.attr('onStateChangeDfd', can.Deferred());
 
         if (isUndo) {
@@ -388,25 +452,25 @@ import {
         }
         instance.attr('isPending', true);
 
-        this.attr('formState.formSavedDeferred')
-          .then(function () {
-            instance.refresh().then(function () {
-              instance.attr('status', isUndo ? previousStatus : newStatus);
+        return this.attr('formState.formSavedDeferred')
+          .then(() => {
+            instance.attr('status', isUndo ? previousStatus : newStatus);
 
-              if (instance.attr('status') === 'In Review' && !isUndo) {
-                $(document.body).trigger('ajax:flash',
-                  {hint: 'The assessment is complete. ' +
-                  'The verifier may revert it if further input is needed.'});
-              }
+            if (instance.attr('status') === 'In Review' && !isUndo) {
+              $(document.body).trigger('ajax:flash',
+                {hint: 'The assessment is complete. ' +
+                'The verifier may revert it if further input is needed.'});
+            }
 
-              return instance.save()
-              .then(function () {
-                instance.attr('isPending', false);
-                self.initializeFormFields();
-                self.attr('onStateChangeDfd').resolve();
-              });
-            });
-          });
+            return instance.save();
+          })
+          .then(() => {
+            this.initializeFormFields();
+            this.attr('onStateChangeDfd').resolve();
+            stopFn();
+          })
+          .always(() => instance.attr('isPending', false))
+          .fail(resetStatusOnConflict);
       },
       saveGlobalAttributes: function (event) {
         var globalAttributes = event.globalAttributes;
@@ -447,12 +511,23 @@ import {
         can.batch.stop();
         this.attr('modal.state.open', true);
       },
+      setVerifierRoleId: function () {
+        let verifierRoleIds = GGRC.access_control_roles
+          .filter((item) => item.object_type === 'Assessment' &&
+            item.name === 'Verifiers')
+          .map((item) => item.id);
+
+        let verifierRoleId = _.head(verifierRoleIds);
+        this.attr('_verifierRoleId', verifierRoleId);
+      },
     },
     init: function () {
       this.viewModel.initializeFormFields();
       this.viewModel.initGlobalAttributes();
       this.viewModel.updateRelatedItems();
       this.viewModel.initializeDeferredSave();
+
+      this.viewModel.setVerifierRoleId();
     },
     events: {
       '{viewModel.instance} refreshMapping': function () {
@@ -464,6 +539,16 @@ import {
       },
       '{viewModel.instance} modelAfterSave': function () {
         this.viewModel.attr('isAssessmentSaving', false);
+      },
+      '{viewModel.instance} assessment_type'() {
+        const onSave = () => {
+          this.viewModel.instance.dispatch({
+            ...REFRESH_TAB_CONTENT,
+            tabId: 'tab-related-assessments',
+          });
+          this.viewModel.instance.unbind('updated', onSave);
+        };
+        this.viewModel.instance.bind('updated', onSave);
       },
       '{viewModel} instance': function () {
         this.viewModel.initializeFormFields();

@@ -5,6 +5,7 @@
 
 import component from '../workflow-activate';
 import helpers from '../workflow-helpers';
+import * as CurrentPageUtils from '../../../../../ggrc/assets/javascripts/plugins/utils/current-page-utils';
 
 describe('GGRC.WorkflowActivate', function () {
   var scope;
@@ -63,7 +64,7 @@ describe('GGRC.WorkflowActivate', function () {
         .and.returnValue(workflow);
       spyOn(_, 'find')
         .and.returnValue(workflowExtension);
-      spyOn(GGRC.Utils.CurrentPage, 'initCounts')
+      spyOn(CurrentPageUtils, 'initCounts')
         .and.returnValue(initCountsDfd);
       spyOn(helpers, 'generateCycle')
         .and.returnValue(generateDfd);
@@ -121,7 +122,7 @@ describe('GGRC.WorkflowActivate', function () {
           saveDfd.resolve(workflow);
           saveCycleDfd.resolve();
 
-          expect(GGRC.Utils.CurrentPage.initCounts)
+          expect(CurrentPageUtils.initCounts)
             .toHaveBeenCalledWith([
               workflowExtension.countsMap.activeCycles,
             ], workflow.type, workflow.id);

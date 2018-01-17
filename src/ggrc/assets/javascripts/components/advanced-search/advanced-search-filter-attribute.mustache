@@ -1,0 +1,40 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="filter-attribute flex-box flex-box-multi">
+  <div class="filter-attribute__name">
+    <select {($value)}="attribute.field">
+      {{#each availableAttributes}}
+      <option value="{{attr_title}}">{{attr_title}}</option>
+      {{/each}}
+    </select>
+  </div>
+  <div class="filter-attribute__operator">
+    <select {($value)}="attribute.operator">
+      <option value="~">Contains</option>
+      <option value="=">Equals</option>
+      <option value="!~">Does not contain</option>
+      <option value="!=">Is not equal</option>
+      <option value="&lt;">Lesser than </option>
+      <option value="&gt;">Greater than</option>
+    </select>
+  </div>
+  <div class="filter-attribute__value">
+    <input tabindex="3"
+      placeholder="Type here..."
+      name="right"
+      type="text"
+      {($value)}="attribute.value"
+      ($enter)='setValue($element)'>
+  </div>
+  {{#if showActions}}
+  <div class="filter-attribute__action">
+    <button class="filter-attribute__remove" ($click)="remove()"><i class="fa fa-trash"></i></button>
+    {{#if extendable}}
+    <a href="javascript:void(0)" class="advanced-filter" ($click)="createGroup()">+ Add Group Expression</a>
+    {{/if}}
+  </div>
+  {{/if}}
+</div>

@@ -7,12 +7,7 @@ This defines a procedure of getting "similar" objects which have similar
 relationships.
 """
 
-from sqlalchemy import and_
-from sqlalchemy import case
-from sqlalchemy import or_
-from sqlalchemy import select
-from sqlalchemy.orm import aliased
-from sqlalchemy.sql import func
+import sqlalchemy as sa
 
 from ggrc import db
 from ggrc.models.relationship import Relationship
@@ -25,243 +20,275 @@ class WithSimilarityScore(object):
   """Defines a routine to get similar object with mappings to same objects."""
 
   # pylint: disable=too-few-public-methods
-
-  # example of similarity_options:
-  # similarity_options = {
-  #     "relevant_types": {"Audit": {"weight": 5}, type: {"weight": w}},
-  #     "threshold": 10,
-  # }
-
   @classmethod
-  def get_similar_objects_query(cls, id_, types="all", relevant_types=None,
-                                threshold=1):
+  def get_similar_objects_query(cls, id_, type_):
     """Get objects of types similar to cls instance by their mappings.
 
     Args:
-      id_: the id of the object to which the search will be applied;
-      types: a list of types of relevant objects (or "all" if you need to find
-             objects of any type);
-      relevant_types: use this parameter to override assessment_type;
-      threshold: use this parameter to set similarity threshold.
+        id_: the id of the object to which the search will be applied.
+        type_: type of similar object.
 
     Returns:
-      SQLAlchemy query that yields results with columns [(id, type, weight)] -
-          the id and type of similar objects with respective weights.
+        SQLAlchemy query that yields results with columns [(id,)] -
+        the id of similar objects.
     """
-    if not types or (not isinstance(types, list) and types != "all"):
-      raise ValueError("Expected types = 'all' or a non-empty list of "
-                       "requested types, got {!r} instead.".format(types))
-    if not hasattr(cls, "assessment_type"):
-      raise AttributeError("Expected 'assessment_type' field defined for "
-                           "'{c.__name__}' model.".format(c=cls))
-    if relevant_types is None:
-      relevant_types = db.session.query(cls.assessment_type)\
-                                 .filter(cls.id == id_)
-
-    # naming: self is "object", the object mapped to it is "related",
-    # the object mapped to "related" is "similar"
-    queries_for_union = []
-
-    # find "similar" objects with Relationship table
-    queries_for_union += cls._join_relationships(id_)
-
-    # find "similar" objects based on snapshots
-    queries_for_union += cls._join_snapshots(id_, types)
-
-    joined = queries_for_union.pop().union_all(*queries_for_union).subquery()
-
-    # define weights for every "related" object type with default_weight
-    weight_case = case(
-        [(joined.c.related_type == relevant_types, DEFAULT_WEIGHT)],
-        else_=0)
-    weight_sum = func.sum(weight_case).label("weight")
-
-    # return the id and type of "similar" object together with its measure of
-    # similarity
-    result = db.session.query(
-        joined.c.similar_id.label("id"),
-        joined.c.similar_type.label("type"),
-        weight_sum,
-    ).filter(or_(
-        # filter out self
-        joined.c.similar_id != id_,
-        joined.c.similar_type != cls.__name__,
-    ))
-
-    # Filter Assessments with proper assessment_type
-    asmnt_cond = case([(
-        joined.c.similar_type == "Assessment",
-        and_(
-            joined.c.similar_id == cls.id,
-            cls.assessment_type == relevant_types,
-        )
-    )], else_=True)
-    result = result.join(cls, asmnt_cond)
-
-    # do the filtering by "similar" object types
-    if types is not None:
-      if not types:
-        # types is provided but is empty
-        return []
-      elif types == "all":
-        # any type will pass, no filtering applied
-        pass
-      else:
-        # retain only types from the provided list
-        result = result.filter(joined.c.similar_type.in_(types))
-
-    # group by "similar" objects to remove duplicated rows
-    result = result.group_by(
-        joined.c.similar_type,
-        joined.c.similar_id,
-    ).having(
-        # filter out "similar" objects that have insufficient similarity
-        weight_sum >= threshold,
-    )
-    return result
+    from ggrc.snapshotter.rules import Types
+    if cls.__name__ in Types.all and type_ in Types.scoped:
+      return cls._similar_obj_assessment(type_, id_)
+    elif cls.__name__ in Types.scoped and type_ in Types.scoped:
+      return cls._similar_asmnt_assessment(type_, id_)
+    elif cls.__name__ in Types.scoped and type_ in Types.trans_scope:
+      return cls._similar_asmnt_issue(type_, id_)
+    return []
 
   @classmethod
-  def _join_snapshots(cls, id_, types):
-    """Retrieves related objects with snapshots
+  def _similar_obj_assessment(cls, type_, id_):
+    """Find similar Assessments for object.
 
-    Performs a query where it first:
-    1) Find all directly mapped snapshots
-    2) Join with snapshots to find type and id of snapshots (child_type and
-    child_id) - left snapshots
-    3) Join with snapshots to find snapshots with the same child_type and
-    child_id (right_snapshots)
-    4) Find all objects mapped to right snapshots (right_relationships)
+    Args:
+        type_: Object type.
+        id_: Object id.
 
-    Arg:
-      id_: ID of instance performing similarity query on
-    Return:
-      [(related_type, similar_id, similar_type)] where related type is the type
-      related objects, similar_id and similar_type being id and type of
-      second tier objects.
+    Returns:
+        SQLAlchemy query that yields results [(similar_id,)] - the id of
+        similar objects.
     """
+    from ggrc.models import all_models
+    # Find objects directly mapped to Snapshot of base object
+    # Object1 <-> Snapshot of Object1 <-> Object2
+    similar_queries = cls.mapped_to_obj_snapshot(cls.__name__, id_)
 
-    left_snapshot = aliased(Snapshot, name="left_snapshot")
-    right_snapshot = aliased(Snapshot, name="right_snapshot")
-    left_relationship = aliased(Relationship, name="left_relationship")
-    right_relationship = aliased(Relationship, name="right_relationship")
-
-    snapshot_ids = select([
-        left_relationship.destination_id.label("snapshot_left_id"),
-    ]).where(
-        and_(
-            left_relationship.source_type == cls.__name__,
-            left_relationship.source_id == id_,
-            left_relationship.destination_type == "Snapshot"
+    # Find objects mapped to Snapshot of base object through another object
+    # Object1 <-> Object2 <-> Snapshot of Object2 <-> Object3
+    mapped_obj = cls.mapped_objs(cls.__name__, id_, True)
+    similar_queries += cls.mapped_to_obj_snapshot(
+        mapped_obj.c.obj_type, mapped_obj.c.obj_id
+    )
+    similar_objs = sa.union_all(*similar_queries).alias("similar_objs")
+    return db.session.query(similar_objs.c.similar_id).join(
+        all_models.Assessment,
+        sa.and_(
+            all_models.Assessment.assessment_type == cls.__name__,
+            all_models.Assessment.id == similar_objs.c.similar_id,
         )
-    ).union(
-        select([
-            left_relationship.source_id.label("snapshot_left_id"),
-        ]).where(
-            and_(
-                left_relationship.destination_type == cls.__name__,
-                left_relationship.destination_id == id_,
-                left_relationship.source_type == "Snapshot"
-            )
-        )
-    ).alias("snapshot_ids")
-
-    left_snapshot_join = snapshot_ids.outerjoin(
-        left_snapshot,
-        left_snapshot.id == snapshot_ids.c.snapshot_left_id
+    ).filter(
+        similar_objs.c.similar_type == type_,
     )
 
-    right_snapshot_join = left_snapshot_join.outerjoin(
-        right_snapshot,
-        and_(
-            right_snapshot.child_type == left_snapshot.child_type,
-            right_snapshot.child_id == left_snapshot.child_id
-        )
-    ).alias("right_snapshot_join")
+  @classmethod
+  def _similar_asmnt_assessment(cls, type_, id_):
+    """Find similar Assessments for Assessment object.
 
-    return [
-        db.session.query(
-            right_snapshot_join.c.right_snapshot_child_type.label(
-                "related_type"),
-            right_relationship.source_id.label("similar_id"),
-            right_relationship.source_type.label("similar_type"),
-        ).filter(
-            and_(
-                right_relationship.destination_type == "Snapshot",
-                right_relationship.destination_id ==
-                right_snapshot_join.c.right_snapshot_id,
-                right_relationship.source_type.in_(types)
-            )
-        ),
-        db.session.query(
-            right_snapshot_join.c.right_snapshot_child_type.label(
-                "related_type"),
-            right_relationship.destination_id.label("similar_id"),
-            right_relationship.destination_type.label("similar_type"),
-        ).filter(
-            and_(
-                right_relationship.source_type == "Snapshot",
-                right_relationship.source_id ==
-                right_snapshot_join.c.right_snapshot_id,
-                right_relationship.destination_type.in_(types)
-            )
+    Args:
+        type_: Assessment type.
+        id_: Assessment id.
+
+    Returns:
+        SQLAlchemy query that yields results [(similar_id,)] - the id of
+        similar objects.
+    """
+    from ggrc.models import all_models
+    asmnt = all_models.Assessment
+
+    asmnt_mapped = cls.mapped_to_assessment([id_]).subquery()
+    # Find Assessments directly mapped to Snapshot of same object
+    similar_queries = cls.mapped_to_obj_snapshot(
+        asmnt_mapped.c.obj_type, asmnt_mapped.c.obj_id
+    )
+
+    # Find Assessments mapped to Snapshot of object mapped to base object
+    # Object1 <-> Object2 <-> Snapshot of Object2 <-> Assessment
+    mapped_obj = cls.mapped_objs(
+        asmnt_mapped.c.obj_type, asmnt_mapped.c.obj_id, True
+    )
+    similar_queries += cls.mapped_to_obj_snapshot(
+        mapped_obj.c.obj_type, mapped_obj.c.obj_id
+    )
+
+    similar_objs = sa.union_all(*similar_queries).alias("scoped_similar")
+    return db.session.query(similar_objs.c.similar_id).join(
+        asmnt,
+        sa.and_(
+            asmnt.assessment_type == similar_objs.c.related_type,
+            asmnt.id == similar_objs.c.similar_id,
         )
-    ]
+    ).filter(
+        asmnt.id != id_,
+        similar_objs.c.similar_type == type_,
+    )
 
   @classmethod
-  def _join_relationships(cls, id_):
-    """Make a self-join of Relationship table to find common mappings.
+  def _similar_asmnt_issue(cls, type_, id_):
+    """Find similar Issues for Assessment.
 
-    Returns a query with results for [(related_type, similar_id, similar_type)]
-    where similar_id and similar_type describe a second-tier mapped object and
-    related_type is the type of a common mapped object between "object" and
-    "similar".
+    Args:
+        type_: Assessment type.
+        id_: Assessment id.
+
+    Returns:
+        SQLAlchemy query that yields results [(similar_id,)] - the id of
+        similar objects.
     """
-    # get all Relationships for self
-    object_to_related = db.session.query(Relationship).filter(
-        or_(and_(Relationship.source_type == cls.__name__,
-                 Relationship.source_id == id_),
-            and_(Relationship.destination_type == cls.__name__,
-                 Relationship.destination_id == id_))).subquery()
-
-    # define how to get id and type of "related" objects
-    related_id_case = (case([(and_(object_to_related.c.source_id == id_,
-                                   object_to_related.c.source_type ==
-                                   cls.__name__),
-                              object_to_related.c.destination_id)],
-                            else_=object_to_related.c.source_id)
-                       .label("related_id"))
-    related_type_case = (case([(and_(object_to_related.c.source_id == id_,
-                                     object_to_related.c.source_type ==
-                                     cls.__name__),
-                                object_to_related.c.destination_type)],
-                              else_=object_to_related.c.source_type)
-                         .label("related_type"))
-
-    related_to_similar = aliased(Relationship, name="related_to_similar")
-
-    # self-join Relationships to get "similar" id and type; save "related" type
-    # to get the weight of this relationship later
-    return [
+    mapped_obj = cls.mapped_to_assessment([id_]).subquery()
+    similar_queries = cls.mapped_to_obj_snapshot(
+        mapped_obj.c.obj_type, mapped_obj.c.obj_id
+    )
+    mapped_related = cls.mapped_objs(
+        mapped_obj.c.obj_type, mapped_obj.c.obj_id
+    )
+    similar_queries.append(
         db.session.query(
-            related_type_case,
-            related_to_similar.destination_id.label("similar_id"),
-            related_to_similar.destination_type.label("similar_type"),
+            mapped_related.c.obj_id.label("similar_id"),
+            mapped_related.c.obj_type.label("similar_type"),
+            mapped_related.c.base_type.label("related_type"),
+        )
+    )
+    similar_objs = sa.union_all(*similar_queries).alias("scoped_similar")
+    return db.session.query(similar_objs.c.similar_id).filter(
+        similar_objs.c.similar_type == type_,
+    )
+
+  @classmethod
+  def mapped_to_assessment(cls, related_ids):
+    """Collect objects that have snapshot mapped to assessment.
+
+    Args:
+        related_ids: List of Assessment ids.
+
+    Returns:
+        SQLAlchemy query with id and type of found
+        objects [(obj_id, obj_type)].
+    """
+    from ggrc.models import all_models
+    asmnt = all_models.Assessment
+
+    objects_mapped = sa.union_all(
+        db.session.query(
+            Snapshot.child_id.label("obj_id"),
+            asmnt.assessment_type.label("obj_type"),
         ).join(
-            related_to_similar,
-            and_(related_id_case == related_to_similar.source_id,
-                 related_type_case == related_to_similar.source_type),
+            Relationship,
+            sa.and_(
+                Relationship.source_id == Snapshot.id,
+                Relationship.source_type == Snapshot.__name__,
+            )
+        ).join(
+            asmnt,
+            sa.and_(
+                Relationship.destination_type == asmnt.__name__,
+                Relationship.destination_id == asmnt.id,
+            )
         ).filter(
-            related_to_similar.source_type != "Snapshot"
+            asmnt.id.in_(related_ids),
+            Snapshot.child_type == asmnt.assessment_type,
         ),
         db.session.query(
-            related_type_case,
-            related_to_similar.source_id.label("similar_id"),
-            related_to_similar.source_type.label("similar_type"),
+            Snapshot.child_id.label("obj_id"),
+            asmnt.assessment_type.label("obj_type"),
         ).join(
-            related_to_similar,
-            and_(related_id_case == related_to_similar.destination_id,
-                 related_type_case == related_to_similar.destination_type),
+            Relationship,
+            sa.and_(
+                Relationship.destination_id == Snapshot.id,
+                Relationship.destination_type == Snapshot.__name__,
+            )
+        ).join(
+            asmnt,
+            sa.and_(
+                Relationship.source_type == asmnt.__name__,
+                Relationship.source_id == asmnt.id,
+            )
         ).filter(
-            related_to_similar.destination_type != "Snapshot"
+            asmnt.id.in_(related_ids),
+            Snapshot.child_type == asmnt.assessment_type,
         )
-    ]
+    ).alias("objects_mapped")
+    return db.session.query(
+        objects_mapped.c.obj_id.label("obj_id"),
+        objects_mapped.c.obj_type.label("obj_type")
+    )
+
+  @classmethod
+  def mapped_objs(cls, object_type, object_id, same_type_mapped=False):
+    """Find all instances that have relationship with provided object.
+
+    Args:
+        object_type: Type of object (can be str or SQLAlchemy property).
+        object_id: Id of object (can be int or SQLAlchemy property).
+        same_type_mapped: If True - related objects with same type only
+            will be searched.
+
+    Returns:
+        SQLAlchemy query with id and type of found
+        objects [(obj_id, obj_type)].
+    """
+    source_rel = db.session.query(
+        Relationship.source_id.label("obj_id"),
+        Relationship.source_type.label("obj_type"),
+        Relationship.destination_type.label("base_type"),
+    ).filter(
+        Relationship.destination_type == object_type,
+        Relationship.destination_id == object_id,
+    )
+
+    destination_rel = db.session.query(
+        Relationship.destination_id,
+        Relationship.destination_type,
+        Relationship.source_type,
+    ).filter(
+        Relationship.source_type == object_type,
+        Relationship.source_id == object_id,
+    )
+
+    if same_type_mapped:
+      source_rel = source_rel.filter(
+          Relationship.source_type == Relationship.destination_type
+      )
+      destination_rel = destination_rel.filter(
+          Relationship.source_type == Relationship.destination_type
+      )
+    return sa.union_all(source_rel, destination_rel).alias("mapped_related")
+
+  @classmethod
+  def mapped_to_obj_snapshot(cls, object_type, object_id):
+    """Find all instances that have relationship with snapshot of object.
+
+    Args:
+        object_type: Type of object (can be str or SQLAlchemy property).
+        object_id: Id of object (can be int or SQLAlchemy property).
+
+    Returns:
+        List of SQLAlchemy queries that yields results
+        [(similar_id, similar_type, related_type)] - the id, type of similar
+        objects and object type they linked through.
+    """
+    source_query = db.session.query(
+        Relationship.destination_id.label("similar_id"),
+        Relationship.destination_type.label("similar_type"),
+        Snapshot.child_type.label("related_type"),
+    ).join(
+        Snapshot,
+        sa.and_(
+            Relationship.source_id == Snapshot.id,
+            Relationship.source_type == Snapshot.__name__,
+        )
+    ).filter(
+        Snapshot.child_type == object_type,
+        Snapshot.child_id == object_id,
+    )
+
+    destination_query = db.session.query(
+        Relationship.source_id.label("similar_id"),
+        Relationship.source_type.label("similar_id"),
+        Snapshot.child_type.label("related_type"),
+    ).join(
+        Snapshot,
+        sa.and_(
+            Relationship.destination_id == Snapshot.id,
+            Relationship.destination_type == Snapshot.__name__,
+        )
+    ).filter(
+        Snapshot.child_type == object_type,
+        Snapshot.child_id == object_id,
+    )
+
+    return [source_query, destination_query]

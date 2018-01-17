@@ -3,12 +3,12 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import BaseTreeItemVM from './tree-item-base-vm';
 import template from './templates/sub-tree-item.mustache';
 
 (function (can, GGRC) {
   'use strict';
 
-  var BaseTreeItemVM = GGRC.VM.BaseTreeItemVM;
   var viewModel = BaseTreeItemVM.extend({
     define: {
       dueDate: {
@@ -59,7 +59,7 @@ import template from './templates/sub-tree-item.mustache';
       }
     },
     itemSelector: '.sub-item-content',
-    extraCss: '@'
+    extraCss: '@',
   });
 
   GGRC.Components('subTreeItem', {
@@ -71,6 +71,7 @@ import template from './templates/sub-tree-item.mustache';
         var viewModel = this.viewModel;
         var instance = viewModel.attr('instance');
         var resultDfd;
+        viewModel.attr('$el', this.element);
 
         if (instance instanceof CMS.Models.Person) {
           resultDfd = viewModel.makeResult(instance).then(function (result) {
@@ -79,13 +80,7 @@ import template from './templates/sub-tree-item.mustache';
 
           viewModel.attr('resultDfd', resultDfd);
         }
-
-        viewModel.initChildTreeDisplay();
       },
-      ' childModelsChange': function (el, ev, selectedModels) {
-        ev.stopPropagation();
-        this.viewModel.setChildModels(selectedModels);
-      }
     }
   });
 })(window.can, window.GGRC);

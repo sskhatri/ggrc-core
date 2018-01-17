@@ -13,6 +13,10 @@ declare -r DOCKERFILE_DEPLOY="docker-compose-deploy.yml"
 cd "${SCRIPTPATH}/../"
 source "$SCRIPTPATH/util.sh"
 
+get_override_filename () {
+  echo "${1:-}" | sed "s/.yml$/.override.yml/"
+}
+
 usage () {
   cat <<EOF
 Usage: $(basename ${0}) ACTION [MODE [PROJECT]]
@@ -20,6 +24,8 @@ Usage: $(basename ${0}) ACTION [MODE [PROJECT]]
 Allowed ACTIONs:
   setup           (Re-)build, run and provision the required containers
   stop            Stop the containers
+  run             Run the containers
+  connect         Connect to app container  
 
 Allowed MODEs:
   dev             (default) Setup application container + db container
@@ -50,6 +56,8 @@ main () {
   case "$ACTION" in
     "setup") setup "$MODE" "$PROJECT" ;;
     "stop") stop "$MODE" "$PROJECT" ;;
+    "run") run "$MODE" "$PROJECT" ;;
+    "connect") connect "$MODE" "$PROJECT" ;;    
     *) fail_invalid_usage ;;
   esac
 }
@@ -67,16 +75,21 @@ setup () {
   PROJECT="$2"
 
   DOCKERFILE=$(mode_to_docker_compose_yml "$MODE")
+  DOCKERFILE_OVERRIDE=$(get_override_filename "$DOCKERFILE");
+  OVERRIDE=""
 
+  if [ -f "$DOCKERFILE_OVERRIDE" ]; then
+    OVERRIDE="--file $DOCKERFILE_OVERRIDE"
+  fi
   git submodule update --init
 
   # allow non-privileged mysqld to read provisioned mysql configs
   chmod o+r ./provision/docker/mysql
   chmod o+r ./provision/docker/mysql/*
 
-  docker-compose --file "$DOCKERFILE" --project-name "$PROJECT" \
+  docker-compose --file "$DOCKERFILE" $OVERRIDE --project-name "$PROJECT" \
     build
-  docker-compose --file "$DOCKERFILE" --project-name "$PROJECT" \
+  docker-compose --file "$DOCKERFILE" $OVERRIDE --project-name "$PROJECT" \
     up --force-recreate -d
 
   docker exec -i "${PROJECT}_cleandev_1" su -c "
@@ -100,5 +113,33 @@ stop () {
 
   docker-compose --file "$DOCKERFILE" --project-name "$PROJECT" stop
 }
+
+connect() {
+  MODE="$1"
+  PROJECT="$2"
+
+  docker exec -it "${PROJECT}_cleandev_1" su
+}
+
+run () {
+  MODE="$1"
+  PROJECT="$2"
+
+  DOCKERFILE=$(mode_to_docker_compose_yml "$MODE")
+  DOCKERFILE_OVERRIDE=$(get_override_filename "$DOCKERFILE");  
+  OVERRIDE=""
+    
+  if [ -f "$DOCKERFILE_OVERRIDE" ]; then
+    OVERRIDE="--file $DOCKERFILE_OVERRIDE"
+  fi
+    
+  docker-compose --file "$DOCKERFILE" $OVERRIDE --project-name "$PROJECT" \
+    up --force-recreate -d
+    
+  if [[ "$MODE" == "dev" ]]; then
+    docker exec -it "${PROJECT}_cleandev_1" su
+  fi
+}
+
 
 main "$@"

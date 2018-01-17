@@ -1,0 +1,50 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="tree-pagination flex-box">
+  <div class="tree-pagination__count">
+    <div class="tree-view-pagination__count__title">
+      {{getPaginationInfo}}
+    </div>
+  </div>
+  <div class="pagination dropdown-container">
+    <select class="pagination-dropdown"
+            can-value="paging.pageSize"
+            {{#if paging.disabled}}disabled{{/if}}>
+      {{#paging.pageSizeSelect}}
+      <option value="{{.}}">{{.}}</option>
+      {{/paging.pageSizeSelect}}
+    </select>
+  </div>
+  <div class="tree-pagination__count per-page">
+    <div class="tree-view-pagination__count__title">per page</div>
+  </div>
+  <div class="pagination">
+    <div class="pagination-item {{#if_equals paging.current 1}} disabled{{/if_equals}}">
+      <a can-click="setFirstPage">
+        <i class="fa fa-angle-double-left" aria-hidden="true"></i>
+      </a>
+    </div>
+    <div class="pagination-item {{#if_equals paging.current 1}} disabled{{/if_equals}}">
+      <a can-click="setPrevPage">
+        <i class="fa fa-angle-left" aria-hidden="true"></i>
+      </a>
+    </div>
+    <div class="pagination-item">
+      <input type="text" can-change="setCurrentPage" class="input"
+               placeholder="{{getPaginationPlaceholder}}" >
+    </div>
+    <div class="pagination-item {{#if_equals paging.current paging.count}} disabled{{/if_equals}}">
+      <a can-click="setNextPage">
+        <i class="fa fa-angle-right" aria-hidden="true"></i>
+      </a>
+    </div>
+    <div class="pagination-item {{#if_equals paging.current paging.count}} disabled{{/if_equals}}">
+      <a can-click="setLastPage">
+        <i class="fa fa-angle-double-right" aria-hidden="true"></i>
+      </a>
+    </div>
+  </div>
+</div>

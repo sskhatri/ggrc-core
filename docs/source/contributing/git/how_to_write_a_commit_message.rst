@@ -48,6 +48,23 @@ Good
 4. Add {method_a}, {method_b} and {method_c} methods to API
 5. Remove unused {method_a}, {method_b}...
 
+Commit content
+~~~~~~~~~~~~~~
+
+The commit message must also reflect the commit content. If a commit has to 
+describe too many things, then that commit should be split into smaller logical
+parts.
+
+A few cases when commits must be split in order to improve readability:
+
+1. When moving code around, unless it is just a few lines of code there should
+   always be split commits for moving the code, and changing the moved code to
+   work from the new location.
+2. When refactoring any code that is obsolete should be removed in a separate
+   commit unless it is trivial to see that the code is not used anywhere else.
+3. When adding new functionality that affects a broader codebase not just local
+   functions, such code should be in its own commit with a clear description as
+   per commit message guidelines.
 
 Before Issuing a New Pull Request
 ---------------------------------
@@ -212,8 +229,9 @@ tests are implied with the code changes.
 
 Examples::
 
-    CORE-9999 Fix performance issues on bulk operations
-    CORE-1111/1112/9900 Fix rbac issues for creators
+    GGRC-9999 Fix performance issues on bulk operations
+    GGRC-1111/1112/9900 Fix rbac issues for creators
+    GGRC-1111,GGRC-1112 Fix rbac issues for editors
     QUICK-FIX Break test cases into smaller parts
     DOCS Add section that explains client side mappings
     BACKMERGE master into Release/xyz

@@ -28,7 +28,7 @@ can.Model('GGRC.Models.Search', {
   },
   search: function (str, params) {
     return this.findOne($.extend({
-      q: this._escapeBackslash(str)
+      q: this._escapeSymbols(str)
     }, params));
   },
   search_for_types: function (str, types, params) {
@@ -40,7 +40,7 @@ can.Model('GGRC.Models.Search', {
     } else {
       // This returns a Search instance, NOT a model instance.
       result = this.findOne($.extend({
-        q: this._escapeBackslash(str),
+        q: this._escapeSymbols(str),
         types: types.join(',')
       }, params));
     }
@@ -48,14 +48,14 @@ can.Model('GGRC.Models.Search', {
   },
   counts: function (str, params) {
     return this.findOne($.extend({
-      q: this._escapeBackslash(str),
+      q: this._escapeSymbols(str),
       counts_only: true
     }, params));
   },
   counts_for_types: function (str, types, params, extra_columns) {
     return this.findOne(
       $.extend({
-        q: this._escapeBackslash(str),
+        q: this._escapeSymbols(str),
         types: types.join(','),
         counts_only: true,
         extra_columns: extra_columns && extra_columns.join(',')
@@ -86,9 +86,9 @@ can.Model('GGRC.Models.Search', {
       return new GGRC.Models.Search(search_response);
     });
   },
-  _escapeBackslash: function (str) {
-    return str.replace(/\\/g, '\\\\');
-  }
+  _escapeSymbols: function (str) {
+    return str.replace(/(\\|%|_)/g, '\\$1');
+  },
 }, {
   getResultsFor: function (type) {
     var _class = type.shortName ? type :

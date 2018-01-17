@@ -171,8 +171,9 @@ class TestCAD(TestCase):
     """Test collisions between assessment template and assessments.
 
     Assessment template is not allowed to have local CAD that match Assessment
-    global CAD, because that will cause collisions when assessments are
-    generated when using the mentioned template.
+    global CAD or Assessment instance attribute, because that will cause
+    collisions when assessments are generated when using the mentioned
+    template.
     """
     with app.app_context():
       CAD(
@@ -195,6 +196,13 @@ class TestCAD(TestCase):
       with self.assertRaises(ValueError):
         CAD(
             title="global title",
+            definition_type="assessment_template",
+            definition_id=1,
+        )
+    with app.app_context():
+      with self.assertRaises(ValueError):
+        CAD(
+            title="due date",
             definition_type="assessment_template",
             definition_id=1,
         )

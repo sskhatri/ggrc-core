@@ -1,0 +1,42 @@
+{{!
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="labels-wrapper {{cssClass}}">
+  <label-autocomplete-wrapper
+    {objects-to-exclude}="labels"
+  >
+    <div class="labels">
+      {{#each _labels}}
+        <div class="label-box">
+          {{name}}
+          <a class="remove-label" ($click)="removeLabel({{_index}})">
+            <i class="fa fa-times"></i>
+          </a>
+        </div>
+      {{/each}}
+
+      {{#if editMode}}
+        <autocomplete-input
+          (input-changed)="getResult(%event)"
+          {(show-results)}="showResults"
+        ></autocomplete-input>
+      {{else}}
+        {{#unless labels.length}}
+          <span class="empty-message">None</span>
+        {{/unless}}
+      {{/if}}
+    </div>
+    {{#if editMode}}
+      <label-autocomplete-results
+        {(current-value)}="currentValue"
+        {items}="result"
+        {(show-results)}="showResults"
+        {show-new-value}="showNewValue"
+        (add-new-item)="createLabel(%event)"
+        (select-item)="labelSelected(%event)"
+      ></label-autocomplete-results>
+    {{/if}}
+  </label-autocomplete-wrapper>
+</div>

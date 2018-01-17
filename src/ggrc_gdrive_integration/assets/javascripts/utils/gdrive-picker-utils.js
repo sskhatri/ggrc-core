@@ -3,6 +3,8 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import RefreshQueue from '../../../../ggrc/assets/javascripts/models/refresh_queue';
+
 export const GDRIVE_PICKER_ERR_CANCEL = 'GDRIVE_PICKER_ERR_CANCEL';
 
 /**
@@ -23,7 +25,8 @@ export function uploadFiles(opts = {}) {
     .reAuthorize(gapi.auth.getToken())
     .done(()=>{
       gapi.load('picker', {callback: createPicker});
-    });
+    })
+    .fail(dfd.reject);
 
     // Create and render a Picker object for searching images.
   function createPicker() {
@@ -86,10 +89,11 @@ export function uploadFiles(opts = {}) {
     if (data[ACTION] === PICKED) {
       // adding a newUpload flag so we can later distinguish newly
       // uploaded files from the picked ones.
-      // we cannot rely on the uploadState prop later on because a call to
-      // the RefreshQueue will overwrite it.
+      // isNew is not reliable later as we have a similar method on
+      // the model and it will be overwritten when we create Models
+      // from file objects
       data[DOCUMENTS].forEach((file) => {
-        file.newUpload = file.uploadState === 'success';
+        file.newUpload = file.isNew;
       });
 
       files = model.models(data[DOCUMENTS]);

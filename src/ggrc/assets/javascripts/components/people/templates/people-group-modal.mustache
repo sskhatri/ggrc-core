@@ -25,10 +25,20 @@
       {{#if isLoading}}
         <spinner {toggle}="isLoading"></spinner>
       {{else}}
-        <autocomplete search-items-type="Person"
-          (item-selected)="personSelected(%event.selectedItem)"
-          placeholder="Type person">
-        </autocomplete>
+        {{#if_config_exist 'external_services.Person'}}
+          <external-data-autocomplete
+            {type}="'Person'"
+            {placeholder}="'Type person'"
+            {min-length}="2"
+            (item-selected)="personSelected(%event.selectedItem)">
+          </external-data-autocomplete>
+        {{else}}
+          <autocomplete
+            search-items-type="Person"
+            (item-selected)="personSelected(%event.selectedItem)"
+            placeholder="Type person">
+          </autocomplete>
+        {{/if_config_exist}}
       {{/if}}
     </div>
     <div class="simple-modal__section people-group-modal__people-section">

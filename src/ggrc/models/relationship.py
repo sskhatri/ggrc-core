@@ -1,16 +1,14 @@
 # Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
-import functools
-import inspect
+"""Module for Relationship model and related classes."""
 
+import collections
+import sqlalchemy as sa
 from sqlalchemy import or_, and_
-from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from ggrc import db
-from ggrc.models.mixins import Identifiable
 from ggrc.models.mixins import Base
 from ggrc.models import reflection
 
@@ -34,16 +32,6 @@ class Relationship(Base, db.Model):
       db.Integer,
       db.ForeignKey('automappings.id', ondelete='CASCADE'),
       nullable=True,
-  )
-  relationship_attrs = db.relationship(
-      lambda: RelationshipAttr,
-      collection_class=attribute_mapped_collection("attr_name"),
-      lazy='joined',  # eager loading
-      cascade='all, delete-orphan'
-  )
-  attrs = association_proxy(
-      "relationship_attrs", "attr_value",
-      creator=lambda k, v: RelationshipAttr(attr_name=k, attr_value=v)
   )
 
   def get_related_for(self, object_type):
@@ -81,20 +69,6 @@ class Relationship(Base, db.Model):
     self.destination_type = getattr(value, 'type', None)
     return setattr(self, self.destination_attr, value)
 
-  @staticmethod
-  def validate_attrs(mapper, connection, relationship):
-    """
-      Only white-listed attributes can be stored, so users don't use this
-      for storing arbitrary data.
-    """
-    # pylint: disable=unused-argument
-    for attr_name, attr_value in relationship.attrs.iteritems():
-      attr = RelationshipAttr(attr_name=attr_name, attr_value=attr_value)
-      RelationshipAttr.validate_attr(relationship.source,
-                                     relationship.destination,
-                                     relationship.attrs,
-                                     attr)
-
   @classmethod
   def find_related(cls, object1, object2):
     return cls.get_related_query(object1, object2).first()
@@ -112,16 +86,6 @@ class Relationship(Base, db.Model):
         or_(predicate(object1, object2), predicate(object2, object1))
     )
 
-  @classmethod
-  def update_attributes(cls, object1, object2, new_attrs):
-    r = cls.find_related(object1, object2)
-    for attr_name, attr_value in new_attrs.iteritems():
-      attr = RelationshipAttr(attr_name=attr_name, attr_value=attr_value)
-      attr = RelationshipAttr.validate_attr(r.source, r.destination,
-                                            r.attrs, attr)
-      r.attrs[attr.attr_name] = attr.attr_value
-    return r
-
   @staticmethod
   def _extra_table_args(cls):
     return (
@@ -135,18 +99,11 @@ class Relationship(Base, db.Model):
             'destination_type', 'destination_id'),
     )
 
-  _api_attrs = reflection.ApiAttributes('source', 'destination', 'attrs')
-  attrs.publish_raw = True
+  _api_attrs = reflection.ApiAttributes('source', 'destination')
 
   def _display_name(self):
     return "{}:{} <-> {}:{}".format(self.source_type, self.source_id,
                                     self.destination_type, self.destination_id)
-
-  def log_json(self):
-    json = super(Relationship, self).log_json()
-    # manually add attrs since the base log_json only captures table columns
-    json["attrs"] = self.attrs.copy()  # copy in order to detach from orm
-    return json
 
 
 class Relatable(object):
@@ -211,51 +168,57 @@ class Relatable(object):
         orm.subqueryload('related_destinations'))
 
 
-class RelationshipAttr(Identifiable, db.Model):
-  """
-    Extended attributes for relationships. Used to store relations meta-data
-    so the Relationship table can be used in place of join-tables that carry
-    extra information
-  """
-
-  __tablename__ = 'relationship_attrs'
-  relationship_id = db.Column(
-      db.Integer,
-      db.ForeignKey('relationships.id', ondelete="CASCADE"),
-      primary_key=True
-  )
-  attr_name = db.Column(db.String, nullable=False)
-  attr_value = db.Column(db.String, nullable=False)
-
-  _validators = {}
+class Stub(collections.namedtuple("Stub", ["type", "id"])):
+  """Minimal object representation."""
 
   @classmethod
-  def validate_attr(cls, source, destination, attrs, attr):
-    """
-      Checks both source and destination type (with mixins) for
-      defined validators _validate_relationship_attr
-    """
-    attr_name = attr.attr_name
-    attr_value = attr.attr_value
-    validators = cls._get_validators(source) + cls._get_validators(destination)
-    for validator in validators:
-      validated_value = validator(source, destination, attrs,
-                                  attr_name, attr_value)
-      if validated_value is not None:
-        attr.attr_value = validated_value
-        return attr
-    raise ValueError("Invalid attribute {}: {}".format(attr_name, attr_value))
+  def from_source(cls, relationship):
+    return Stub(relationship.source_type, relationship.source_id)
 
   @classmethod
-  def _get_validators(cls, obj):
-    target_class = type(obj)
-    if target_class not in cls._validators:
-      cls._validators[target_class] = cls._gather_validators(target_class)
-    return cls._validators[target_class]
+  def from_destination(cls, relationship):
+    return Stub(relationship.destination_type, relationship.destination_id)
 
-  @staticmethod
-  def _gather_validators(target_class):
-    validators = set(getattr(cls, "_validate_relationship_attr", None)
-                     for cls in inspect.getmro(target_class))
-    validators.discard(None)
-    return [functools.partial(v, target_class) for v in validators]
+
+class RelationshipsCache(object):
+  """Cache of related objects"""
+  # pylint: disable=too-few-public-methods
+
+  def __init__(self):
+    self.cache = collections.defaultdict(set)
+
+  def populate_cache(self, stubs):
+    """Fetch all mappings for objects in stubs, cache them in self.cache."""
+    # Union is here to convince mysql to use two separate indices and
+    # merge te results. Just using `or` results in a full-table scan
+    # Manual column list avoids loading the full object which would also try to
+    # load related objects
+    cols = db.session.query(
+        Relationship.source_type, Relationship.source_id,
+        Relationship.destination_type, Relationship.destination_id)
+    relationships = cols.filter(
+        sa.tuple_(
+            Relationship.source_type,
+            Relationship.source_id
+        ).in_(
+            [(s.type, s.id) for s in stubs]
+        )
+    ).union_all(
+        cols.filter(
+            sa.tuple_(
+                Relationship.destination_type,
+                Relationship.destination_id
+            ).in_(
+                [(s.type, s.id) for s in stubs]
+            )
+        )
+    ).all()
+    for (src_type, src_id, dst_type, dst_id) in relationships:
+      src = Stub(src_type, src_id)
+      dst = Stub(dst_type, dst_id)
+      # only store a neighbor if we queried for it since this way we know
+      # we'll be storing complete neighborhood by the end of the loop
+      if src in stubs:
+        self.cache[src].add(dst)
+      if dst in stubs:
+        self.cache[dst].add(src)

@@ -61,6 +61,7 @@ class TestWorkflowObjectColumnDefinitions(TestCase):
         'Created Date',
         'Last Updated',
         'Last Updated By',
+        'Folder',
     }
     self.assertEqual(expected_names, display_names)
     vals = {val["display_name"]: val for val in definitions.itervalues()}
@@ -68,8 +69,8 @@ class TestWorkflowObjectColumnDefinitions(TestCase):
     self.assertTrue(vals["Manager"]["mandatory"])
     self.assertIn("type", vals["Manager"])
     self.assertIn("type", vals["Member"])
-    self.assertEqual(vals["Manager"]["type"], "user_role")
-    self.assertEqual(vals["Member"]["type"], "user_role")
+    self.assertEqual(vals["Manager"]["type"], "property")
+    self.assertEqual(vals["Member"]["type"], "property")
 
   def test_task_group_definitions(self):
     """ test default headers for Task Group """

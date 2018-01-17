@@ -148,7 +148,11 @@ class UpdateAttrHandler(object):
     )):
       cls._do_update_collection(obj, value, attr_name)
     else:
-      setattr(obj, attr_name, value)
+      try:
+        setattr(obj, attr_name, value)
+      except AttributeError as error:
+        logger.error('Unable to set attribute %s: %s', attr_name, error)
+        raise
 
   @classmethod
   def _do_update_collection(cls, obj, value, attr_name):
@@ -408,7 +412,7 @@ def build_stub_union_query(queries):
     type_queries[type_] = query
 
   queries_for_union = type_queries.values()
-  if len(queries_for_union) == 0:
+  if not queries_for_union:
     query = None
   elif len(queries_for_union) == 1:
     query = queries_for_union[0]
@@ -496,19 +500,19 @@ def reify_representation(resource, results, type_columns):
 def publish_representation(resource):
   queries = gather_queries(resource)
 
-  if len(queries) == 0:
+  if not queries:
     return resource
-  else:
-    results, type_columns, query = build_stub_union_query(queries)
-    rows = query.all()
-    for row in rows:
-      type_ = row[0]
-      for columns, matches in results[type_].items():
-        vals = tuple(row[type_columns[type_][c]] for c in columns)
-        if vals in matches:
-          matches[vals].append(row)
 
-    return reify_representation(resource, results, type_columns)
+  results, type_columns, query = build_stub_union_query(queries)
+  rows = query.all()
+  for row in rows:
+    type_ = row[0]
+    for columns, matches in results[type_].items():
+      vals = tuple(row[type_columns[type_][c]] for c in columns)
+      if vals in matches:
+        matches[vals].append(row)
+
+  return reify_representation(resource, results, type_columns)
 
 
 class Builder(AttributeInfo):
@@ -556,8 +560,8 @@ class Builder(AttributeInfo):
     if attr_value:
       return self.generate_link_object_for(
           attr_value, inclusions, include, inclusion_filter)
-    else:
-      return None
+
+    return None
 
   def publish_association_proxy(
           self, obj, attr_name, class_attr, inclusions, include,
@@ -631,15 +635,29 @@ class Builder(AttributeInfo):
       else:
         return None
 
+  def _process_custom_publish(self, obj, attr_name):
+    """Processes _custom_publish logic and returns value if any or None."""
+    if attr_name in getattr(obj.__class__, '_custom_publish', {}):
+      # The attribute has a custom publish logic.
+      return True, obj.__class__._custom_publish[attr_name](obj)
+
+    for base in obj.__class__.__bases__:
+      # Inspect all mixins for custom publish logic.
+      if attr_name in getattr(base, '_custom_publish', {}):
+        return True, base._custom_publish[attr_name](obj)
+
+    return False, None
+
   def publish_attr(
           self, obj, attr_name, inclusions, include, inclusion_filter):
+    value_exists, value = self._process_custom_publish(obj, attr_name)
+    if value_exists:
+      return value
+
     class_attr = getattr(obj.__class__, attr_name)
     result = None
 
-    if attr_name in getattr(obj.__class__, "_custom_publish", {}):
-      # The attribute has a custom publish logic
-      result = obj.__class__._custom_publish[attr_name](obj)
-    elif isinstance(class_attr, AssociationProxy):
+    if isinstance(class_attr, AssociationProxy):
       if getattr(class_attr, 'publish_raw', False):
         published_attr = getattr(obj, attr_name)
         if hasattr(published_attr, "copy"):
@@ -649,8 +667,8 @@ class Builder(AttributeInfo):
       else:
         result = self.publish_association_proxy(
             obj, attr_name, class_attr, inclusions, include, inclusion_filter)
-    elif isinstance(class_attr, InstrumentedAttribute) and \
-            isinstance(class_attr.property, RelationshipProperty):
+    elif (isinstance(class_attr, InstrumentedAttribute) and
+          isinstance(class_attr.property, RelationshipProperty)):
       result = self.publish_relationship(
           obj, attr_name, class_attr, inclusions, include, inclusion_filter)
     elif class_attr.__class__.__name__ == 'property':

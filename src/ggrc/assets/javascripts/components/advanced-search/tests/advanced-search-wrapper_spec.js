@@ -3,14 +3,16 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import Component from '../advanced-search-wrapper';
+
 describe('GGRC.Components.advancedSearchWrapper', function () {
   'use strict';
 
   var viewModel;
   var events;
-  beforeEach(function () {
-    viewModel = GGRC.Components.getViewModel('advancedSearchWrapper');
-    events = GGRC.Components.get('advancedSearchWrapper').prototype.events;
+  beforeEach(() => {
+    viewModel = new Component.prototype.viewModel();
+    events = Component.prototype.events;
   });
 
   describe('"{viewModel} modelName" handler', function () {
@@ -18,7 +20,7 @@ describe('GGRC.Components.advancedSearchWrapper', function () {
     var handler;
     beforeEach(function () {
       that = {
-        viewModel: viewModel
+        viewModel: viewModel,
       };
       handler = events['{viewModel} modelName'];
     });

@@ -73,7 +73,7 @@ class TestCTGOT(BaseTestCase):
             (TASK_ASSIGNEE_2, [False, True]))
   @ddt.unpack
   def test_change_state_by_user(self, user, expected_values):
-    """Test cycle task allow_change_state value by user position."""
+    """Test cycle task allow_change_state value by {0}."""
     all_models.Cycle.query.filter(
         all_models.Cycle.id == self.cycle_id
     ).update({
@@ -97,7 +97,7 @@ class TestCTGOT(BaseTestCase):
 
   @ddt.data(True, False)
   def test_change_state_by_is_current(self, cycle_is_current):
-    """Test cycle task allow_change_state value by Cycle is_current value."""
+    """Test cycle task allow_change_state if Cycle is_current value is {0}."""
     all_models.Cycle.query.filter(
         all_models.Cycle.id == self.cycle_id
     ).update({

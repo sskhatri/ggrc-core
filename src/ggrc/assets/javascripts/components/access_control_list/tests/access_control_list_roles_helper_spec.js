@@ -66,7 +66,7 @@ describe('GGRC.Components.accessControlListRolesHelper', function () {
     it('should set current user for 1 role', function () {
       instance = new CMS.Models.Control({id: 25});
       viewModel.attr('instance', instance);
-      expect(instance.access_control_list).toBe(undefined);
+      expect(instance.access_control_list.length).toEqual(0);
       viewModel.setAutoPopulatedRoles();
       expect(instance.access_control_list.length).toEqual(1);
       expect(instance.access_control_list[0].ac_role_id)

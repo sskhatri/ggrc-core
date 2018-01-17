@@ -3,6 +3,9 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import * as QueryAPI from '../utils/query-api-utils';
+import * as CurrentPageUtils from '../utils/current-page-utils';
+
 describe('GGRC Utils Query API', function () {
   describe('buildParams() method', function () {
     var relevant;
@@ -19,7 +22,7 @@ describe('GGRC Utils Query API', function () {
         count: 6
       };
 
-      method = GGRC.Utils.QueryAPI.buildParams;
+      method = QueryAPI.buildParams;
     });
 
     describe('Assessment related to Audit', function () {
@@ -214,7 +217,7 @@ describe('GGRC Utils Query API', function () {
   });
 
   describe('batchRequests() method', function () {
-    var batchRequests = GGRC.Utils.QueryAPI.batchRequests;
+    var batchRequests = QueryAPI.batchRequests;
 
     beforeEach(function () {
       spyOn(can, 'ajax')
@@ -254,7 +257,6 @@ describe('GGRC Utils Query API', function () {
   });
 
   describe('buildCountParams() method', function () {
-    var queryAPI = GGRC.Utils.QueryAPI;
     var relevant = {
       type: 'Audit',
       id: '555',
@@ -263,7 +265,7 @@ describe('GGRC Utils Query API', function () {
 
     it('empty arguments. buildCountParams should return empty array',
       function () {
-        var queries = queryAPI.buildCountParams();
+        var queries = QueryAPI.buildCountParams();
         expect(Array.isArray(queries)).toBe(true);
         expect(queries.length).toEqual(0);
       }
@@ -273,7 +275,7 @@ describe('GGRC Utils Query API', function () {
       function () {
         var types = ['Assessment', 'Control'];
 
-        var queries = queryAPI.buildCountParams(types);
+        var queries = QueryAPI.buildCountParams(types);
         var query = queries[0];
 
         expect(queries.length).toEqual(types.length);
@@ -287,7 +289,7 @@ describe('GGRC Utils Query API', function () {
       function () {
         var types = ['Assessment', 'Control'];
 
-        var queries = queryAPI.buildCountParams(types, relevant);
+        var queries = QueryAPI.buildCountParams(types, relevant);
         var query = queries[0];
         var expression = query.filters.expression;
 
@@ -299,54 +301,5 @@ describe('GGRC Utils Query API', function () {
         expect(expression.op.name).toEqual('relevant');
       }
     );
-  });
-
-  describe('refreshCounts() method', function () {
-    var relevant;
-    var widgets;
-    var refreshCounts;
-
-    beforeEach(function () {
-      refreshCounts = GGRC.Utils.CurrentPage.refreshCounts;
-      widgets = ['Program', 'AccessGroup', 'Assessment', 'Audit'];
-      relevant = {
-        id: 1,
-        type: 'Program'
-      };
-
-      spyOn(GGRC.Utils.CurrentPage, 'getWidgetModels')
-        .and.returnValue(widgets);
-      spyOn(GGRC, 'page_instance')
-        .and.returnValue(relevant);
-
-      spyOn(can, 'ajax')
-        .and.returnValues(
-        can.Deferred().resolve(
-          [{Program: {count: 3, total: 4}, selfLink: null},
-          {AccessGroup: {count: 0, total: 0}, selfLink: null}]));
-    });
-
-    it('should reinit counts', function (done) {
-      refreshCounts()
-        .then(function (counts) {
-          var reqParams;
-          var reqParamNames;
-
-          expect(can.ajax.calls.count()).toEqual(1);
-          reqParams = JSON.parse(can.ajax.calls.argsFor(0)[0].data);
-          reqParamNames = _.map(reqParams,
-          function (param) {
-            return param.object_name;
-          });
-          expect(reqParams.length).toEqual(4);
-          expect(reqParamNames).toContain('Program');
-          expect(reqParamNames).toContain('AccessGroup');
-          expect(reqParamNames).toContain('Assessment');
-          expect(reqParamNames).toContain('Audit');
-          expect(counts.Program).toEqual(4);
-          expect(counts.AccessGroup).toEqual(0);
-          done();
-        });
-    });
   });
 });

@@ -264,9 +264,9 @@ def similar(exp, object_class, target_class, query):
                             .format(similar_class.__name__))
   similar_objects_query = similar_class.get_similar_objects_query(
       id_=exp['ids'][0],
-      types=[object_class.__name__],
+      type_=object_class.__name__,
   )
-  similar_objects_ids = [obj.id for obj in similar_objects_query]
+  similar_objects_ids = {obj[0] for obj in similar_objects_query}
   if similar_objects_ids:
     return object_class.id.in_(similar_objects_ids)
   return sqlalchemy.sql.false()
@@ -353,6 +353,20 @@ def or_operation(exp, object_class, target_class, query):
   return sqlalchemy.or_(
       build_expression(exp["left"], object_class, target_class, query),
       build_expression(exp["right"], object_class, target_class, query))
+
+
+@validate("left", "right")
+def in_operation(exp, object_class, target_class, query):
+  """Operator generate sqlalchemy for in operation"""
+  if not exp["right"]:
+    return sqlalchemy.sql.false()
+  return object_class.id.in_(
+      db.session.query(Record.key).filter(
+          Record.type == object_class.__name__,
+          Record.property == exp["left"],
+          Record.content.in_(exp["right"])
+      )
+  )
 
 
 @validate("issue", "assessment")
@@ -476,6 +490,7 @@ GE_OPERATOR = validate("left", "right")(build_op_shortcut(operator.ge))
 OPS = {
     "AND": and_operation,
     "OR": or_operation,
+    "IN": in_operation,
     "=": EQ_OPERATOR,
     "!=": reverse(EQ_OPERATOR),
     "~": like,

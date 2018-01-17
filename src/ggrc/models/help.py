@@ -11,7 +11,7 @@ class Help(Titled, Slugged, db.Model):
   __tablename__ = 'helps'
   _title_uniqueness = False
 
-  content = deferred(db.Column(db.Text), 'Help')
+  content = deferred(db.Column(db.Text, nullable=False, default=u""), 'Help')
 
   _fulltext_attrs = [
       'content',

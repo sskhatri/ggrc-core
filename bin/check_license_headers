@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Copyright (C) 2017 Google Inc.
+# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+
+set -o nounset
+set -o errexit
+
+SCRIPTPATH=$( cd "$(dirname "$0")" ; pwd -P )
+
+cd "${SCRIPTPATH}/../"
+
+git grep "Copyright (C) 2017 Google Inc." . | \
+  grep -o "^[^:]*" | \
+  grep -v "^third_party" | \
+  grep -v ".csv$" | \
+  sort -u > with_copyright
+
+git ls-files | grep -v "^third_party" | grep -v ".csv$" | sort > all_files 
+
+diff all_files with_copyright | grep "^<" > license_header_diff
+
+# Diff will return with exist status 1 if there is a diff.
+diff ._license_header_exceptions license_header_diff
+
+echo "License headers: PASS"

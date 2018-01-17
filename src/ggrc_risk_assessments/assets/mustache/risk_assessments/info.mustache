@@ -16,113 +16,134 @@
 
     <tab-container>
       <tab-panel {(panels)}="panels" title-text="Risk Assessment">
-        {{>'/static/mustache/base_objects/object-review.mustache'}}
-        {{>'/static/mustache/base_objects/description.mustache'}}
-        {{>'/static/mustache/base_objects/test_plan.mustache'}}
+        <div class="info-pane__body">
+          <div class="info-pane__main-content {{^if isSnapshot}}info-pane__main-content-with-sidebar{{/if}}">
+            {{>'/static/mustache/base_objects/object-review.mustache'}}
+            {{>'/static/mustache/base_objects/description.mustache'}}
+            {{>'/static/mustache/base_objects/test_plan.mustache'}}
 
-        <div class="row-fluid wrap-row">
-          <div class="span12">
-            <h6>Notes</h6>
-            <div class="rtf-block">
-              <read-more {text}="instance.notes"></read-more>
-            </div>
-          </div>
-        </div>
-
-        <div class="row-fluid wrap-row">
-          <div class="span4">
-            <related-documents {instance}="instance" document-type="EVIDENCE">
-              <h6>Supporting files</h6>
-              <object-list {items}="documents" {empty-message}="noItemsText">
-                <editable-document-object-list-item {document}="{.}">
-                  <unmap-button
-                    (unmapped)="loadDocuments()"
-                    {destination}="instance"
-                    {source}="document">
-                    <action-toolbar-control>
-                      <i class="fa fa-trash"></i>
-                    </action-toolbar-control>
-                  </unmap-button>
-                </editable-document-object-list-item>
-              </object-list>
-
-              {{#is_allowed 'update'}}
-                <ggrc-gdrive-picker-launcher
-                  instance="instance"
-                  link_text="Attach supporting file"
-                  {items-uploaded-callback}="@loadDocuments"
-                  click_event="trigger_upload">
-                  Attach
-                </ggrc-gdrive-picker-launcher>
-              {{/is_allowed}}
-            </related-documents>
-          </div>
-          <div class="span4">
-            <h6>Risk Manager</h6>
-            {{#using person=instance.ra_manager}}
-              {{>'/static/mustache/people/popover.mustache'}}
-            {{/using}}
-          </div>
-          <div class="span4">
-            <h6>Risk Counsel</h6>
-            {{#using person=instance.ra_counsel}}
-              {{>'/static/mustache/people/popover.mustache'}}
-            {{/using}}
-          </div>
-        </div>
-
-        <div class="custom-attr-wrap">
-          <div class="row-fluid">
-            <div class="span12">
-              <div class="info-expand">
-                <a class="show-hidden-fields info-show-hide active" href="javascript://">
-                  <span class="out">
-                    <i class="fa fa-caret-right"></i>
-                    Show
-                  </span>
-                  <span class="in">
-                    <i class="fa fa-caret-down"></i>
-                    Hide
-                  </span>
-                  Advanced
-                </a>
+            <div class="row-fluid wrap-row">
+              <div class="span12">
+                <h6>Notes</h6>
+                <div class="rtf-block">
+                  <read-more {text}="instance.notes"></read-more>
+                </div>
               </div>
             </div>
-          </div><!-- row-fluid end -->
-          <div class="hidden-fields-area">
+
             <div class="row-fluid wrap-row">
               <div class="span4">
-                <h6>Code</h6>
-                <p>
-                  {{{instance.slug}}}
-                </p>
+                <related-documents {instance}="instance" document-type="EVIDENCE">
+                  <h6>Supporting files</h6>
+                  <object-list {items}="documents" {empty-message}="noItemsText">
+                    <editable-document-object-list-item {document}="{.}">
+                      <unmap-button
+                        (unmapped)="loadDocuments()"
+                        {destination}="instance"
+                        {source}="document">
+                        <action-toolbar-control>
+                          <i class="fa fa-trash"></i>
+                        </action-toolbar-control>
+                      </unmap-button>
+                    </editable-document-object-list-item>
+                  </object-list>
+
+                  {{#is_allowed 'update'}}
+                    <ggrc-gdrive-picker-launcher
+                      instance="instance"
+                      link_text="Attach supporting file"
+                      {items-uploaded-callback}="@loadDocuments"
+                      click_event="trigger_upload">
+                      Attach
+                    </ggrc-gdrive-picker-launcher>
+                  {{/is_allowed}}
+                </related-documents>
               </div>
               <div class="span4">
-                <h6>Start Date</h6>
-                {{#if instance.start_date}}
-                  <p>
-                    {{localize_date instance.start_date}}
-                  </p>
-                {{else}}
-                  <span class="empty-message">None</span>
-                {{/if}}
+                <h6>Risk Manager</h6>
+                {{#using person=instance.ra_manager}}
+                  {{>'/static/mustache/people/popover.mustache'}}
+                {{/using}}
               </div>
               <div class="span4">
-                <h6>End Date</h6>
-                {{#if instance.end_date}}
-                  <p>
-                    {{localize_date instance.end_date}}
-                  </p>
-                {{else}}
-                  <span class="empty-message">None</span>
-                {{/if}}
+                <h6>Risk Counsel</h6>
+                {{#using person=instance.ra_counsel}}
+                  {{>'/static/mustache/people/popover.mustache'}}
+                {{/using}}
               </div>
-            </div><!-- row-fluid end -->
-          </div><!-- hidden-fields-area end -->
-        </div><!-- custom-attr-wrap end -->
-        {{>'/static/mustache/custom_attributes/info.mustache'}}
+            </div>
+
+            <div class="custom-attr-wrap info-pane__section">
+              <div class="row-fluid">
+                <div class="span12">
+                  <div class="info-expand">
+                    <a class="show-hidden-fields info-show-hide active" href="javascript://">
+                      <span class="out">
+                        <i class="fa fa-caret-right"></i>
+                        Show
+                      </span>
+                      <span class="in">
+                        <i class="fa fa-caret-down"></i>
+                        Hide
+                      </span>
+                      Advanced
+                    </a>
+                  </div>
+                </div>
+              </div><!-- row-fluid end -->
+              <div class="hidden-fields-area">
+                <div class="row-fluid wrap-row">
+                  <div class="span4">
+                    <h6>Code</h6>
+                    <p>
+                      {{{instance.slug}}}
+                    </p>
+                  </div>
+                  <div class="span4">
+                    <h6>Start Date</h6>
+                    {{#if instance.start_date}}
+                      <p>
+                        {{localize_date instance.start_date}}
+                      </p>
+                    {{else}}
+                      <span class="empty-message">None</span>
+                    {{/if}}
+                  </div>
+                  <div class="span4">
+                    <h6>End Date</h6>
+                    {{#if instance.end_date}}
+                      <p>
+                        {{localize_date instance.end_date}}
+                      </p>
+                    {{else}}
+                      <span class="empty-message">None</span>
+                    {{/if}}
+                  </div>
+                </div><!-- row-fluid end -->
+              </div><!-- hidden-fields-area end -->
+            </div><!-- custom-attr-wrap end -->
+            {{>'/static/mustache/custom_attributes/info.mustache'}}
+          </div>
+          {{^if isSnapshot}}
+          <div class="info-pane__sidebar">
+            <comment-data-provider {instance}="instance" class="flex-box flex-col">
+              <div class="info-pane__section-title">Responses/Comments</div>
+              {{#unless isEditDenied}}
+              <comment-add-form class="comment-add-form"
+                {instance}="instance"
+                {is-saving}="isLoading"
+                (before-create)="addComment(%event)"
+                (after-create)="processComment(%event)"
+                {notifications-info}="'Notify Admins, Primary and Secondary Contacts'">
+              </comment-add-form>
+              {{/unless}}
+              <mapped-comments {mapped-items}="comments"></mapped-comments>
+            </comment-data-provider>
+          </div>
+          {{/if}}
+        </div>
       </tab-panel>
-      {{^if instance.snapshot}}
+      {{^if isSnapshot}}
         <tab-panel {(panels)}="panels" title-text="Change Log">
             <revision-log {instance}="instance"></revision-log>
         </tab-panel>

@@ -3,7 +3,7 @@
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-(function (can, $, Permission) {
+(function (can, $) {
   can.Control('GGRC.Controllers.PbcWorkflows', {}, {
     '{CMS.Models.AssessmentTemplate} updated': function (model, ev, instance) {
       // Make sure instance.custom_attribute_definitions cache is cleared
@@ -66,4 +66,4 @@
   $(function () {
     $(document.body).ggrc_controllers_pbc_workflows();
   });
-})(window.can, window.can.$, window.Permission);
+})(window.can, window.can.$);

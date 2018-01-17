@@ -1,0 +1,30 @@
+{{!
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<label class="action-toolbar editable-people-group__label form-label required-label">
+  <div class="people-group__title-content">
+    <div class="people-group__title">
+      {{#unless editableMode}}
+        <spinner class="people-group__title-spinner" {toggle}="isLoading"></spinner>
+      {{/unless}}
+      {{title}}
+    </div>
+    <div>
+      ({{peopleCount}})
+    </div>
+  </div>
+  {{#if required}}
+    <i class="fa fa-asterisk"></i>
+  {{/if}}
+  {{#if canEdit}}
+    {{#unless editableMode}}
+      <div class="action-toolbar__controls">
+        <action-toolbar-control>
+          <i class="fa fa-pencil set-editable-group" ($click)="openEditMode()"></i>
+        </action-toolbar-control>
+      </div>
+    {{/unless}}
+  {{/if}}
+</label>

@@ -21,12 +21,9 @@
     </div>
 
     <div class="task_group_tasks__list-item-column">
-        <tree-people-with-role-list-field
-                class="people-list"
-                {source}="instance"
-                {role}="instance.class.tree_view_options.assigneeRoleName">
-            {{peopleStr}}
-        </tree-people-with-role-list-field>
+        <div class="people-list roles attr-content">
+          <tree-people-with-role-list-field {instance}="instance" {role}="instance.class.tree_view_options.assigneeRoleName"/>
+        </div>
     </div>
 
 

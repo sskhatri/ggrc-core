@@ -25,15 +25,14 @@ export default GGRC.Components('tasksCounter', {
         type: 'boolean',
         value: false
       },
-      personId: {
-        type: 'number',
-        set: function (value, setValue) {
+      person: {
+        set(value, setValue) {
           if (!value) {
             return;
           }
           setValue(value);
           this.loadTasks();
-        }
+        },
       },
       stateCss: {
         get: function () {
@@ -45,11 +44,11 @@ export default GGRC.Components('tasksCounter', {
       }
     },
     loadTasks: function () {
-      let id = this.attr('personId');
+      let id = this.attr('person.id');
       let user = CMS.Models.Person.findInCacheById(id);
 
       if (!user) {
-        user = new CMS.Models.Person({id});
+        user = new CMS.Models.Person(this.attr('person'));
       }
       return user.getTasksCount()
         .then(function (results) {

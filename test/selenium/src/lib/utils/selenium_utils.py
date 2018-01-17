@@ -29,10 +29,17 @@ def hover_over_element(driver, element):
   action_chains.ActionChains(driver).move_to_element(element).perform()
 
 
-def open_url(driver, url):
-  """Open URL in current browser session if it hasn't been opened yet."""
+def open_url(driver, url, is_via_js=False):
+  """Open URL in current browser session, window, tab if this URL hasn't been
+  opened yet and wait till the moment when web document will be fully loaded.
+  If 'is_via_js' then use JS to perform opening.
+  """
   if driver.current_url != url:
-    driver.get(url)
+    if not is_via_js:
+      driver.get(url)
+    else:
+      driver.execute_script("window.open('{}', '_self')".format(url))
+    wait_for_doc_is_ready(driver)
 
 
 def switch_to_new_window(driver):
@@ -202,6 +209,17 @@ def wait_for_js_to_load(driver):
   """Wait until there all JS are completed."""
   return wait_until_condition(
       driver, lambda js: driver.execute_script("return jQuery.active") == 0)
+
+
+def wait_for_doc_is_ready(driver):
+  """Wait until current document is fully leaded.
+  When 'document.readyState' has a status of "complete", it means that the
+  document (example: html file) is now parsed and loaded and all known document
+  subresources like CSS and images have been parsed and loaded.
+  """
+  return wait_until_condition(
+      driver, lambda doc: driver.execute_script(
+          "return document.readyState") == "complete")
 
 
 def click_via_js(driver, element):

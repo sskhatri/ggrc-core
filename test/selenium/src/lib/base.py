@@ -4,17 +4,16 @@
 # pylint: disable=too-few-public-methods
 # pylint: disable=too-many-lines
 
-import re
 import pytest
-
 from selenium import webdriver
 from selenium.webdriver.common import keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote import webelement
+from selenium.common import exceptions
 
 from lib import constants, exception, mixin
-from lib.constants import messages, objects
-from lib.constants.element import MappingStatusAttrs, WidgetBar
+from lib.constants import messages, objects, url
+from lib.constants.element import MappingStatusAttrs
 from lib.constants.locator import CommonDropdownMenu
 from lib.decorator import lazy_property
 from lib.entities.entity import Entity
@@ -554,15 +553,14 @@ class Widget(AbstractPage):
     Args: driver (CustomDriver)
     """
     super(Widget, self).__init__(driver)
-    matched_url_parts = re.search(
-        constants.regex.URL_WIDGET_INFO, self.url + "/").groups()
-    (source_obj_plural, source_obj_id, widget_name,
-     mapped_obj_singular, mapped_obj_id) = matched_url_parts
-    self.source_obj_from_url = source_obj_plural
-    self.source_obj_id_from_url = source_obj_id
-    self.widget_name_from_url = widget_name.split("_")[0]
-    self.mapped_obj_from_url = mapped_obj_singular
-    self.mapped_obj_id_from_url = mapped_obj_id
+    self.source_url = url.Utils.get_src_obj_url(self.url)
+    url_parts = url.Utils.split_url_into_parts(self.url)
+    self.source_obj_from_url = url_parts["source_obj_from_url"]
+    self.source_obj_id_from_url = url_parts["source_obj_id_from_url"]
+    self.widget_name_from_url = (
+        url_parts["widget_name_from_url"].replace("!", ""))
+    self.mapped_obj_from_url = url_parts["mapped_obj_from_url"]
+    self.mapped_obj_id_from_url = url_parts["mapped_obj_id_from_url"]
 
   @property
   def is_info_page(self):
@@ -572,7 +570,7 @@ class Widget(AbstractPage):
     if selenium_utils.is_element_exist(
         self._driver, (By.XPATH, constants.locator.Common.INFO_PAGE_XPATH)
     ):
-      if ((self.widget_name_from_url == WidgetBar.INFO.lower()) or
+      if ((self.widget_name_from_url in url.Widget.INFO) or
           ((objects.get_singular(self.source_obj_from_url) ==
            self.mapped_obj_from_url) and
           (self.source_obj_id_from_url == self.mapped_obj_id_from_url)) or
@@ -580,6 +578,15 @@ class Widget(AbstractPage):
            self.mapped_obj_id_from_url == "")):
         is_info_page = True
     return is_info_page
+
+  @property
+  def is_snapshoted_panel(self):
+    """Check is the current page is Info Panel of snapshoted object."""
+    return (not self.is_info_page and
+            (self.source_obj_from_url in (objects.AUDITS, objects.ASSESSMENTS,
+                                          objects.ISSUES)) and
+            (objects.get_plural(self.widget_name_from_url.lower())
+             in objects.ALL_SNAPSHOTABLE_OBJS))
 
 
 class TreeView(Component):
@@ -820,11 +827,19 @@ class CommentsPanel(Element):
 
   def add_comments(self, *comments):
     """Add text comments to input field."""
-    for comment in comments:
+    count_of_comments = len(self.scopes)
+    for comment in list(*comments):
       self.input_txt.enter_text(comment)
       self.add_btn.click()
       selenium_utils.get_when_invisible(
           self._driver, constants.locator.Common.SPINNER_CSS)
+      count_of_comments += 1
+      try:
+        selenium_utils.wait_until_condition(
+            self._driver, lambda items: len(self.scopes) == count_of_comments)
+      except exceptions.TimeoutException as err:
+        raise (messages.ExceptionsMessages.err_comments_count.format(
+            count_of_comments, len(self.scopes)) + err)
     return self
 
 
@@ -1006,7 +1021,7 @@ class AbstractTabContainer(Component):
 
   def _get_active_tab_element(self):
     """Return element of active tab"""
-    return self.container_element.find_element(*self._locators.TAB_CONTENT)
+    return self.container_element.find_element(*self._locators.TAB_CONTENT_CSS)
 
   def _tabs(self):
     """Abstract method. Should return dict. {'tab_name': tab_object, ...}"""
@@ -1016,7 +1031,7 @@ class AbstractTabContainer(Component):
   def tab_controller(self):
     """Lazy property for dashboard controller."""
     from lib.element.elements_list import TabController
-    return TabController(self._driver, self._locators.TAB_CONTROLLER)
+    return TabController(self._driver, self._locators.TAB_CONTROLLER_CSS)
 
 
 class AbstractTable(Component):

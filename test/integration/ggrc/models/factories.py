@@ -239,7 +239,7 @@ class AssessmentTemplateFactory(TitledFactory):
   test_plan_procedure = False
   procedure_description = factory.LazyAttribute(
       lambda _: random_str(length=100))
-  default_people = {"assessors": "Admin",
+  default_people = {"assignees": "Admin",
                     "verifiers": "Admin"}
 
 
@@ -262,16 +262,6 @@ class RelationshipFactory(ModelFactory):
     model = models.Relationship
   source = None
   destination = None
-
-
-class RelationshipAttrFactory(ModelFactory):
-
-  class Meta:
-    model = models.RelationshipAttr
-
-  relationship_id = None
-  attr_name = None
-  attr_value = None
 
 
 class PersonFactory(ModelFactory):
@@ -406,6 +396,13 @@ class FacilityFactory(TitledFactory):
     model = models.Facility
 
 
+class ObjectPersonFactory(ModelFactory):
+  """ObjectPerson factory class"""
+
+  class Meta:
+    model = models.ObjectPerson
+
+
 class ProductFactory(TitledFactory):
   """Product factory class"""
 
@@ -452,6 +449,23 @@ class ThreatFactory(TitledFactory):
     model = risk_models.Threat
 
 
+class LabelFactory(ModelFactory):
+  """Label factory class"""
+
+  class Meta:
+    model = models.Label
+
+  name = factory.LazyAttribute(lambda m: random_str(prefix='name'))
+  object_type = factory.LazyAttribute('Assessment')
+
+
+class ObjectLabelFactory(ModelFactory):
+  """ObjectLabel factory class"""
+
+  class Meta:
+    model = models.ObjectLabel
+
+
 def get_model_factory(model_name):
   """Get object factory for provided model name"""
   from integration.ggrc_workflows.models import factories as wf_factories
@@ -475,6 +489,8 @@ def get_model_factory(model_name):
       "DataAsset": DataAssetFactory,
       "Facility": FacilityFactory,
       "Issue": IssueFactory,
+      "Label": LabelFactory,
+      "ObjectLabel": ObjectLabelFactory,
       "Market": MarketFactory,
       "Objective": ObjectiveFactory,
       "OrgGroup": OrgGroupFactory,

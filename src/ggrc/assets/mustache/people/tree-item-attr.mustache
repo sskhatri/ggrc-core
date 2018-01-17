@@ -22,11 +22,11 @@
   {{#case 'authorizations'}}
     <div class="role tree-title-area">
     {{#if result}}
-      {{#with_program_roles_as "roles" result}}
+      {{#with_program_roles_as result}}
         {{#if roles.length}}
           <div class="item-data">
           <div class="tree-title-area">
-          <span class="role" title="{{#roles}}{{role.permission_summary}} {{/roles}}">
+          <span class="role" title="{{#is roles.0.role.permission_summary 'Mapped'}}No Role{{else}}{{roles.0.role.permission_summary}}{{/is}}">
           {{#if_equals roles.0.role.permission_summary 'Mapped'}}
             <span class="no-role">
               No Role

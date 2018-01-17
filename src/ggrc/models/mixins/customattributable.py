@@ -321,7 +321,7 @@ class CustomAttributable(object):
       return
 
     definitions = src.get("custom_attribute_definitions")
-    if definitions:
+    if definitions is not None:
       self.process_definitions(definitions)
 
     attributes = src.get("custom_attributes")

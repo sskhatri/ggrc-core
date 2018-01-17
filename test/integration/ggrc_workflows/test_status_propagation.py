@@ -335,3 +335,118 @@ class TestWorkflowCycleStatePropagation(TestCase):
       db.session.commit()
       ctg = db.session.query(CycleTaskGroup).get(ctg.id)
       self.assertEqual(ctg.status, "Finished")
+
+  @staticmethod
+  def _get_obj(model, title):
+    return db.session.query(model).filter(model.title == title).first()
+
+  def test_cycle_task_group_dates(self):
+    """Test status and dates when task status is changed """
+    wf_data = {
+        "title": "test workflow",
+        "unit": "week",
+        "repeat_every": 1,
+        "task_groups": [{
+            "title": "test group",
+            "task_group_tasks": [{
+                "title": "task1",
+                "start_date": dtm.date(2016, 6, 10),
+                "end_date": dtm.date(2016, 6, 14),
+            }, {
+                "title": "task2",
+                "start_date": dtm.date(2016, 6, 13),
+                "end_date": dtm.date(2016, 6, 15),
+            }]
+        }]
+    }
+
+    with freeze_time("2016-6-10 13:00:00"):  # Friday, 6/10/2016
+      _, wf = self.generator.generate_workflow(wf_data)
+      self.generator.activate_workflow(wf)
+
+      # check task group status and dates
+      tg = self._get_obj(CycleTaskGroup, "test group")
+      self.assertEqual(tg.end_date, dtm.date(2016, 6, 15))
+      self.assertEqual(tg.next_due_date, dtm.date(2016, 6, 14))
+      self.assertEqual(tg.status, "Assigned")
+
+      # move task1 to Verified
+      task1 = self._get_obj(CycleTaskGroupObjectTask, "task1")
+      self.api.put(task1, {"status": "InProgress"})
+      self.api.put(task1, {"status": "Finished"})
+      self.api.put(task1, {"status": "Verified"})
+
+      # # check task group status and dates
+      tg = self._get_obj(CycleTaskGroup, "test group")
+      self.assertEqual(tg.end_date, dtm.date(2016, 6, 15))
+      self.assertEqual(tg.next_due_date, dtm.date(2016, 6, 15))
+      self.assertEqual(tg.status, "InProgress")
+
+      # move task2 to Verified
+      task2 = self._get_obj(CycleTaskGroupObjectTask, "task2")
+      self.api.put(task2, {"status": "InProgress"})
+      self.api.put(task2, {"status": "Finished"})
+      self.api.put(task2, {"status": "Verified"})
+
+      # # check task group status and dates
+      tg = self._get_obj(CycleTaskGroup, "test group")
+      self.assertIsNone(tg.next_due_date)
+      self.assertEqual(tg.status, "Verified")
+
+  def test_empty_group_status(self):
+    """Test status and dates when task group is empty """
+    wf_data = {
+        "title": "test workflow",
+        "unit": "week",
+        "repeat_every": 1,
+        "task_groups": [{
+            "title": "test group1",
+            "task_group_tasks": [{
+                "title": "task1",
+                "start_date": dtm.date(2016, 6, 10),
+                "end_date": dtm.date(2016, 6, 13),
+            }]
+        }, {
+            # second task group prevents from moving workflow to history
+            "title": "test group2",
+            "task_group_tasks": [{
+                "title": "task2",
+                "start_date": dtm.date(2016, 6, 14),
+                "end_date": dtm.date(2016, 6, 16),
+            }]
+        }]
+    }
+
+    with freeze_time("2016-6-10 13:00:00"):  # Friday, 6/10/2016
+      _, wf = self.generator.generate_workflow(wf_data)
+      self.generator.activate_workflow(wf)
+
+      # check task group status and dates
+      tg = self._get_obj(CycleTaskGroup, "test group1")
+      self.assertEqual(tg.end_date, dtm.date(2016, 6, 13))
+      self.assertEqual(tg.next_due_date, dtm.date(2016, 6, 13))
+      self.assertEqual(tg.status, "Assigned")
+
+      # move task2 to Verified
+      task2 = self._get_obj(CycleTaskGroupObjectTask, "task2")
+      self.api.put(task2, {"status": "InProgress"})
+      self.api.put(task2, {"status": "Finished"})
+      self.api.put(task2, {"status": "Verified"})
+
+      # check task group status
+      cycle = self._get_obj(Cycle, "test workflow")
+      self.assertEqual(cycle.status, "InProgress")
+
+      # delete task1
+      task = self._get_obj(CycleTaskGroupObjectTask, "task1")
+      self.api.delete(task)
+
+      # # check task group status and dates
+      tg = self._get_obj(CycleTaskGroup, "test group1")
+      self.assertIsNone(tg.end_date)
+      self.assertIsNone(tg.next_due_date)
+      self.assertEqual(tg.status, "Deprecated")
+
+      # # check cycle status
+      cycle = self._get_obj(Cycle, "test workflow")
+      self.assertEqual(cycle.status, "Verified")

@@ -32,3 +32,12 @@ window.failAll = function (done) {
     }
   };
 };
+
+window.getComponentVM = (Component) => {
+  const viewModelConfig = Component.prototype.viewModel;
+
+  if (can.isFunction(viewModelConfig)) {
+    return new viewModelConfig();
+  }
+  return new (can.Map.extend(viewModelConfig));
+};

@@ -1,3 +1,12 @@
+<!-- If your PR depends on other tickets or PRs, you can list them here
+# Dependencies
+
+This PR is `on hold` until the dependencies are merged:
+
+- [ ] GGRC-1234
+- [ ] #1234
+-->
+
 # Issue description
 
 *Explain the issue that the changes in the pull request solve.*
@@ -22,8 +31,7 @@
 
 <!-- If your PR includes a migration include the additional checklist items
 # Migration checklist
-- [ ] db_reset runs without errors or warnings.
-- [ ] db_reset ggrc-qa.sql runs without errors or warnings.
+- [ ] Migration passes all checks from our [PR review guidelines](https://github.com/google/ggrc-core/blob/dev/docs/source/contributing/git/reviewing_pull_requests.rst#reviewing-a-pr-containing-database-migration-scripts)
 -->
 
 # PR Review checklist

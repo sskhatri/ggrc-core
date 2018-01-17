@@ -3,6 +3,9 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import RefreshQueue from '../../../ggrc/assets/javascripts/models/refresh_queue';
+import Permission from '../../../ggrc/assets/javascripts/permission';
+
 (function (can, $) {
   var Mustache = can.Mustache;
   /*

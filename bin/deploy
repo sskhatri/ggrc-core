@@ -7,7 +7,6 @@ declare -r SCRIPTPATH=$( cd "$(dirname "$0")" ; pwd -P )
 declare -r TARGET_REMOTE="upstream"
 
 declare -r SETTINGS_FILENAME="settings.sh"
-declare -r ENV_OVERRIDE_FILENAME="override.sh"
 declare -r SERVICE_ACCOUNT_FILENAME="service-account"
 declare -r DEPLOY_PREFIX="extras/deploy"
 
@@ -31,7 +30,6 @@ Note: the script expects several prerequisites:
     <project_root>/extras/deploy/<service>/. For example:
     ~/projects/ggrc-core/extras/deploy/ggrc-dev/
   - file with deployment-specific is extras/deploy/<service>/settings.sh
-  - file with env override variables is extras/deploy/<service>/override.sh
   - file with service account name is extras/deploy/<service>/service-account.
     Example content: test-account@ggrc-dev.iam.gserviceaccount.com.key
   - file with service account private key is
@@ -62,17 +60,12 @@ main () {
   fi
 
   local -r SETTINGS_FILE="$DEPLOY_PREFIX/$SERVICE/$SETTINGS_FILENAME"
-  local -r ENV_OVERRIDE_FILE="$DEPLOY_PREFIX/$SERVICE/$ENV_OVERRIDE_FILENAME"
   local -r ACCOUNT_FILE="$DEPLOY_PREFIX/$SERVICE/$SERVICE_ACCOUNT_FILENAME"
   local PROJECT="deploy-$SERVICE"
 
   local FILE_MISSING=""
   if [[ ! -f "$SETTINGS_FILE" ]]; then
     echo "No settings file found at '$SETTINGS_FILE'" >&2
-    FILE_MISSING="yes"
-  fi
-  if [[ ! -f "$ENV_OVERRIDE_FILE" ]]; then
-    echo "No settings override file found at '$ENV_OVERRIDE_FILE'" >&2
     FILE_MISSING="yes"
   fi
   if [[ ! -f "$ACCOUNT_FILE" ]]; then
@@ -99,7 +92,6 @@ main () {
   echo "Running deploy"
 
   docker exec -i "${PROJECT}_cleandev_1" su root -c "
-    export ENV_OVERRIDE_FILE=$ENV_OVERRIDE_FILE
     /vagrant/bin/do_deploy $SETTINGS_FILE $ACCOUNT $KEY_FILE
   " ; rc=$?
 

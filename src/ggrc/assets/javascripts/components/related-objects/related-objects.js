@@ -3,8 +3,12 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import './sortable-column';
+import '../sortable-column/sortable-column';
 import {REFRESH_RELATED} from '../../events/eventTypes';
+import {
+  makeRequest,
+} from '../../plugins/utils/query-api-utils';
+import Pagination from '../base-objects/pagination';
 
 (function (can, GGRC, CMS) {
   'use strict';
@@ -28,7 +32,7 @@ import {REFRESH_RELATED} from '../../events/eventTypes';
         },
         paging: {
           value: function () {
-            return new GGRC.VM.Pagination({pageSizeSelect: [5, 10, 15]});
+            return new Pagination({pageSizeSelect: [5, 10, 15]});
           },
         },
         relatedObjects: {
@@ -44,9 +48,12 @@ import {REFRESH_RELATED} from '../../events/eventTypes';
       initialOrderBy: '@',
       selectedItem: {},
       objectSelectorEl: '.grid-data__action-column button',
-      getFilters: function (id, type, isAssessment) {
+      getFilters: function (id, type) {
         var predefinedFilter = this.attr('predefinedFilter');
         var filters;
+
+        var hasSimilar = _.includes(['Assessment', 'Control', 'Objective'],
+          this.attr('baseInstance.type'));
 
         if (predefinedFilter) {
           filters = predefinedFilter;
@@ -54,7 +61,7 @@ import {REFRESH_RELATED} from '../../events/eventTypes';
           filters = {
             expression: {
               object_name: type,
-              op: isAssessment ? {name: 'similar'} : {name: 'relevant'},
+              op: hasSimilar ? {name: 'similar'} : {name: 'relevant'},
               ids: [id],
             },
           };
@@ -65,7 +72,6 @@ import {REFRESH_RELATED} from '../../events/eventTypes';
         var id;
         var type;
         var relatedType = this.attr('relatedItemsType');
-        var isAssessment = this.attr('baseInstance.type') === 'Assessment';
         var isSnapshot = !!this.attr('baseInstance.snapshot');
         var filters;
         var params = {};
@@ -77,7 +83,7 @@ import {REFRESH_RELATED} from '../../events/eventTypes';
           id = this.attr('baseInstance.id');
           type = this.attr('baseInstance.type');
         }
-        filters = this.getFilters(id, type, isAssessment);
+        filters = this.getFilters(id, type);
         params.data = [{
           limit: this.attr('paging.limits'),
           object_name: relatedType,
@@ -90,8 +96,8 @@ import {REFRESH_RELATED} from '../../events/eventTypes';
         var dfd = can.Deferred();
         var params = this.getParams();
         this.attr('isLoading', true);
-        GGRC.Utils.QueryAPI
-          .makeRequest(params)
+
+        makeRequest(params)
           .done(function (responseArr) {
             var relatedType = this.attr('relatedItemsType');
             var data = responseArr[0];

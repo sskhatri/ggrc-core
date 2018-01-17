@@ -34,7 +34,7 @@ DATE_FORMAT_RESPONSE = "%Y-%m-%d"
 
 # pylint: disable=too-many-public-methods
 @ddt.ddt
-class TestAdvancedQueryAPI(TestCase, WithQueryApi):
+class TestAdvancedQueryAPI(WithQueryApi, TestCase):
   """Basic tests for /query api."""
 
   @classmethod
@@ -230,7 +230,8 @@ class TestAdvancedQueryAPI(TestCase, WithQueryApi):
       self.assertEqual(programs["count"], count)
       self.assertEqual(programs["total"], programs_no_limit["total"])
       self.assertEqual(programs["values"],
-                       programs_no_limit["values"][from_:to_])
+                       programs_no_limit["values"][from_:to_],
+                       sort_sublists=True)
 
     programs_no_limit = self._get_first_result_set(
         make_query_dict(),
@@ -355,21 +356,6 @@ class TestAdvancedQueryAPI(TestCase, WithQueryApi):
     # the titles are sorted descending with desc=True
     self.assertListEqual(titles_desc, list(reversed(titles_asc)))
 
-  @classmethod
-  def _sort_sublists(cls, data_list):
-    """Sort lists contained in result list.
-
-    This function is meant to sort sublists in a list of results. Those
-    sublists can only be a list of stubs from given objects. So when testing
-    an order for a list, if sub elements such as related_sources, don't have
-    the same order they must not raise an exception.
-    """
-    for line in data_list:
-      for value in line.viewvalues():
-        if isinstance(value, list):
-          value.sort(key=lambda x: x["id"])
-    return data_list
-
   def test_order_by_several_fields(self):
     """Results get sorted by two fields at once."""
     regulations = self._get_first_result_set(
@@ -450,38 +436,6 @@ class TestAdvancedQueryAPI(TestCase, WithQueryApi):
 
     self.assertListEqual(
         self._sort_sublists(policies_owner),
-        self._sort_sublists(expected),
-    )
-
-  def test_query_order_by_assignee(self):
-    """Results get sorted by name or email assignee."""
-    controls_by_assignee = self._get_first_result_set(
-        self._make_query_dict("Control",
-                              order_by=[{"name": "principal_assessor"},
-                                        {"name": "id"}]),
-        "Control", "values",
-    )
-    controls_unsorted = self._get_first_result_set(
-        self._make_query_dict("Control"),
-        "Control", "values",
-    )
-    people = self._get_first_result_set(
-        self._make_query_dict("Person"),
-        "Person", "values",
-    )
-    person_id_name = {person["id"]: (person["name"], person["email"])
-                      for person in people}
-    control_id_assignee = {
-        control["id"]: person_id_name[control["principal_assessor"]["id"]]
-        if control["principal_assessor"] else ""
-        for control in controls_unsorted
-    }
-
-    expected = sorted(sorted(controls_unsorted, key=itemgetter("id")),
-                      key=lambda p: control_id_assignee[p["id"]])
-
-    self.assertListEqual(
-        self._sort_sublists(controls_by_assignee),
         self._sort_sublists(expected),
     )
 
@@ -682,10 +636,10 @@ class TestAdvancedQueryAPI(TestCase, WithQueryApi):
     categories = {c.id: c.name for c in models.CategoryBase.query}
 
     def sort_key(val):
-      """sorting key getter function"""
-      ctrl = val.get(key)
-      if isinstance(ctrl, list) and ctrl:
-        return (categories.get(ctrl[0]["id"]), val["id"])
+      """Util sort key function."""
+      ctrl_key = val.get(key)
+      if isinstance(ctrl_key, list) and ctrl_key:
+        return (categories.get(ctrl_key[0]["id"]), val["id"])
       return (None, val["id"])
 
     controls_ordered_2 = sorted(controls_unordered, key=sort_key)
@@ -733,6 +687,7 @@ class TestAdvancedQueryAPI(TestCase, WithQueryApi):
         set(programs_ids["ids"]),
     )
 
+  @unittest.skip("Skip until fix resp order problem to mysql 5.6")
   def test_multiple_queries(self):
     """Multiple queries POST is identical to multiple single-query POSTs."""
     data_list = [
@@ -773,11 +728,14 @@ class TestAdvancedQueryAPI(TestCase, WithQueryApi):
         },
     ]
 
-    response_multiple_posts = [json.loads(self._post(data).data)[0]
-                               for data in data_list]
+    response_multiple_posts = [
+        json.loads(self._post(data).data)[0] for data in data_list
+    ]
     response_single_post = json.loads(self._post(data_list).data)
 
-    self.assertEqual(response_multiple_posts, response_single_post)
+    self.assertEqual(response_multiple_posts,
+                     response_single_post,
+                     sort_sublists=True)
 
   def test_is_empty_query_by_native_attrs(self):
     """Filter by navive object attrs with 'is empty' operator."""
@@ -1045,39 +1003,6 @@ class TestSortingQuery(TestCase, WithQueryApi):
     super(TestSortingQuery, self).setUp()
     self.client.get("/login")
 
-  @classmethod
-  def create_assignees(cls, obj, persons):
-    """Create assignees for object.
-
-    This is used only during object creation because we cannot create
-    assignees at that point yet.
-
-    Args:
-      obj: Assignable object.
-      persons: [("(string) email", "Assignee roles"), ...] A list of people
-        and their roles
-    Returns:
-      [(person, object-person relationship,
-        object-person relationship attributes), ...] A list of persons with
-      their relationships and relationship attributes.
-    """
-    assignees = []
-    for person, roles in persons:
-      person = factories.PersonFactory(email=person)
-
-      object_person_rel = factories.RelationshipFactory(
-          source=obj,
-          destination=person
-      )
-
-      object_person_rel_attrs = factories.RelationshipAttrFactory(
-          relationship_id=object_person_rel.id,
-          attr_name="AssigneeType",
-          attr_value=roles
-      )
-      assignees += [(person, object_person_rel, object_person_rel_attrs)]
-    return assignees
-
   def create_assessment(self, title=None, people=None):
     """Create default assessment with some default assignees in all roles.
     Args:
@@ -1092,28 +1017,28 @@ class TestSortingQuery(TestCase, WithQueryApi):
 
     if not people:
       people = [
-          ("creator@example.com", "Creator"),
-          ("assessor_1@example.com", "Assessor"),
-          ("assessor_2@example.com", "Assessor"),
-          ("verifier_1@example.com", "Verifier"),
-          ("verifier_2@example.com", "Verifier"),
+          ("creator@example.com", "Creators"),
+          ("assessor_1@example.com", "Assignees"),
+          ("assessor_2@example.com", "Assignees"),
+          ("verifier_1@example.com", "Verifiers"),
+          ("verifier_2@example.com", "Verifiers"),
       ]
 
     defined_assessors = len([1 for _, role in people
-                             if "Assessor" in role])
+                             if "Assignees" in role])
     defined_creators = len([1 for _, role in people
-                            if "Creator" in role])
+                            if "Creators" in role])
     defined_verifiers = len([1 for _, role in people
-                             if "Verifier" in role])
+                             if "Verifiers" in role])
 
-    self.create_assignees(assessment, people)
+    assignee_roles = self.create_assignees(assessment, people)
 
-    creators = [assignee for assignee, roles in assessment.assignees
-                if "Creator" in roles]
-    assignees = [assignee for assignee, roles in assessment.assignees
-                 if "Assessor" in roles]
-    verifiers = [assignee for assignee, roles in assessment.assignees
-                 if "Verifier" in roles]
+    creators = [assignee for assignee, role in assignee_roles
+                if role == "Creators"]
+    assignees = [assignee for assignee, role in assignee_roles
+                 if role == "Assignees"]
+    verifiers = [assignee for assignee, role in assignee_roles
+                 if role == "Verifiers"]
 
     self.assertEqual(len(creators), defined_creators)
     self.assertEqual(len(assignees), defined_assessors)
@@ -1124,19 +1049,19 @@ class TestSortingQuery(TestCase, WithQueryApi):
   def test_sorting_assessments_by_assignees(self):
     """Test assessments are sorted by multiple assignees correctly"""
     people_set_1 = [
-        ("2creator@example.com", "Creator"),
-        ("assessor_2@example.com", "Assessor"),
-        ("assessor_1@example.com", "Assessor"),
-        ("1verifier_1@example.com", "Verifier"),
-        ("2verifier_2@example.com", "Verifier"),
+        ("2creator@example.com", "Creators"),
+        ("assessor_2@example.com", "Assignees"),
+        ("assessor_1@example.com", "Assignees"),
+        ("1verifier_1@example.com", "Verifiers"),
+        ("2verifier_2@example.com", "Verifiers"),
     ]
     self.create_assessment("Assessment_1", people_set_1)
     people_set_2 = [
-        ("1creator@example.com", "Creator"),
-        ("1assessor@example.com", "Assessor"),
-        ("2assessor@example.com", "Assessor"),
-        ("verifier_1@example.com", "Verifier"),
-        ("verifier_2@example.com", "Verifier"),
+        ("1creator@example.com", "Creators"),
+        ("1assessor@example.com", "Assignees"),
+        ("2assessor@example.com", "Assignees"),
+        ("verifier_1@example.com", "Verifiers"),
+        ("verifier_2@example.com", "Verifiers"),
     ]
     self.create_assessment("Assessment_2", people_set_2)
 
@@ -1450,69 +1375,3 @@ class TestQueryWithUnicode(TestCase, WithQueryApi):
     keys = [(prog[self.CAD_TITLE2], prog[self.CAD_TITLE1])
             for prog in programs]
     self.assertEqual(keys, sorted(keys))
-
-
-@ddt.ddt
-class TestAssessmentFilteringByLabel(TestCase, WithQueryApi):
-  """Basic test for query api filtering assessment by label field."""
-
-  ASSESSMENT_LABELS = [
-      models.Assessment.Labels.AUDITOR_PULLS_EVIDENCE,
-      models.Assessment.Labels.FOLLOWUP,
-      models.Assessment.Labels.NEEDS_REWORK,
-      models.Assessment.Labels.NEEDS_DISCUSSION,
-  ]
-
-  def setUp(self):
-    super(TestAssessmentFilteringByLabel, self).setUp()
-    self.client.get("/login")
-    possible_labels = self.ASSESSMENT_LABELS + [None]
-    with factories.single_commit():
-      self.audit = factories.AuditFactory()
-      self.lables_assessment_dict = {
-          label: factories.AssessmentFactory(
-              audit=self.audit,
-              label=label
-          ).slug
-          for label in possible_labels
-      }
-
-  def assert_label_search(self, data, label=None):
-    """Assert assessment found by sent data and compare with sent label."""
-    resp_data = self._post(data).json
-    self.assertEqual(1, len(resp_data))
-    self.assertIn("Assessment", resp_data[0])
-    assessment_dicts = resp_data[0]["Assessment"]["values"]
-    self.assertEqual(1, len(assessment_dicts))
-    assessment_dict = assessment_dicts[0]
-    self.assertEqual(self.lables_assessment_dict[label],
-                     assessment_dict["slug"])
-    self.assertIn("label", assessment_dict)
-    self.assertEqual(label, assessment_dict["label"])
-
-  @ddt.data(*ASSESSMENT_LABELS)
-  def test_filter_by_label(self, label):
-    self.assert_label_search(
-        [{
-            "object_name": "Assessment",
-            "filters": {
-                "expression": {
-                    "left": "label",
-                    "op": {"name": "="},
-                    "right": label
-                }
-            }
-        }],
-        label)
-
-  def test_filter_by_empty_label(self):
-    self.assert_label_search([{
-        "object_name": "Assessment",
-        "filters": {
-            "expression": {
-                "left": "label",
-                "op": {"name": "is"},
-                "right": "empty"
-            }
-        }
-    }])

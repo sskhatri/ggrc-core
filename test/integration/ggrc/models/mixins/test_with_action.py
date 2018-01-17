@@ -470,22 +470,24 @@ class TestCommentWithActionMixin(TestCase):
     """Test add comment action."""
     generator = ObjectGenerator()
 
-    _, reader = generator.generate_person(user_role="Reader")
+    _, reader = generator.generate_person(user_role="Administrator")
     self.api.set_user(reader)
 
     assessment = factories.AssessmentFactory()
     context = factories.ContextFactory(related_object=assessment)
     assessment.context = context
 
-    object_person_rel = factories.RelationshipFactory(
-        source=assessment,
-        destination=reader
+    acrs = all_models.AccessControlRole.query.filter(
+        all_models.AccessControlRole.object_type == "Assessment",
+        all_models.AccessControlRole.name.in_(["Assignees", "Creators"]),
     )
-    factories.RelationshipAttrFactory(
-        relationship_id=object_person_rel.id,
-        attr_name="AssigneeType",
-        attr_value="Creator,Assessor"
-    )
+
+    for acr in acrs:
+      factories.AccessControlListFactory(
+          ac_role=acr,
+          object=assessment,
+          person=reader
+      )
 
     response = self.api.put(assessment, {"actions": {"add_related": [
         {
@@ -503,7 +505,7 @@ class TestCommentWithActionMixin(TestCase):
     self.assertIsNotNone(relationship)
     comment = all_models.Comment.query.get(relationship.destination_id)
     self.assertEqual(comment.description, "comment")
-    self.assertEqual(comment.assignee_type, "Creator,Assessor")
+    self.assertEqual(comment.assignee_type, "Assignees,Creators")
     self.assertEqual(comment.context_id, assessment.context_id)
 
   def test_add_custom_comment(self):
@@ -557,20 +559,6 @@ class TestCommentWithActionMixin(TestCase):
     self.assert200(response)
     relationship = all_models.Relationship.query.get(rel_id)
     self.assertIsNone(relationship)
-
-  def test_status_unchanged(self):
-    """Test auto status isn't change after add comment action"""
-    assessment = factories.AssessmentFactory()
-    comment = factories.CommentFactory()
-    response = self.api.put(assessment, {"actions": {"add_related": [
-        {
-            "id": comment.id,
-            "type": "Comment",
-        }
-    ]}})
-    self.assert200(response)
-    self.assertEqual(response.json["assessment"]["status"],
-                     all_models.Assessment.START_STATE)
 
 
 def _create_snapshot():
@@ -650,19 +638,6 @@ class TestSnapshotWithActionMixin(TestCase, WithQueryApi):
     self.assert200(response)
     snapshot = all_models.Relationship.query.get(rel_id)
     self.assertIsNone(snapshot)
-
-  def test_status_change_snapshot(self):
-    """Test auto status change after add snapshot action"""
-    assessment, snapshot = _create_snapshot()
-    response = self.api.put(assessment, {"actions": {"add_related": [
-        {
-            "id": snapshot.id,
-            "type": "Snapshot",
-        }
-    ]}})
-    self.assert200(response)
-    self.assertEqual(response.json["assessment"]["status"],
-                     all_models.Assessment.PROGRESS_STATE)
 
 
 class TestMultiplyActions(TestCase, WithQueryApi):

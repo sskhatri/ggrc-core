@@ -3,7 +3,9 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-describe('GGRC.Utils.DeferredTransaction module', function () {
+import DeferredTransaction from '../../utils/deferred-transaction-utils';
+
+describe('DeferredTransaction module', function () {
   'use strict';
 
   var deferredTransaction;
@@ -16,7 +18,7 @@ describe('GGRC.Utils.DeferredTransaction module', function () {
 
   describe('DeferredTransaction in not sequentially mode', function () {
     beforeAll(function () {
-      deferredTransaction = new GGRC.Utils.DeferredTransaction(
+      deferredTransaction = new DeferredTransaction(
         function (resolve, reject) {
           completeTransactionCount++;
           resolve();
@@ -55,7 +57,7 @@ describe('GGRC.Utils.DeferredTransaction module', function () {
 
   describe('DeferredTransaction in sequentially mode', function () {
     beforeAll(function () {
-      deferredTransaction = new GGRC.Utils.DeferredTransaction(
+      deferredTransaction = new DeferredTransaction(
         function (resolve, reject) {
           completeTransactionCount++;
           resolve();

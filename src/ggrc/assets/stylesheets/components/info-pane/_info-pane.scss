@@ -17,6 +17,20 @@
   &__section {
     display: block;
     margin: 0 16px 16px 0;
+
+    &.info-pane__section-procedure {
+      display: flex;
+
+      .assessment-procedure {
+        flex: 9 9;
+      }
+
+      .issue-tracker-url {
+        display: flex;
+        flex: 2 2;
+        justify-content: flex-end;
+      }
+    }
   }
 
   &__section-content {
@@ -32,6 +46,9 @@
     margin: 0;
     padding: 0;
     position: relative;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     &--underlined {
       border-bottom: 1px solid $lightGray;
@@ -60,15 +77,10 @@
   }
 
   &__main-content-with-sidebar {
-    margin-right: 30%;
     padding-right: 16px;
   }
 
   &__sidebar {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
     padding-left: 16px;
     padding-bottom: 20px;
     width: 30%;
@@ -76,15 +88,17 @@
     flex-direction: column;
     border-left: 1px solid $border-color;
 
-    &:after {
-      content: '';
-      width: 100%;
-      bottom: 0;
-      left: 0;
-      height: 42px;
-      display: block;
-      position: absolute;
-      background: linear-gradient(to bottom, transparent, white 70%);
+    .ggrc-form {
+      display: flex;
+
+      .due-date__column {
+        width: 150px;
+        margin-right: 20px;
+      }
+
+      .labels__column {
+        width: calc(100% - 170px);
+      }
     }
   }
   .inline__header {
@@ -103,11 +117,11 @@
 
     .pane-header__title {
       padding-right: 24px;
-      max-width: calc(100% - 520px);
+      max-width: calc(100% - 525px);
       flex: 1;
 
       .pane-header__title-name {
-        max-width: calc(100% - 160px);
+        max-width: calc(100% - 165px);
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
@@ -149,6 +163,16 @@
           margin-top: 0px !important;
         }
       }
+    }
+  }
+
+  .expanded-area {
+    .info-expand {
+      margin-top: 0;
+    }
+
+    .hidden-fields-area small {
+      font-size: 11px;
     }
   }
 }

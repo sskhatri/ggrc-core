@@ -152,6 +152,7 @@ class TestCustomAttributesDefinitions(TestCase):
         'Created Date',
         'Last Updated',
         'Last Updated By',
+        'Folder',
     }
     expected_names = element_names.union(mapping_names)
     self.assertEqual(expected_names, display_names)
@@ -318,6 +319,7 @@ class TestGetObjectColumnDefinitions(TestCase):
         'Created Date',
         'Last Updated',
         'Last Updated By',
+        'Folder',
     }
     expected_fields = {
         "mandatory": {
@@ -357,6 +359,8 @@ class TestGetObjectColumnDefinitions(TestCase):
         'Created Date',
         'Last Updated',
         'Last Updated By',
+        'Folder',
+        'Last Deprecated Date'
     }
     expected_fields = {
         "mandatory": {
@@ -381,8 +385,8 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Object Under Assessment",
         "Use Control Assessment Procedure",
         "Default Test Plan",
-        "Default Assignee",
-        "Default Verifier",
+        "Default Assignees",
+        "Default Verifiers",
         "Custom Attributes",
         "Code",
         "Archived",
@@ -398,7 +402,7 @@ class TestGetObjectColumnDefinitions(TestCase):
             "Object Under Assessment",
             "Audit",
             "Code",
-            "Default Assignee",
+            "Default Assignees",
         },
         "unique": {
             "Code",
@@ -431,7 +435,7 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Evidence URL",
         "Code",
         "Due Date",
-        "Stop Date",
+        "Last Deprecated Date",
         "Verified Date",
         "Finished Date",
         "State",
@@ -448,7 +452,7 @@ class TestGetObjectColumnDefinitions(TestCase):
         'Last Updated',
         'Last Updated By',
         "Comments",
-        'Label',
+        'Labels',
     }
     expected_fields = {
         "mandatory": {
@@ -620,6 +624,7 @@ class TestGetObjectColumnDefinitions(TestCase):
         'Created Date',
         'Last Updated',
         'Last Updated By',
+        'Folder',
     }
     self._test_single_object(models.Control, names, self.COMMON_EXPECTED)
 

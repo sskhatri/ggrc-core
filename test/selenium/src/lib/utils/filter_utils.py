@@ -4,10 +4,10 @@
 
 from dateutil import parser
 
-import string_utils
 from lib.constants import value_aliases as alias
 from lib.constants.element import AdminWidgetCustomAttributes
 from lib.entities.entity import Entity
+from lib.utils.string_utils import StringMethods
 
 
 class FilterUtils(object):
@@ -63,9 +63,9 @@ class FilterUtils(object):
     """Return all possible filter expressions for CA according to CA type"""
     if ca_type == AdminWidgetCustomAttributes.CHECKBOX:
       values_to_filter = (
-          string_utils.get_list_of_all_cases(alias.YES_VAL) if
-          string_utils.get_bool_value_from_arg(ca_val)
-          else string_utils.get_list_of_all_cases(alias.NO_VAL))
+          StringMethods.get_list_of_all_cases(alias.YES_VAL) if
+          StringMethods.get_bool_value_from_arg(ca_val)
+          else StringMethods.get_list_of_all_cases(alias.NO_VAL))
     elif ca_type == AdminWidgetCustomAttributes.PERSON:
       from lib.service import rest_service
       person = rest_service.ObjectsInfoService().get_obj(

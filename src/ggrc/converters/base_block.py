@@ -47,9 +47,11 @@ CACHE_EXPIRY_IMPORT = 600
 
 class BlockConverter(object):
   # pylint: disable=too-many-public-methods
-
   """ Main block converter class for dealing with csv files and data
 
+  Constants:
+    BLOCK_OFFSET: offset from the block beginning to the first block line
+                  2 header rows and 1 for 0 based index
   Attributes:
     attr_index (dict): reverse index for getting attribute name from
       display_name
@@ -76,6 +78,8 @@ class BlockConverter(object):
 
   """
 
+  BLOCK_OFFSET = 3
+
   def get_unique_counts_dict(self, object_class):
     """ get a the varible for storing unique counts
 
@@ -87,7 +91,7 @@ class BlockConverter(object):
     shared_state = self.converter.shared_state
     if classes not in shared_state:
       shared_state[classes] = defaultdict(
-          lambda: structures.CaseInsensitiveDefaultDict(list)
+          lambda: structures.CaseInsensitiveDefaultDict(set)
       )
     return shared_state[classes]
 
@@ -103,7 +107,7 @@ class BlockConverter(object):
     self._user_roles_cache = None
     self._ca_definitions_cache = None
     self.converter = converter
-    self.offset = options.get("offset", 0)
+    self.offset = options.get("offset", 0)  # offset to the current block
     self.object_class = options.get("object_class")
     self.rows = options.get("rows", [])
     self.operation = 'import' if self.rows else 'export'
@@ -362,16 +366,6 @@ class BlockConverter(object):
       headers.append([description, display_name])
     return [list(header) for header in zip(*headers)]
 
-  def generate_csv_body(self):
-    """ Generate 2D array populated with object values """
-    return [r.to_array(self.fields) for r in self.row_converters]
-
-  def to_array(self):
-    """Return tuple of csv_header and csv_body."""
-    csv_header = self.generate_csv_header()
-    csv_body = self.generate_csv_body()
-    return csv_header, csv_body
-
   def get_header_names(self):
     """ Get all posible user column names for current object """
     header_names = {
@@ -435,14 +429,26 @@ class BlockConverter(object):
       return
     self.row_converters = []
     objects = self.object_class.eager_query().filter(
-        self.object_class.id.in_(self.object_ids)).all()
+        self.object_class.id.in_(self.object_ids))
     for i, obj in enumerate(objects):
       row = RowConverter(self, self.object_class, obj=obj,
                          headers=self.headers, index=i)
-      self.row_converters.append(row)
+      yield row
+
+  def row_data_to_array(self):
+    """Get row data from all row converters while exporting.
+    """
+    if self.ignore:
+      return
+    csv_body = []
+    csv_header = self.generate_csv_header()
+    for row_converter in self.row_converters_from_ids():
+      row_converter.handle_obj_row_data()
+      csv_body.append(row_converter.to_array(self.fields))
+    return csv_header, csv_body
 
   def handle_row_data(self, field_list=None):
-    """Call handle row data on all row converters.
+    """Handle row data for all row converters on import.
 
     Note: When field_list is set, we are handling priority columns and we
     don't have all the data needed for checking mandatory and duplicate values.
@@ -463,7 +469,7 @@ class BlockConverter(object):
     for row_converter in self.row_converters:
       row_converter.check_mandatory_fields()
 
-  def check_unique_columns(self, counts=None):
+  def check_unique_columns(self):
     self.generate_unique_counts()
     for key, counts in self.unique_counts.items():
       self.remove_duplicate_keys(key, counts)
@@ -503,10 +509,10 @@ class BlockConverter(object):
 
     return info
 
-  def import_secondary_objects(self, slugs_dict):
+  def import_secondary_objects(self):
     """Import secondary objects procedure."""
     for row_converter in self.row_converters:
-      row_converter.setup_secondary_objects(slugs_dict)
+      row_converter.setup_secondary_objects()
 
     if not self.converter.dry_run:
       for row_converter in self.row_converters:
@@ -568,6 +574,8 @@ class BlockConverter(object):
     for row_converter in self.row_converters:
       obj = row_converter.obj
       try:
+        if row_converter.do_not_expunge:
+          continue
         if row_converter.ignore and obj in db.session:
           db.session.expunge(obj)
       except UnmappedInstanceError:
@@ -622,18 +630,32 @@ class BlockConverter(object):
 
   def generate_unique_counts(self):
     """Populate unique_counts for sent data."""
-    for key, header in self.object_headers.items():
+    for key, header in self.headers.items():
       if not header["unique"]:
         continue
-      for index, row in enumerate(self.row_converters):
+      for rel_index, row in enumerate(self.row_converters):
         value = row.get_value(key)
         if value:
-          self.unique_counts[key][value].append(index + self.offset + 3)
+          self.unique_counts[key][value].add(self.calc_abs_index(rel_index))
 
   def in_range(self, index, remove_offset=True):
+    """Checks if the value provided lays within the range of lines of the
+    current block
+    """
     if remove_offset:
-      index -= 3 + self.offset
+      index = self.calc_offset(index)
     return index >= 0 and index < len(self.row_converters)
+
+  def calc_offset(self, index):
+    """Calculate an offset relative to the current block beginning
+    given an absolute line index
+    """
+    return index - self.BLOCK_OFFSET - self.offset
+
+  def calc_abs_index(self, rel_index):
+    """Calculate an absolute line number given a relative index
+    """
+    return rel_index + self.BLOCK_OFFSET + self.offset
 
   def remove_duplicate_keys(self, key, counts):
 
@@ -641,6 +663,7 @@ class BlockConverter(object):
       if not any(self.in_range(index) for index in indexes):
         continue  # ignore duplicates in other related code blocks
 
+      indexes = sorted(list(indexes))
       if len(indexes) > 1:
         str_indexes = [str(index) for index in indexes]
         self.row_errors.append(
@@ -652,11 +675,16 @@ class BlockConverter(object):
                 ignore_lines=", ".join(str_indexes[1:]),
             )
         )
+        if key == "slug":  # mark obj not to be expunged from the session
+          for index in indexes:
+            offset_index = self.calc_offset(index)
+            if self.in_range(offset_index, remove_offset=False):
+              self.row_converters[offset_index].set_do_not_expunge()
 
-      for offset_index in indexes[1:]:
-        index = offset_index - 3 - self.offset
-        if self.in_range(index, remove_offset=False):
-          self.row_converters[index].set_ignore()
+      for index in indexes[1:]:
+        offset_index = self.calc_offset(index)
+        if self.in_range(offset_index, remove_offset=False):
+          self.row_converters[offset_index].set_ignore()
 
   @staticmethod
   def _sanitize_header(header):

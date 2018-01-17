@@ -595,7 +595,8 @@
           @extend %oneline;
           font-size: 18px;
           margin-bottom: 20px;
-          .email {
+          .name, .person-holder {
+            color: $black;
             display: block;
             font-size: 12px;
             line-height: 16px;
@@ -661,6 +662,12 @@
     .repeat-summary {
       margin: 16px 0 10px 0;
     }
+
+    .people-group {
+      flex-basis: 250px;
+      margin-right: 30px;
+      max-width: 250px;
+    }
   }
   .modal-footer {
     @include box-shadow(none);
@@ -678,6 +685,10 @@
     }
     .confirm-buttons {
       text-align: right;
+
+      &__objects-count {
+        margin-right: 20px;
+      }
     }
   }
   .actions {
@@ -718,7 +729,7 @@
      .info{
        border: 1px solid $warmGray;
        padding: 20px 15px;
-       width: 50%;
+       width: calc(50% - 30px);
        box-shadow: none;
        &:first-child{
          border-right: none;
@@ -737,9 +748,8 @@
          width: 100%;
          max-width: 100%;
          position: relative;
-         left: -15px;
-         padding-left: 15px;
-         padding-right: 15px;
+         padding-left: 5px;
+         padding-right: 5px;
          background-color: $pastelRed;
          &.inline-edit__content,
          &.inline-edit__title{
@@ -749,6 +759,8 @@
          }
        }
        & ~ .info{
+         width: calc(50% - 30px);
+
          .diff-highlighted{
            background-color: $pastelGreen;
          }
@@ -759,8 +771,7 @@
        .pane-header h3{
          float: none;
        }
-       .tier-content,
-       custom-attributes{
+       .tier-content{
          display: block;
          .row-fluid{
            margin-bottom: 0;
@@ -793,6 +804,30 @@
      .info-widget-footer{
        display: none;
      }
+
+     .people-group {
+       flex-basis: 200px;
+
+       .editable-people-group {
+         margin-right: 15px;
+       }
+     }
+   }
+
+   global-custom-attributes {
+    &.ggrc-form .ggrc-form-item {
+      width: 100%;
+    }
+
+    &.ggrc-form.ggrc-form-multiple-columns .ggrc-form-item__multiple-row {
+      display: block;
+      width: 100%;
+      max-width: none;
+    }
+
+    inline-edit-control .inline__header {
+      min-height: auto;
+    }
    }
  }
 }
@@ -818,6 +853,7 @@
   }
 }
 
+.expand-issue-tracker-link,
 .expand-link {
   padding: 0 0 12px 0;
 

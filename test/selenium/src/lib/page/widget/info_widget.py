@@ -2,12 +2,12 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Info widgets."""
 # pylint: disable=useless-super-delegation
-# pylint: disable=attribute-defined-outside-init
 
 import re
 
 from lib import base
-from lib.constants import locator, objects, element, roles, regex, messages
+from lib.constants import (
+    locator, objects, element, roles, regex, messages, cls_name)
 from lib.constants.locator import WidgetInfoAssessment
 from lib.element import widget_info, tab_containers
 from lib.page.modal import update_object
@@ -20,6 +20,7 @@ class InfoWidget(base.Widget):
   string elements from 'lib.element' module in upper case.
   """
   # pylint: disable=too-many-instance-attributes
+  # pylint: disable=protected-access
   _locators = locator.CommonWidgetInfo
   _elements = element.Common
   dropdown_settings_cls = widget_info.CommonInfoDropdownSettings
@@ -27,8 +28,7 @@ class InfoWidget(base.Widget):
 
   def __init__(self, driver):
     super(InfoWidget, self).__init__(driver)
-    selenium_utils.wait_for_js_to_load(self._driver)
-    self.child_cls_name = self.__class__.__name__.lower()
+    self.child_cls_name = self.__class__.__name__
     self.list_all_headers_txt = []
     self.list_all_values_txt = []
     self.info_widget_locator = (
@@ -54,11 +54,13 @@ class InfoWidget(base.Widget):
       self.modified_by = selenium_utils.get_when_visible(
           self.info_widget_elem, self._locators.TXT_MODIFIED_BY_CSS)
       _created_at_txt, _updated_at_txt = (
-          self.info_page_footer.text.split(string_utils.WHITESPACE * 6))
+          self.info_page_footer.text.split(
+              string_utils.Symbols.WHITESPACE * 6))
       self.created_at_txt = (
-          re.sub("Created at", string_utils.BLANK, _created_at_txt))
+          re.sub("Created at", string_utils.Symbols.BLANK, _created_at_txt))
       self.updated_at_txt = (
-          _updated_at_txt.splitlines()[1].replace("on ", string_utils.BLANK))
+          _updated_at_txt.splitlines()[1].replace(
+              "on ", string_utils.Symbols.BLANK))
       self._extend_list_all_scopes(
           [self._elements.CREATED_AT.upper(),
            self._elements.MODIFIED_BY.upper(),
@@ -67,9 +69,21 @@ class InfoWidget(base.Widget):
     # for Info Panel
     else:
       self.panel = (
-          SnapshotableInfoPanel(self._driver, self.info_widget_elem)
-          if self.child_cls_name in objects.ALL_SNAPSHOTABLE_OBJS else
+          SnapshotedInfoPanel(self._driver, self.info_widget_elem)
+          if (self.child_cls_name.lower() in objects.ALL_SNAPSHOTABLE_OBJS and
+              self.is_snapshoted_panel) else
           InfoPanel(self._driver, self.info_widget_elem))
+    # for tab controller
+    if not self.is_snapshoted_panel:
+      self.tab_container_elem = self.info_widget_elem.find_element(
+          *self._locators.TAB_CONTAINER_CSS)
+      self.tab_container = self._get_tab_container()
+      self.tab_container.tab_controller.active_tab = (
+          self.tab_container._elements.OBJ_TAB)
+    # for overridable methods
+    self._extend_list_all_scopes_by_code()
+    self._extend_list_all_scopes_by_cas()
+    self._extend_list_all_scopes_by_review_state()
 
   def get_title_lbl_txt(self):
     """Get title's label text from Info Widget."""
@@ -105,19 +119,14 @@ class InfoWidget(base.Widget):
     # pylint: disable=not-an-iterable
     # pylint: disable=invalid-name
     selenium_utils.wait_for_js_to_load(self._driver)
-    if custom_scopes_locator:
-      self.all_headers_and_values = self.info_widget_elem.find_elements(
-          *custom_scopes_locator)
-    if not custom_scopes_locator and self._locators.HEADERS_AND_VALUES:
-      self.all_headers_and_values = self.info_widget_elem.find_elements(
-          *self._locators.HEADERS_AND_VALUES)
-    header_and_value = (
-        next((scope.text.splitlines() + [None]
-              if len(scope.text.splitlines()) == 1
-              else scope.text.splitlines()[:2]
-              for scope in self.all_headers_and_values
-              if header_text in scope.text), [None, None]))
-    return header_and_value
+    all_headers_and_values = self.info_widget_elem.find_elements(
+        *custom_scopes_locator if custom_scopes_locator else
+        self._locators.HEADERS_AND_VALUES)
+    return next((scope.text.splitlines() + [None]
+                 if len(scope.text.splitlines()) == 1
+                 else scope.text.splitlines()[:2]
+                 for scope in all_headers_and_values
+                 if header_text in scope.text), [None, None])
 
   def get_header_and_value_txt_from_people_scopes(self, header_text):
     """Get with controlling header and value text from people's scopes elements
@@ -178,16 +187,14 @@ class InfoWidget(base.Widget):
     """
     # pylint: disable=invalid-name
     # pylint: disable=too-many-branches
-    # if not self.cas_headers_and_values and not is_gcas_not_lcas:
     selenium_utils.wait_for_js_to_load(self._driver)
     cas_locator = (self._locators.CAS_HEADERS_AND_VALUES if is_gcas_not_lcas
                    else self._locators.LCAS_HEADERS_AND_VALUES)
-    self.cas_headers_and_values = (
-        self.info_widget_elem.find_elements(*cas_locator))
+    cas_headers_and_values = self.info_widget_elem.find_elements(*cas_locator)
     dict_cas_scopes = {}
-    if len(self.cas_headers_and_values) >= 1:
+    if len(cas_headers_and_values) >= 1:
       list_text_cas_scopes = []
-      for scope in self.cas_headers_and_values:
+      for scope in cas_headers_and_values:
         ca_header_text = scope.text.splitlines()[0]
         if len(scope.text.splitlines()) >= 2:
           if scope.text.splitlines()[1].strip():
@@ -238,7 +245,7 @@ class InfoWidget(base.Widget):
     self.list_all_headers_txt.extend(help_utils.convert_to_list(headers))
     self.list_all_values_txt.extend(help_utils.convert_to_list(values))
 
-  def extend_list_all_scopes_by_code(self):
+  def _extend_list_all_scopes_by_code(self):
     """Set attributes related to 'code' and extend 'list all scopes'
     accordingly.
     """
@@ -247,7 +254,7 @@ class InfoWidget(base.Widget):
             self._elements.CODE.upper()))
     self._extend_list_all_scopes(self.code_lbl_txt, self.code_txt)
 
-  def extend_list_all_scopes_by_cas(self):
+  def _extend_list_all_scopes_by_cas(self):
     """Set attributes related to 'global custom attributes' and extend
     'list all scopes' accordingly.
     """
@@ -255,7 +262,7 @@ class InfoWidget(base.Widget):
     self.cas_scope_txt = self.get_headers_and_values_dict_from_cas_scopes()
     self._extend_list_all_scopes(self.cas_lbl_txt, self.cas_scope_txt)
 
-  def extend_list_all_scopes_by_review_state(self):
+  def _extend_list_all_scopes_by_review_state(self):
     """Set attributes related to 'review state' and extend
     'list all scopes' accordingly.
     """
@@ -265,6 +272,12 @@ class InfoWidget(base.Widget):
     self.review_state_txt = self.get_review_state_txt()
     self._extend_list_all_scopes(
         self.review_state_lbl.text, self.review_state_txt)
+
+  def _get_tab_container(self):
+    """Get Tab Controller and return it."""
+    return getattr(tab_containers,
+                   self.child_cls_name + cls_name.TAB_CONTAINER)(
+        self._driver, self.tab_container_elem)
 
 
 class InfoPanel(object):
@@ -286,8 +299,8 @@ class InfoPanel(object):
     return self.info_widget_elem.find_element(*self._locators.BUTTON_CLOSE)
 
 
-class SnapshotableInfoPanel(InfoPanel):
-  """Class for Info Panels of snapshotable objects."""
+class SnapshotedInfoPanel(InfoPanel):
+  """Class for Info Panels of shapshoted objects."""
   # pylint: disable=too-few-public-methods
   _locators = locator.WidgetSnapshotsInfoPanel
   dropdown_settings_cls = widget_info.Snapshots
@@ -355,8 +368,12 @@ class Workflows(InfoWidget):
 
   def __init__(self, driver):
     super(Workflows, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
+
+  def _extend_list_all_scopes_by_review_state(self):
+    """Method overriding without action due to Workflows don't have
+    'review states'.
+    """
+    pass
 
 
 class Audits(InfoWidget):
@@ -368,13 +385,17 @@ class Audits(InfoWidget):
 
   def __init__(self, driver):
     super(Audits, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
     self.audit_captain_lbl_txt, self.audit_captain_txt = (
         self.get_header_and_value_txt_from_custom_scopes(
             self._elements.AUDIT_CAPTAIN.upper()))
     self._extend_list_all_scopes(
         self.audit_captain_lbl_txt, self.audit_captain_txt)
+
+  def _extend_list_all_scopes_by_review_state(self):
+    """Method overriding without action due to Audits don't have
+    'review states'.
+    """
+    pass
 
 
 class Assessments(InfoWidget):
@@ -391,25 +412,19 @@ class Assessments(InfoWidget):
     self.is_verified_lbl_txt = self._elements.VERIFIED.upper()
     self.is_verified = selenium_utils.is_element_exist(
         self.info_widget_elem, self._locators.ICON_VERIFIED)
-    self.workflow_container = tab_containers.AssessmentTabContainer(
-        self._driver,
-        self.info_widget_elem.find_element(
-            *self._locators.ASMT_TAB_CONTAINER_CSS))
-    self.workflow_container.tab_controller.active_tab = (
-        element.AssessmentTabContainer.ASMT_TAB)
     self.mapped_objects_lbl_txt = self._elements.MAPPED_OBJECTS.upper()
     self.mapped_objects_titles_txt = self._get_mapped_objs_titles_txt()
     self.lcas_scope_txt = self.get_headers_and_values_dict_from_cas_scopes(
         is_gcas_not_lcas=False)
     self.creators_lbl_txt, self.creators_txt = (
         self.get_header_and_value_txt_from_people_scopes(
-            self._elements.CREATORS_.upper()))
+            self._elements.CREATORS.upper()))
     self.assignees_lbl_txt, self.assignees_txt = (
         self.get_header_and_value_txt_from_people_scopes(
-            self._elements.ASSIGNEES_.upper()))
+            self._elements.ASSIGNEES.upper()))
     self.verifiers_lbl_txt, self.verifiers_txt = (
         self.get_header_and_value_txt_from_people_scopes(
-            self._elements.VERIFIERS_.upper()))
+            self._elements.VERIFIERS.upper()))
     self.comments_panel = base.CommentsPanel(
         self.info_widget_elem, self._locators.COMMENTS_CSS)
     self.comments_lbl_txt = self.comments_panel.header_lbl.text
@@ -443,33 +458,43 @@ class Assessments(InfoWidget):
     """Get an Assessment object's text scope (headers' (real and synthetic)
     and values' txt) from Info Widget navigating through the Assessment's tabs.
     """
-    self.workflow_container.tab_controller.active_tab = (
+    self.tab_container.tab_controller.active_tab = (
         element.AssessmentTabContainer.OTHER_ATTRS_TAB)
     self.mapped_objects_titles_txt += self._get_mapped_objs_titles_txt()
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
+    self._extend_list_all_scopes_by_code()
+    self._extend_list_all_scopes_by_cas()
     return dict(zip(self.list_all_headers_txt, self.list_all_values_txt))
 
-  def extend_list_all_scopes_by_code(self):
-    """Set attributes related to 'code' and extend 'list all scopes'
-    accordingly.
+  def _extend_list_all_scopes_by_code(self):
+    """Extend attributes related to 'code' and extend 'list all scopes' if
+    'Other Attributes' tab opened.
     """
-    code_elem = base.Label(self.info_widget_elem, self._locators.CODE_CSS)
-    self.code_lbl_txt = code_elem.element.find_element(
-        *self._locators.CODE_HEADER_CSS).text
-    self.code_txt = code_elem.element.find_element(
-        *self._locators.CODE_VALUE_CSS).text
-    self._extend_list_all_scopes(self.code_lbl_txt, self.code_txt)
+    if (self.tab_container.tab_controller.active_tab.text ==
+            element.AssessmentTabContainer.OTHER_ATTRS_TAB):
+      code_elem = base.Label(self.info_widget_elem, self._locators.CODE_CSS)
+      self.code_lbl_txt = code_elem.element.find_element(
+          *self._locators.CODE_HEADER_CSS).text
+      self.code_txt = code_elem.element.find_element(
+          *self._locators.CODE_VALUE_CSS).text
+      self._extend_list_all_scopes(self.code_lbl_txt, self.code_txt)
 
-  def extend_list_all_scopes_by_cas(self):
-    """Set attributes related to 'local and global custom attributes' and
-    extend 'list all scopes' accordingly.
+  def _extend_list_all_scopes_by_cas(self):
+    """Extend attributes related to 'local and global custom attributes' and
+    extend 'list all scopes' if 'Other Attributes' tab opened.
     """
     # todo: implement separate entities' model for lcas and gcas
-    self.cas_lbl_txt = self._elements.CAS.upper()
-    self.cas_scope_txt = self.get_headers_and_values_dict_from_cas_scopes()
-    self.cas_scope_txt.update(self.lcas_scope_txt)
-    self._extend_list_all_scopes(self.cas_lbl_txt, self.cas_scope_txt)
+    if (self.tab_container.tab_controller.active_tab.text ==
+            element.AssessmentTabContainer.OTHER_ATTRS_TAB):
+      self.cas_lbl_txt = self._elements.CAS.upper()
+      self.cas_scope_txt = self.get_headers_and_values_dict_from_cas_scopes()
+      self.cas_scope_txt.update(self.lcas_scope_txt)
+      self._extend_list_all_scopes(self.cas_lbl_txt, self.cas_scope_txt)
+
+  def _extend_list_all_scopes_by_review_state(self):
+    """Method overriding without action due to Assessments don't have
+    'review states'.
+    """
+    pass
 
   def click_complete(self):
     """Click on 'Complete' button."""
@@ -493,7 +518,24 @@ class AssessmentTemplates(InfoWidget):
 
   def __init__(self, driver):
     super(AssessmentTemplates, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
+
+  def _extend_list_all_scopes_by_code(self):
+    """Method overriding without action due to Assessment Templates don't have
+    'code'.
+    """
+    pass
+
+  def _extend_list_all_scopes_by_cas(self):
+    """Method overriding without action due to Assessment Templates don't have
+    'global custom attributes'.
+    """
+    pass
+
+  def _extend_list_all_scopes_by_review_state(self):
+    """Method overriding without action due to Assessment Templates don't have
+    'review states'.
+    """
+    pass
 
 
 class Issues(InfoWidget):
@@ -503,9 +545,6 @@ class Issues(InfoWidget):
 
   def __init__(self, driver):
     super(Issues, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Regulations(InfoWidget):
@@ -514,9 +553,6 @@ class Regulations(InfoWidget):
 
   def __init__(self, driver):
     super(Regulations, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Policies(InfoWidget):
@@ -525,9 +561,6 @@ class Policies(InfoWidget):
 
   def __init__(self, driver):
     super(Policies, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Standards(InfoWidget):
@@ -536,9 +569,6 @@ class Standards(InfoWidget):
 
   def __init__(self, driver):
     super(Standards, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Contracts(InfoWidget):
@@ -547,9 +577,6 @@ class Contracts(InfoWidget):
 
   def __init__(self, driver):
     super(Contracts, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Clauses(InfoWidget):
@@ -558,9 +585,6 @@ class Clauses(InfoWidget):
 
   def __init__(self, driver):
     super(Clauses, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Sections(InfoWidget):
@@ -569,9 +593,6 @@ class Sections(InfoWidget):
 
   def __init__(self, driver):
     super(Sections, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Controls(InfoWidget):
@@ -583,9 +604,6 @@ class Controls(InfoWidget):
 
   def __init__(self, driver):
     super(Controls, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
     self.admin_text, self.admin_entered_text = (
         self.get_header_and_value_txt_from_people_scopes(
             self._elements.ADMIN.upper()))
@@ -603,9 +621,6 @@ class Objectives(InfoWidget):
 
   def __init__(self, driver):
     super(Objectives, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class OrgGroups(InfoWidget):
@@ -615,9 +630,6 @@ class OrgGroups(InfoWidget):
 
   def __init__(self, driver):
     super(OrgGroups, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Vendors(InfoWidget):
@@ -626,9 +638,6 @@ class Vendors(InfoWidget):
 
   def __init__(self, driver):
     super(Vendors, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class AccessGroup(InfoWidget):
@@ -637,9 +646,6 @@ class AccessGroup(InfoWidget):
 
   def __init__(self, driver):
     super(AccessGroup, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Systems(InfoWidget):
@@ -649,9 +655,6 @@ class Systems(InfoWidget):
 
   def __init__(self, driver):
     super(Systems, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Processes(InfoWidget):
@@ -661,9 +664,6 @@ class Processes(InfoWidget):
 
   def __init__(self, driver):
     super(Processes, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class DataAssets(InfoWidget):
@@ -673,9 +673,6 @@ class DataAssets(InfoWidget):
 
   def __init__(self, driver):
     super(DataAssets, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Products(InfoWidget):
@@ -685,9 +682,6 @@ class Products(InfoWidget):
 
   def __init__(self, driver):
     super(Products, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Projects(InfoWidget):
@@ -697,9 +691,6 @@ class Projects(InfoWidget):
 
   def __init__(self, driver):
     super(Projects, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Facilities(InfoWidget):
@@ -708,9 +699,6 @@ class Facilities(InfoWidget):
 
   def __init__(self, driver):
     super(Facilities, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Markets(InfoWidget):
@@ -719,9 +707,6 @@ class Markets(InfoWidget):
 
   def __init__(self, driver):
     super(Markets, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Risks(InfoWidget):
@@ -730,9 +715,6 @@ class Risks(InfoWidget):
 
   def __init__(self, driver):
     super(Risks, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class Threats(InfoWidget):
@@ -741,9 +723,6 @@ class Threats(InfoWidget):
 
   def __init__(self, driver):
     super(Threats, self).__init__(driver)
-    self.extend_list_all_scopes_by_code()
-    self.extend_list_all_scopes_by_cas()
-    self.extend_list_all_scopes_by_review_state()
 
 
 class People(base.Widget):

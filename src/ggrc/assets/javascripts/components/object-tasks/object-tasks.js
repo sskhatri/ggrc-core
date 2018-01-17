@@ -3,11 +3,15 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import {
+  buildParam,
+  batchRequests,
+} from '../../plugins/utils/query-api-utils';
+import template from './object-tasks.mustache';
+
 (function (can, GGRC) {
   'use strict';
 
-  var template = can.view(GGRC.mustache_path +
-    '/components/object-tasks/object-tasks.mustache');
   var REQUIRED_TYPE = 'CycleTaskGroupObjectTask';
   var REQUIRED_FIELDS = Object.freeze([
     'title',
@@ -23,7 +27,7 @@
     loadTasks: function () {
       var id = this.attr('instanceId');
       var type = this.attr('instanceType');
-      var params = GGRC.Utils.QueryAPI.buildParam(
+      var params = buildParam(
         REQUIRED_TYPE,
         {},
         {
@@ -33,7 +37,7 @@
         },
         REQUIRED_FIELDS);
 
-      return GGRC.Utils.QueryAPI.batchRequests(params)
+      return batchRequests(params)
         .then(function (response) {
           var tasks = [];
 

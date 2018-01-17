@@ -25,6 +25,12 @@ from integration.ggrc.generator import ObjectGenerator
 from integration.ggrc_workflows.generator import WorkflowsGenerator
 
 
+DENY_FINISHED_DATES_STATUSES_STR = ("<'Assigned' / 'In Progress' / "
+                                    "'Declined' / 'Deprecated'>")
+DENY_VERIFIED_DATES_STATUSES_STR = ("<'Assigned' / 'In Progress' / "
+                                    "'Declined' / 'Deprecated' / 'Finished'>")
+
+
 class BaseTestCycleTaskImportUpdate(TestCase):
 
   @staticmethod
@@ -49,6 +55,16 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
   """
 
   CSV_DIR = join(abspath(dirname(__file__)), "test_csvs/")
+
+  IMPORTABLE_COLUMN_NAMES = [
+      "Summary",
+      "Task Details",
+      "Start Date", "Due Date",
+      "Actual Finish Date",
+      "Actual Verified Date",
+      "State",
+      "Task Assignees",
+  ]
 
   def setUp(self):
     super(TestCycleTaskImportUpdate, self).setUp()
@@ -84,24 +100,6 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
       self._check_csv_response(response, self.expected_warnings)
       self._cmp_tasks(self.expected_cycle_task_correct)
 
-  def test_cycle_task_create_error(self):
-    """Test cycle task update via import with data which is the reason of
-    errors about new cycle task creation."""
-    self._generate_cycle_tasks()
-    with freeze_time(self.ftime_active):
-      response = self.import_file("cycle_task_create_error.csv")
-      self._check_csv_response(response, self.expected_create_error)
-      self._cmp_tasks(self.expected_cycle_task_correct)
-
-  def test_cycle_task_date_error(self):
-    """Test cycle task update via import with data which is the reason of
-    errors about incorrect dates in csv file."""
-    self._generate_cycle_tasks()
-    with freeze_time(self.ftime_active):
-      response = self.import_file("cycle_task_date_error.csv")
-      self._check_csv_response(response, self.expected_date_error)
-      self._cmp_tasks(self.expected_cycle_task_date_error)
-
   def test_cycle_task_permission_error(self):
     """Test cycle task update via import with non-admin user which is the
     reason of error. Only admin can update cycle tasks via import."""
@@ -126,7 +124,11 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
         continue
       exp_task = expected_ctasks[ctask.slug]
       for attr, val in exp_task.iteritems():
-        self.assertEqual(str(getattr(ctask, attr, None)), val)
+        self.assertEqual(
+            str(getattr(ctask, attr, None)),
+            val,
+            "attr {} value for {} not expected".format(attr, ctask.slug)
+        )
 
   # pylint: disable=too-many-arguments
   def _activate_workflow(self, ftime, workflow, task_group, task_group_tasks,
@@ -428,8 +430,8 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                 self.task_group_tasks_historical[0]["description"] + " one",
             "start_date": "2014-04-01",
             "end_date": "2014-04-06",
-            "finished_date": "2014-05-01 00:00:00",
-            "verified_date": "2014-06-06 00:00:00",
+            "finished_date": "None",
+            "verified_date": "None",
             "status": "Assigned"
         },
         "CYCLETASK-7": {
@@ -438,7 +440,7 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                 self.task_group_tasks_historical[1]["description"] + " two",
             "start_date": "2014-04-07",
             "end_date": "2014-04-12",
-            "finished_date": "2014-05-07 00:00:00",
+            "finished_date": "None",
             "verified_date": "None",
             "status": "Declined"
         },
@@ -448,8 +450,8 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                 self.task_group_tasks_historical[2]["description"] + " three",
             "start_date": "2014-04-13",
             "end_date": "2014-04-18",
-            "finished_date": "2014-05-13 00:00:00",
-            "verified_date": "2014-06-18 00:00:00",
+            "finished_date": "None",
+            "verified_date": "None",
             "status": "InProgress"
         },
         "CYCLETASK-9": {
@@ -476,19 +478,9 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
 
     # Below is description of warning for non-importable columns. It is needed
     # for test_cycle_task_warnings.
-    importable_column_names = []
-    for field_name in CycleTaskGroupObjectTask.IMPORTABLE_FIELDS:
-      if field_name == 'slug':
-        continue
-      # pylint: disable=protected-access
-      name = CycleTaskGroupObjectTask._aliases.get(field_name, field_name)
-      if isinstance(name, dict):
-        name = name['display_name']
-      if name.startswith("__acl__:"):
-        name = name[8:]
-      importable_column_names.append(name)
     self.expected_warnings = self.generate_expected_warning(
-        *importable_column_names)
+        *self.IMPORTABLE_COLUMN_NAMES
+    )
 
     # This is an error message which should be shown during
     # test_cycle_task_create_error test
@@ -511,17 +503,12 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                 errors.INVALID_STATUS_DATE_CORRELATION.format(
                     line=4,
                     date="Actual Finish Date",
-                    status="not Finished",
-                ),
-                errors.INVALID_STATUS_DATE_CORRELATION.format(
-                    line=5,
-                    date="Actual Verified Date",
-                    status="not Verified",
+                    deny_states=DENY_FINISHED_DATES_STATUSES_STR,
                 ),
                 errors.INVALID_STATUS_DATE_CORRELATION.format(
                     line=6,
                     date="Actual Verified Date",
-                    status="not Verified",
+                    deny_states=DENY_VERIFIED_DATES_STATUSES_STR,
                 ),
                 errors.INVALID_START_END_DATES.format(
                     line=7,
@@ -532,15 +519,6 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                     line=8,
                     start_date="Start Date",
                     end_date="End Date",
-                ),
-                errors.MISSING_VALUE_ERROR.format(
-                    line=9,
-                    column_name="Actual Finish Date",
-                ),
-                errors.INVALID_START_END_DATES.format(
-                    line=10,
-                    start_date="Actual Finish Date",
-                    end_date="Actual Verified Date",
                 ),
             },
         }
@@ -586,7 +564,7 @@ class TestCycleTaskImportUpdateAssignee(BaseTestCycleTaskImportUpdate):
       "cycletaskgroupobjecttask",
   )
   def test_update_assignee(self, alias):
-    """Test update assignee"""
+    """Test update assignee for {0}"""
     assignees = list(self.get_persons_for_role_name(
         self.query.first(), "Task Assignees"))
     self.assertFalse(assignees)
@@ -609,7 +587,7 @@ class TestCycleTaskImportUpdateAssignee(BaseTestCycleTaskImportUpdate):
       "cycletaskgroupobjecttask",
   )
   def test_update_assignee_with_non_importable(self, alias):
-    """Test update assignee with non importable field"""
+    """Test update assignee for {0} with non importable field"""
     assignees = list(
         self.get_persons_for_role_name(self.query.first(), "Task Assignees"))
     self.assertFalse(assignees)
@@ -617,7 +595,7 @@ class TestCycleTaskImportUpdateAssignee(BaseTestCycleTaskImportUpdate):
         ("object_type", alias),
         ("Code*", self.instance.slug),
         ("Task Assignees*", self.user.email),
-        ("State", "some data"),
+        ("Task Type", "some data"),
     ]))
     assignees = list(
         self.get_persons_for_role_name(self.query.first(), "Task Assignees"))

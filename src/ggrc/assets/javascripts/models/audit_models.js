@@ -1,9 +1,21 @@
-/*!
+/*
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../components/audit/attach-folder-button'
+import RefreshQueue from './refresh_queue';
+import Permission from '../permission';
+
 (function (can, CMS) {
+  const AUDIT_ISSUE_TRACKER = {
+    hotlist_id: '766459',
+    component_id: '188208',
+    issue_severity: 'S2',
+    issue_priority: 'P2',
+    issue_type: 'PROCESS',
+  };
+
   function update_program_authorizations(programs, person) {
     return can.when(
       programs[0],
@@ -62,7 +74,8 @@
       'unique_title',
       'ca_update',
       'timeboxed',
-      'mapping-limit'
+      'mapping-limit',
+      'issueTrackerIntegratable',
     ],
     is_custom_attributable: true,
     is_clonable: true,
@@ -79,7 +92,7 @@
       custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs'
     },
     defaults: {
-      status: 'Planned'
+      status: 'Planned',
     },
     statuses: ['Planned', 'In Progress', 'Manager Review',
       'Ready for External Review', 'Completed', 'Deprecated'],
@@ -148,6 +161,17 @@
       }
       this.validatePresenceOf('program');
       this.validateNonBlank('title');
+
+      this.validate(
+        'issue_tracker_component_id',
+        function () {
+          if (this.attr('issue_tracker.enabled') &&
+            !this.attr('issue_tracker.component_id')) {
+            return 'Enter Component ID';
+          }
+        }
+      );
+
       this.validateContact(['_transient.contact', 'contact'], {
         message: 'Audit captain cannot be empty'
       });
@@ -273,7 +297,27 @@
           return auditorsList;
         });
       });
-    }
+    },
+    form_preload() {
+      let dfd;
+      let contact = this.attr('contact');
+
+      if (contact && !contact.email) {
+        contact = contact.reify();
+
+        dfd = contact.email ?
+          can.Deferred().resolve(contact) :
+          contact.refresh();
+
+        dfd.then((refreshed)=> {
+          this.attr('contact.email', refreshed.email);
+        });
+      }
+
+      this.initIssueTrackerObject(AUDIT_ISSUE_TRACKER);
+
+      return dfd;
+    },
   });
 
   can.Model.Cacheable('CMS.Models.Meeting', {
@@ -339,7 +383,9 @@
     mixins: [
       'mapping-limit',
       'inScopeObjects',
-      'refetchHash'
+      'inScopeObjectsPreload',
+      'refetchHash',
+      'issueTrackerIntegratable',
     ],
     findOne: 'GET /api/assessment_templates/{id}',
     findAll: 'GET /api/assessment_templates',
@@ -348,20 +394,19 @@
     create: 'POST /api/assessment_templates',
     is_custom_attributable: false,
     attributes: {
-      audit: 'CMS.Models.Audit.stub',
       context: 'CMS.Models.Context.stub'
     },
     defaults: {
-      test_plan_procedure: false,
+      test_plan_procedure: true,
       template_object_type: 'Control',
       default_people: {
-        assessors: 'Principal Assignees',
+        assignees: 'Principal Assignees',
         verifiers: 'Auditors'
       },
       status: 'Draft',
-      // the custom lists of assessor / verifier IDs if "other" is selected for
+      // the custom lists of assignee / verifier IDs if "other" is selected for
       // the corresponding default_people setting
-      assessorsList: {},
+      assigneesList: {},
       verifiersList: {},
       people_values: [
         {value: 'Admin', title: 'Object Admins'},
@@ -382,18 +427,18 @@
 
     /**
      * Initialize the newly created object instance. Validate that its title is
-     * non-blank and its default assessors / verifiers lists are set if
+     * non-blank and its default assignees / verifiers lists are set if
      * applicable.
      */
     init: function () {
       this._super.apply(this, arguments);
       this.validateNonBlank('title');
-      this.validateNonBlank('default_people.assessors');
+      this.validateNonBlank('default_people.assignees');
 
       this.validateListNonBlank(
-        'assessorsList',
+        'assigneesList',
         function () {
-          return this.attr('default_people.assessors') === 'other';
+          return this.attr('default_people.assignees') === 'other';
         }
       );
       this.validateListNonBlank(
@@ -402,7 +447,17 @@
           return this.attr('default_people.verifiers') === 'other';
         }
       );
-    }
+      this.validate(
+        'issue_tracker_component_id',
+        function () {
+          if (this.attr('can_use_issue_tracker') &&
+            this.attr('issue_tracker.enabled') &&
+            !this.attr('issue_tracker.component_id')) {
+            return 'Enter Component ID';
+          }
+        }
+      );
+    },
   }, {
     /**
      * An event handler when the add/edit form is about to be displayed.
@@ -417,13 +472,26 @@
      *
      */
     form_preload: function (isNewObject) {
+      const pageInstance = GGRC.page_instance();
       if (!this.custom_attribute_definitions) {
         this.attr('custom_attribute_definitions', new can.List());
       }
       this._unpackPeopleData();
 
-      this._updateDropdownEnabled('assessors');
+      this._updateDropdownEnabled('assignees');
       this._updateDropdownEnabled('verifiers');
+
+      if (pageInstance && pageInstance.type === 'Audit' && !this.audit) {
+        this.audit = {
+          id: pageInstance.id,
+          title: pageInstance.title,
+          type: pageInstance.type,
+          context: pageInstance.context,
+          issue_tracker: pageInstance.issue_tracker,
+        };
+      }
+
+      this.initCanUseIssueTracker(this.audit.issue_tracker);
     },
 
     /**
@@ -445,29 +513,29 @@
     },
 
     /**
-     * Event handler when an assessor is picked in an autocomplete form field.
-     * It adds the picked assessor's ID to the assessors list.
+     * Event handler when an assignee is picked in an autocomplete form field.
+     * It adds the picked assignee's ID to the assignees list.
      *
      * @param {can.Map} context - the Mustache context of the `$el`
      * @param {jQuery.Element} $el - the source of the event `ev`
      * @param {jQuery.Event} ev - the event that was triggered
      */
-    assessorAdded: function (context, $el, ev) {
+    assigneeAdded: function (context, $el, ev) {
       var user = ev.selectedItem;
-      this.assessorsList.attr(user.id, true);
+      this.assigneesList.attr(user.id, true);
     },
 
     /**
-     * Event handler when a user clicks to remove an assessor from the
-     * assessors list. It removes the corresponding assessor ID from the list.
+     * Event handler when a user clicks to remove an assignee from the
+     * assignees list. It removes the corresponding assignee ID from the list.
      *
      * @param {can.Map} context - the Mustache context of the `$el`
      * @param {jQuery.Element} $el - the source of the event `ev`
      * @param {jQuery.Event} ev - the event that was triggered
      */
-    assessorRemoved: function (context, $el, ev) {
+    assigneeRemoved: function (context, $el, ev) {
       var user = ev.person;
-      this.assessorsList.removeAttr(String(user.id));
+      this.assigneesList.removeAttr(String(user.id));
     },
 
     /**
@@ -497,20 +565,20 @@
     },
 
     /**
-     * Event handler when a user changes the default assessors option.
+     * Event handler when a user changes the default assignees option.
      *
      * @param {can.Map} context - the Mustache context of the `$el`
      * @param {jQuery.Element} $el - the source of the event `ev`
      * @param {jQuery.Event} ev - the event that was triggered
      */
-    defaultAssesorsChanged: function (context, $el, ev) {
+    defaultAssigneesChanged: function (context, $el, ev) {
       var changedList = [
         'Auditors', 'Principal Assignees', 'Secondary Assignees',
         'Primary Contacts', 'Secondary Contacts'
       ];
       this.attr('showCaptainAlert',
-        changedList.indexOf(this.default_people.assessors) >= 0);
-      this._updateDropdownEnabled('assessors');
+        changedList.indexOf(this.default_people.assignees) >= 0);
+      this._updateDropdownEnabled('assignees');
     },
 
     /**
@@ -528,7 +596,7 @@
      * Update the autocomplete field's disabled flag based on the current value
      * of the corresponding dropdown.
      *
-     * @param {String} name - the value to inspect, must be either "assessors"
+     * @param {String} name - the value to inspect, must be either "assignees"
      *   or "verifiers"
      */
     _updateDropdownEnabled: function (name) {
@@ -557,11 +625,11 @@
         });
       }
 
-      data.assessors = this.attr('default_people.assessors');
+      data.assignees = this.attr('default_people.assignees');
       data.verifiers = this.attr('default_people.verifiers');
 
-      if (data.assessors === 'other') {
-        data.assessors = makeList(this.attr('assessorsList'));
+      if (data.assignees === 'other') {
+        data.assignees = makeList(this.attr('assigneesList'));
       }
 
       if (data.verifiers === 'other') {
@@ -580,7 +648,7 @@
       var instance = this;  // the AssessmentTemplate model instance
       var peopleData = instance.default_people;
 
-      ['assessors', 'verifiers'].forEach(function (name) {
+      ['assignees', 'verifiers'].forEach(function (name) {
         var idsMap;
         var peopleIds = peopleData[name];
 

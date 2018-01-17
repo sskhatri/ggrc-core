@@ -4,9 +4,17 @@
 */
 
 import Spinner from 'spin.js';
-import '../components/gca-controls/gca-controls';
+import {
+  warning,
+  BUTTON_VIEW_SAVE_CANCEL_DELETE,
+} from '../plugins/utils/modals';
+import {
+  hasWarningType,
+  shouldApplyPreconditions,
+} from '../plugins/utils/controllers';
+import Permission from '../permission';
 
-(function (can, $, GGRC, Permission) {
+(function (can, $, GGRC) {
   'use strict';
 
   var originalModalShow = $.fn.modal.Constructor.prototype.show;
@@ -50,10 +58,10 @@ import '../components/gca-controls/gca-controls';
           GGRC.mustache_path + '/base_objects/confirm_delete.mustache'
       };
 
-      if (GGRC.Utils.Controllers.hasWarningType(instance)) {
+      if (hasWarningType(instance)) {
         modalSettings = _.extend(
           modalSettings,
-          GGRC.Utils.Modals.warning.settings,
+          warning.settings,
           {
             objectShortInfo: [instance.type, instance.title].join(' '),
             confirmOperationName: 'delete',
@@ -62,7 +70,7 @@ import '../components/gca-controls/gca-controls';
         );
       }
 
-      GGRC.Utils.Modals.warning(
+      warning(
         modalSettings,
         _.constant({}),
         _.constant({}), {
@@ -153,9 +161,7 @@ import '../components/gca-controls/gca-controls';
         instance = model.findInCacheById($trigger.attr('data-object-id'));
       }
 
-      objectParams = objectParams ?
-        JSON.parse(objectParams.replace(/\\n/g, '\n')) :
-        {};
+      objectParams = objectParams ? JSON.parse(objectParams) : {};
 
       modalTitle =
         (instance ? 'Edit ' : 'New ') +
@@ -181,13 +187,13 @@ import '../components/gca-controls/gca-controls';
         .ggrc_controllers_modals({
           new_object_form: !$trigger.attr('data-object-id'),
           object_params: objectParams,
-          button_view: GGRC.Controllers.Modals.BUTTON_VIEW_SAVE_CANCEL_DELETE,
+          button_view: BUTTON_VIEW_SAVE_CANCEL_DELETE,
           model: model,
           oldData: {
             status: instance && instance.status // status before changing
           },
           applyPreconditions:
-            GGRC.Utils.Controllers.shouldApplyPreconditions(instance),
+            shouldApplyPreconditions(instance),
           current_user: GGRC.current_user,
           instance: instance,
           modal_title: objectParams.modal_title || modalTitle,
@@ -593,7 +599,7 @@ import '../components/gca-controls/gca-controls';
           loadHref = !$this.data().noHrefLoad;
 
           modalId = 'ajax-modal-' +
-            href.replace(/[\/\?=&#%]/g, '-').replace(/^-/, '');
+            href.replace(/[\/\?=&#%!]/g, '-').replace(/^-/, '');
           target = $this.attr('data-target') || $('#' + modalId);
 
           $target = $(target);
@@ -623,8 +629,10 @@ import '../components/gca-controls/gca-controls';
 
           option = $target.data('modal-help') ?
             'toggle' : $.extend({}, $target.data(), $this.data());
-
-          launchFn.apply($target, [$target, $this, option]);
+          import(/* webpackChunkName: "modalsCtrls" */'../controllers/modals')
+            .then(() => {
+              launchFn.apply($target, [$target, $this, option]);
+            });
         });
     });
   };
@@ -642,4 +650,4 @@ import '../components/gca-controls/gca-controls';
       }
     );
   });
-})(window.can, window.can.$, window.GGRC, window.Permission);
+})(window.can, window.can.$, window.GGRC);

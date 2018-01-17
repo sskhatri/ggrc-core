@@ -37,7 +37,7 @@ class Section(Roleable, HasObjectState, Hierarchical, db.Model,
 
   na = deferred(db.Column(db.Boolean, default=False, nullable=False),
                 'Section')
-  notes = deferred(db.Column(db.Text), 'Section')
+  notes = deferred(db.Column(db.Text, nullable=False, default=u""), 'Section')
 
   _api_attrs = reflection.ApiAttributes('na', 'notes')
   _sanitize_html = ['notes']

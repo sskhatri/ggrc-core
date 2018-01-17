@@ -39,7 +39,6 @@ import './comment';
 import './issue';
 import './notification_config';
 import './category';
-import './refresh_queue';
 import './revision';
 import './save_queue';
 import './custom_attributes';

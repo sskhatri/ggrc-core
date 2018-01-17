@@ -3,6 +3,10 @@
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
+import {
+  initCounts,
+} from '../../../../ggrc/assets/javascripts/plugins/utils/current-page-utils';
+
 /**
  * A component that wraps a button for ending a Workflow cycle, and
  * automatically handles a click on it.
@@ -54,8 +58,7 @@
 
             can.trigger(el, 'refreshTree');
 
-            return GGRC.Utils.CurrentPage
-              .initCounts([
+            return initCounts([
                 WorkflowExtension.countsMap.history
               ],
                 pageInstance.type,

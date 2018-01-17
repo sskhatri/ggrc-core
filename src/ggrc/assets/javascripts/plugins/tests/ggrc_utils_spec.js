@@ -1,7 +1,9 @@
-/*!
+/*
   Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
+
+import Permission from '../../permission';
 
 'use strict';
 
@@ -141,72 +143,111 @@ describe('GGRC utils isMappableType() method', function () {
   });
 });
 
-describe('GGRC utils peopleWithRoleName() method', function () {
-  var instance;
-  var method;  // the method under test
-  var origRoleList;
+describe('GGRC utils getAssigneeType() method', function () {
+  let method;
+  let instance;
 
   beforeAll(function () {
-    method = GGRC.Utils.peopleWithRoleName;
+    method = GGRC.Utils.getAssigneeType;
 
-    origRoleList = GGRC.access_control_roles;
+    instance = {
+      type: 'Assessment',
+      id: 2147483647,
+      access_control_list: [],
+    };
+
     GGRC.access_control_roles = [
-      {id: 5, name: 'Role A', object_type: 'Market'},
-      {id: 9, name: 'Role A', object_type: 'Audit'},
-      {id: 1, name: 'Role B', object_type: 'Market'},
-      {id: 7, name: 'Role A', object_type: 'Policy'},
-      {id: 3, name: 'Role B', object_type: 'Audit'},
-      {id: 2, name: 'Role B', object_type: 'Policy'}
+      {
+        id: 1, object_type: 'Assessment', name: 'Admin',
+      },
+      {
+        id: 2, object_type: 'Control', name: 'Verifiers',
+      },
+      {
+        id: 3, object_type: 'Assessment', name: 'Verifiers',
+      },
+      {
+        id: 4, object_type: 'Assessment', name: 'Creators',
+      },
+      {
+        id: 5, object_type: 'Assessment', name: 'Assignees',
+      },
     ];
   });
 
   afterAll(function () {
-    GGRC.access_control_roles = origRoleList;
+    delete GGRC.access_control_roles;
   });
 
-  beforeEach(function () {
-    var acl = [
-      {person: {id: 3}, ac_role_id: 1},
-      {person: {id: 5}, ac_role_id: 3},
-      {person: {id: 6}, ac_role_id: 9},
-      {person: {id: 2}, ac_role_id: 3},
-      {person: {id: 7}, ac_role_id: 9},
-      {person: {id: 5}, ac_role_id: 2},
-      {person: {id: 9}, ac_role_id: 9}
+  it('should return null. Empty ACL', function () {
+    var userType = method(instance);
+    expect(userType).toBeNull();
+  });
+
+  it('should return null. User is not in role', function () {
+    let userType;
+    instance.access_control_list = [
+      {ac_role_id: 3, person: {id: 4}},
+      {ac_role_id: 1, person: {id: 5}},
     ];
 
-    instance = new can.Map({
-      id: 42,
-      type: 'Audit',
-      'class': {model_singular: 'Audit'},
-      access_control_list: acl
-    });
+    userType = method(instance);
+    expect(userType).toBeNull();
   });
 
-  it('returns users that have a role granted on a particular instance',
-    function () {
-      var result = method(instance, 'Role B');
-      expect(result.map(function (person) {
-        return person.id;
-      }).sort()).toEqual([2, 5]);
-    }
-  );
+  it('should return Verifiers type', function () {
+    let userType;
+    instance.access_control_list = [
+      {ac_role_id: 3, person: {id: 1}},
+      {ac_role_id: 1, person: {id: 3}},
+    ];
 
-  it('returns empty array if role name not found', function () {
-    var result = method(instance, 'Role X');
-    expect(result).toEqual([]);
+    userType = method(instance);
+    expect(userType).toEqual('Verifiers');
   });
 
-  it('returns empty array if no users are granted a particular role',
-    function () {
-      var result;
+  it('should return Verifiers and Creators types', function () {
+    let userType;
+    instance.access_control_list = [
+      {ac_role_id: 3, person: {id: 1}},
+      {ac_role_id: 1, person: {id: 3}},
+      {ac_role_id: 4, person: {id: 1}},
+      {ac_role_id: 3, person: {id: 5}},
+    ];
 
-      instance.attr('type', 'Policy');
-      instance.attr('class.model_singular', 'Policy');
+    userType = method(instance);
+    expect(userType.indexOf('Verifiers') > -1).toBeTruthy();
+    expect(userType.indexOf('Creators') > -1).toBeTruthy();
+  });
 
-      result = method(instance, 'Role A');
+  it('should return Verifiers and Creators and Assigness types', function () {
+    let userType;
+    instance.access_control_list = [
+      {ac_role_id: 3, person: {id: 1}},
+      {ac_role_id: 1, person: {id: 3}},
+      {ac_role_id: 4, person: {id: 1}},
+      {ac_role_id: 3, person: {id: 5}},
+      {ac_role_id: 5, person: {id: 1}},
+    ];
 
-      expect(result).toEqual([]);
-    }
-  );
+    userType = method(instance);
+    expect(userType.indexOf('Verifiers') > -1).toBeTruthy();
+    expect(userType.indexOf('Creators') > -1).toBeTruthy();
+    expect(userType.indexOf('Assignees') > -1).toBeTruthy();
+  });
+
+  it('should return string with types separated by commas', function () {
+    let userType;
+    let expectedString = 'Verifiers,Creators,Assignees';
+    instance.access_control_list = [
+      {ac_role_id: 3, person: {id: 1}},
+      {ac_role_id: 1, person: {id: 3}},
+      {ac_role_id: 4, person: {id: 1}},
+      {ac_role_id: 3, person: {id: 5}},
+      {ac_role_id: 5, person: {id: 1}},
+    ];
+
+    userType = method(instance);
+    expect(userType).toEqual(expectedString);
+  });
 });

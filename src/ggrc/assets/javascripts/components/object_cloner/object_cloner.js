@@ -2,6 +2,9 @@
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
+
+import {confirm} from '../../plugins/utils/modals';
+
 (function (can, $) {
   'use strict';
 
@@ -23,7 +26,7 @@
         var instance = this.instance;
         this.attr('includeObjects', {});
 
-        GGRC.Controllers.Modals.confirm({
+        confirm({
           instance: scope,
           modal_title: scope.attr('modalTitle'),
           modal_description: scope.attr('modalDescription'),

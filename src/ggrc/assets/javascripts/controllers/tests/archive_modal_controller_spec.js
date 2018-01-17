@@ -3,13 +3,10 @@
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-describe('GGRC.Controllers.ToggleArchive', function () {
-  'use strict';
-  var Ctrl;
+import Ctrl from '../archive_modal_controller';
 
-  beforeAll(function () {
-    Ctrl = GGRC.Controllers.ToggleArchive;
-  });
+describe('ToggleArchive modal', function () {
+  'use strict';
 
   describe('click() event', function () {
     var displayName = 'DISPLAY NAME';

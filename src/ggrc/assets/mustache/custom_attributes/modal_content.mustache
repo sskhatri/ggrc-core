@@ -10,7 +10,7 @@
     <div class="hideable-holder bare">
       <div class="row-fluid">
         {{#getValues}}
-          <div class="{{^cad.mandatory}}hidable{{/cad.mandatory}} span6
+          <div class="custom-attribute {{^cad.mandatory}}hidable{{/cad.mandatory}} span6
             {{#ca_validation_error instance.computed_errors id}}field-failure{{/ca_validation_error}}">
 
           {{#switch cad.attribute_type}}
@@ -45,7 +45,7 @@
               <option value="" {{#if_equals "" cav.attribute_value}}selected="true"{{/if_equals}}>---</option>
               {{#iterate_string cad.multi_choice_options ','}}
                 <option {{#if_equals iterator cav.attribute_value}}selected="true"{{/if_equals}}>{{iterator}}</option>
-              {{/iterate}}
+              {{/iterate_string}}
             </select>
           {{/case}}
           {{#case 'Checkbox'}}

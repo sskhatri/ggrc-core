@@ -126,7 +126,7 @@ inline-edit-control {
       margin: 0;
       padding: 0;
       width: 70px;
-      z-index: 1;
+      z-index: -1;
 
       .inline__controls-item {
         display: inline-block;
@@ -138,6 +138,16 @@ inline-edit-control {
         opacity: 0.6;
         &:hover {
           opacity: 1;
+        }
+      }
+    }
+
+    &--invalid {
+      input {
+        border-color: $red;
+
+        &:focus {
+          border-color: $red;
         }
       }
     }

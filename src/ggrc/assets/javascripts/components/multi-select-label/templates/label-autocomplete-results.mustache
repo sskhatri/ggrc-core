@@ -1,0 +1,36 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#if showResults}}
+  <div class="autocomplete-result-wrapper">
+  <div class="autocomplete-result">
+    {{#if items.length}}
+      <div class="header">
+        Suggestions
+      </div>
+    {{/if}}
+
+    <ul>
+      {{#each _items}}
+        <li class="autocomplete-item" ($click)="selectItem({{_index}})">
+          {{name}}
+        </li>
+      {{/each}}
+    </ul>
+
+    {{#if showNewValue}}
+      <div class="add-new-item" ($click)="addNewItem()">
+        {{currentValue}} (New Label)
+      </div>
+    {{else}}
+      {{^if items.length}}
+        <div class="header">
+          <i>No Matches</i>
+        </div>
+      {{/if}}
+    {{/if}}
+  </div>
+  <div>
+{{/if}}

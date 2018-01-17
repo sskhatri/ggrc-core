@@ -3,12 +3,14 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import './comment-input';
+import './comment-add-button';
+import template from './comment-add-form.mustache';
+
 (function (GGRC, can, CMS) {
   'use strict';
 
   var tag = 'comment-add-form';
-  var template = can.view(GGRC.mustache_path +
-    '/components/comment/comment-add-form.mustache');
 
   /**
    * A component that takes care of adding comments
@@ -22,6 +24,7 @@
       sendNotifications: true,
       isSaving: false,
       isLoading: false,
+      notificationsInfo: 'Send Notifications',
       getCommentData: function () {
         var source = this.attr('instance');
 

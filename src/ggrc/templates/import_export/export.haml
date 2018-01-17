@@ -15,7 +15,8 @@
   GGRC.pageType = "EXPORT";
 
 -block page_scripts
-  %script{ type:'text/javascript', src:'{{config.get("DASHBOARD_JS_PATH")}}' }
+  %script{ type:'text/javascript', src:'{{config.get("COMMON_JS_PATH")}}' }
+  %script{ type:'text/javascript', src:'{{config.get("EXPORT_JS_PATH")}}' }
 
 -block title
   Export

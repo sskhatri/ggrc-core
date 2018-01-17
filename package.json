@@ -66,7 +66,7 @@
   },
   "scripts": {
     "postinstall": "./node_modules/.bin/napa",
-    "test": "run_unittests",
+    "test": "./node_modules/.bin/karma start",
     "watch": "./node_modules/.bin/webpack --watch --profile --progress",
     "build:dev": "./node_modules/.bin/webpack --profile --progress",
     "build": "export NODE_ENV=production && ./node_modules/.bin/webpack --profile --progress",

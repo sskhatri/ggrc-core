@@ -4,6 +4,7 @@
 */
 
 import '../../inline/base-inline-control-title';
+import {confirm} from '../../../plugins/utils/modals';
 
 (function (can) {
   'use strict';
@@ -15,6 +16,7 @@ import '../../inline/base-inline-control-title';
       setInProgress: null,
       editMode: false,
       isEditIconDenied: false,
+      isConfirmationNeeded: true,
       onStateChangeDfd: can.Deferred().resolve(),
       openEditMode: function (el) {
         this.attr('onStateChangeDfd').then(function () {
@@ -30,7 +32,7 @@ import '../../inline/base-inline-control-title';
       showConfirm: function () {
         var self = this;
         var confirmation = can.Deferred();
-        GGRC.Controllers.Modals.confirm({
+        confirm({
           modal_title: 'Confirm moving Assessment to "In Progress"',
           modal_description: 'You are about to move Assessment from "' +
             this.instance.status +
@@ -44,7 +46,7 @@ import '../../inline/base-inline-control-title';
         });
       },
       confirmEdit: function () {
-        if (!this.isInEditableState()) {
+        if (this.attr('isConfirmationNeeded') && !this.isInEditableState()) {
           return this.showConfirm();
         }
 

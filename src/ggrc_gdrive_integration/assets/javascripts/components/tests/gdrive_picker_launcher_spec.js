@@ -7,13 +7,52 @@ describe('GGRC.Components.gDrivePickerLauncher', function () {
   'use strict';
 
   var viewModel;
+  const optsAuditFolder = {
+    dest: {
+      id: 'some-folder-id',
+    },
+  };
+  const optsWithoutAuditFolder = {};
+  const ROOT_FOLDER_ID = 'root-folder-id';
+  const FILE_NEW_UPLOAD = 'FILE_NEW_UPLOAD';
+  const FILE_PICKED = 'FILE_PICKED';
 
-  beforeAll(function () {
+  function genUploadedFile(
+    fileType = FILE_PICKED, parentFolderId = ROOT_FOLDER_ID, role = 'owner') {
+    return new can.Map({
+      newUpload: fileType === FILE_NEW_UPLOAD,
+      title: 'my-file.png',
+      name: 'my-file.png',
+      parents: [
+        {
+          isRoot: parentFolderId === ROOT_FOLDER_ID,
+          id: parentFolderId,
+        },
+      ],
+      userPermission: {
+        id: 'me',
+        role,
+      },
+    });
+  }
+
+  beforeEach(function () {
     viewModel = GGRC.Components.getViewModel('gDrivePickerLauncher');
+    viewModel.attr('instance', {
+      slug: 'ASSESSMENT-1',
+    });
     viewModel.attr('assessmentTypeObjects', [
       {revision: {content: {slug: 'CONTROL-345'}}},
       {revision: {content: {slug: 'CONTROL-678'}}},
     ]);
+
+    spyOn(viewModel, 'runRenameBatch')
+      .and.returnValue(new $.Deferred().resolve([]));
+    spyOn(viewModel, 'refreshFilesModel')
+      .and.returnValue(new $.Deferred().resolve([]));
+
+    // expect(viewModel.runRenameBatch).toHaveBeenCalled();
+    // expect(viewModel.refreshFilesModel).toHaveBeenCalled();
   });
 
   it('should test sanitizeSlug() method', function () {
@@ -58,5 +97,119 @@ describe('GGRC.Components.gDrivePickerLauncher', function () {
     Object.keys(fileNameTransformationMap).forEach(function (key) {
       expect(viewModel.addFileSuffix(key)).toBe(fileNameTransformationMap[key]);
     });
+  });
+
+  /**
+   * With Audit Folder
+   */
+
+  it('should edit newly uploaded file with Audit folder', function () {
+    spyOn(viewModel, 'createEditRequest');
+    spyOn(viewModel, 'createCopyRequest');
+
+    viewModel.addFilesSuffixes(optsAuditFolder, [
+      genUploadedFile(FILE_NEW_UPLOAD), // newly uploaded file to the root of My Drive
+    ]);
+
+    expect(viewModel.createEditRequest).toHaveBeenCalled();
+    expect(viewModel.createCopyRequest).not.toHaveBeenCalled();
+  });
+
+  it('should copy file picked from random folder', function () {
+    spyOn(viewModel, 'createEditRequest');
+    spyOn(viewModel, 'createCopyRequest');
+
+    viewModel.addFilesSuffixes(optsAuditFolder, [
+      genUploadedFile(FILE_PICKED, 'some-random-folder'),
+    ]);
+
+    expect(viewModel.createEditRequest).not.toHaveBeenCalled();
+    expect(viewModel.createCopyRequest).toHaveBeenCalled();
+  });
+
+  it('should reuse file picked from the same folder', function () {
+    var file = genUploadedFile(FILE_PICKED, optsAuditFolder.dest.id);
+
+    spyOn(viewModel, 'createEditRequest');
+    spyOn(viewModel, 'createCopyRequest');
+
+    // making the file name to already have a slug
+    file.attr('title', viewModel.addFileSuffix(file.attr('title')));
+    viewModel.addFilesSuffixes(optsAuditFolder, [
+      file,
+    ]);
+
+    expect(viewModel.createEditRequest).not.toHaveBeenCalled();
+    expect(viewModel.createCopyRequest).not.toHaveBeenCalled();
+  });
+
+  it('should copy shared file', function () {
+    spyOn(viewModel, 'createEditRequest');
+    spyOn(viewModel, 'createCopyRequest');
+
+    viewModel.addFilesSuffixes(optsAuditFolder, [
+      genUploadedFile(FILE_PICKED, 'some-random-folder', 'reader'),
+    ]);
+
+    expect(viewModel.createEditRequest).not.toHaveBeenCalled();
+    expect(viewModel.createCopyRequest).toHaveBeenCalled();
+  });
+
+  // -----------------
+
+  /**
+   * No Audit Folder
+   */
+
+  it('should edit newly uploaded file without Audit folder', function () {
+    spyOn(viewModel, 'createEditRequest');
+    spyOn(viewModel, 'createCopyRequest');
+
+    viewModel.addFilesSuffixes(optsWithoutAuditFolder, [
+      genUploadedFile(FILE_NEW_UPLOAD), // newly uploaded file to the root of My Drive
+    ]);
+
+    expect(viewModel.createEditRequest).toHaveBeenCalled();
+    expect(viewModel.createCopyRequest).not.toHaveBeenCalled();
+  });
+
+  it('should copy file picked from random folder', function () {
+    spyOn(viewModel, 'createEditRequest');
+    spyOn(viewModel, 'createCopyRequest');
+
+    viewModel.addFilesSuffixes(optsWithoutAuditFolder, [
+      genUploadedFile(FILE_PICKED, 'some-random-folder'),
+    ]);
+
+    expect(viewModel.createEditRequest).not.toHaveBeenCalled();
+    expect(viewModel.createCopyRequest).toHaveBeenCalled();
+  });
+
+  it('should reuse file picked from the same root folder', function () {
+    var file = genUploadedFile(FILE_PICKED);
+
+    spyOn(viewModel, 'createEditRequest');
+    spyOn(viewModel, 'createCopyRequest');
+
+    // making the file name to already have a slug
+    file.attr('title', viewModel.addFileSuffix(file.attr('title')));
+    viewModel.addFilesSuffixes(optsWithoutAuditFolder, [
+      file,
+    ]);
+
+    expect(viewModel.createEditRequest).not.toHaveBeenCalled();
+    expect(viewModel.createCopyRequest).not.toHaveBeenCalled();
+  });
+
+  it('should copy shared file', function () {
+    spyOn(viewModel, 'createEditRequest');
+    spyOn(viewModel, 'createCopyRequest');
+
+    viewModel.addFilesSuffixes(optsWithoutAuditFolder, [
+      genUploadedFile(FILE_PICKED, 'some-random-folder', 'reader'),
+    ]);
+
+    expect(viewModel.createEditRequest).not.toHaveBeenCalled();
+    expect(viewModel.createCopyRequest).toHaveBeenCalled();
   });
 });

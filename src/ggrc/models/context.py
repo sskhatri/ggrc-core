@@ -17,7 +17,8 @@ class Context(Base, db.Model):
   #  for fulltext search leads to undesirable results
   @declared_attr
   def description(cls):  # pylint: disable=no-self-argument
-    return deferred(db.Column(db.Text), cls.__name__)
+    return deferred(db.Column(db.Text, nullable=False, default=u""),
+                    cls.__name__)
 
   name = deferred(db.Column(db.String(128), nullable=True), 'Context')
   related_object_id = deferred(

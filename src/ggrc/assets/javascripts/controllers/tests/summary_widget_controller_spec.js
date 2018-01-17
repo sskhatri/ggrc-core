@@ -4,6 +4,7 @@
 */
 
 import Ctrl from '../summary_widget_controller';
+import * as CurrentPageUtils from '../../plugins/utils/current-page-utils';
 
 describe('SummaryWidgetController', function () {
   'use strict';
@@ -115,7 +116,7 @@ describe('SummaryWidgetController', function () {
         prepareLegend: jasmine.createSpy()
       };
       method = Ctrl.prototype.reloadChart.bind(ctrlInst);
-      spyOn(GGRC.Utils.CurrentPage, 'getCounts')
+      spyOn(CurrentPageUtils, 'getCounts')
         .and.returnValue(new can.Map({Assessment: 3}));
     });
 

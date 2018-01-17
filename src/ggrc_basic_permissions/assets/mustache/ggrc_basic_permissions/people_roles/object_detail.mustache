@@ -8,12 +8,10 @@
   <div class="selector-person-info">
     <h4>User</h4>
     <h3>
-      {{{render '/static/mustache/people/popover.mustache' person=this}}}
-      <span class="email">
-        <a href="mailto:{{ email }}">
-          {{ email }}
-        </a>
+      <span class="name">
+        {{ name }}
       </span>
+      {{{render '/static/mustache/people/popover.mustache' person=this}}}
     </h3>
   </div>
 

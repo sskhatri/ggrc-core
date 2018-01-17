@@ -3,6 +3,8 @@
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import '../tree/tree-item-custom-attribute';
+import '../tree/tree-field';
 import template from './templates/mapper-results-item-attrs.mustache';
 
 (function (can, GGRC) {

@@ -19,9 +19,7 @@
       <input data-id="title_txtbx" tabindex="1" id="section-title" class="input-block-level" placeholder="Enter Title" name="title" type="text" value="{{title}}" autofocus>
     </div>
     <div data-id="pol_reg_std" class="span6 hidable">
-      {{#if_helpers '\
-        ^if' instance.id '\
-        and ^if' object_params.directive}}
+      {{#if_helpers '^if' instance.id 'and ^if' object_params.directive}}
         {{#using directive=instance.directive}}
         <label>
           Policy / Regulation / Standard / Contract
@@ -57,10 +55,6 @@
       <access-control-list-roles-helper
         {instance}="."
         {is-new-instance}="new_object_form">
-          <custom-roles-modal
-            {instance}="instance"
-            {is-new-instance}="isNewInstance">
-          </custom-roles-modal>
       </access-control-list-roles-helper>
     </div>
   </div>

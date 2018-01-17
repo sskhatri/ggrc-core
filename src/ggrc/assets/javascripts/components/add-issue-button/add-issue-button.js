@@ -5,8 +5,9 @@
 
 import {REFRESH_RELATED} from '../../events/eventTypes';
 import template from './add-issue-button.mustache';
-
-let CurrentPageUtils = GGRC.Utils.CurrentPage;
+import {
+  initCounts,
+} from '../../plugins/utils/current-page-utils';
 
 export default GGRC.Components('addIssueButton', {
   tag: 'add-issue-button',
@@ -39,7 +40,7 @@ export default GGRC.Components('addIssueButton', {
 
       if (instance instanceof CMS.Models.Issue) {
         let pageInstance = GGRC.page_instance();
-        CurrentPageUtils.initCounts(
+        initCounts(
           [model],
           pageInstance.type,
           pageInstance.id

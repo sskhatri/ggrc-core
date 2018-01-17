@@ -529,3 +529,10 @@
     display: inline-block;
   }
 }
+
+.custom-attribute-definitions {
+  td {
+    word-wrap: break-word;
+    max-width: 0;
+  }
+}

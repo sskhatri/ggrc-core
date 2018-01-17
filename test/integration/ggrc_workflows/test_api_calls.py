@@ -1,15 +1,20 @@
 # Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
+"""Tests for api calls on ggrc_workflows module."""
+
 import datetime
 import unittest
+import collections
 from mock import MagicMock
 
 import ddt
 import freezegun
+import sqlalchemy as sa
 
 from ggrc import db
 from ggrc.models import all_models
+from ggrc.fulltext import mysql
 
 from integration.ggrc import TestCase
 from integration.ggrc.api_helper import Api
@@ -20,8 +25,9 @@ from integration.ggrc_workflows import WorkflowTestCase
 from integration.ggrc_workflows.models import factories as wf_factories
 
 
-@ddt.ddt
+@ddt.ddt  # pylint: disable=too-many-public-methods
 class TestWorkflowsApiPost(TestCase):
+  """Test class for ggrc workflow api post action."""
 
   def setUp(self):
     super(TestWorkflowsApiPost, self).setUp()
@@ -32,6 +38,7 @@ class TestWorkflowsApiPost(TestCase):
     pass
 
   def test_send_invalid_data(self):
+    """Test send invalid data on Workflow post."""
     data = self.get_workflow_dict()
     del data["workflow"]["title"]
     del data["workflow"]["context"]
@@ -40,6 +47,7 @@ class TestWorkflowsApiPost(TestCase):
     # TODO: check why response.json["message"] is empty
 
   def test_create_one_time_workflows(self):
+    """Test simple create one time Workflow over api."""
     data = self.get_workflow_dict()
     response = self.api.post(all_models.Workflow, data)
     self.assertEqual(response.status_code, 201)
@@ -82,6 +90,7 @@ class TestWorkflowsApiPost(TestCase):
     self.assertEqual(response.status_code, 400)
 
   def test_create_task_group(self):
+    """Test create task group over api."""
     wf_data = self.get_workflow_dict()
     wf_data["workflow"]["title"] = "Create_task_group"
     wf_response = self.api.post(all_models.Workflow, wf_data)
@@ -94,13 +103,14 @@ class TestWorkflowsApiPost(TestCase):
   # TODO: Api should be able to handle invalid data
   @unittest.skip("Not implemented.")
   def test_create_task_group_invalid_workflow_data(self):  # noqa pylint: disable=invalid-name
+    """Test create task group with invalid data."""
     data = self.get_task_group_dict({"id": -1, "context": {"id": -1}})
     response = self.api.post(all_models.TaskGroup, data)
     self.assert400(response)
 
   @staticmethod
   def get_workflow_dict():
-    data = {
+    return {
         "workflow": {
             "custom_attribute_definitions": [],
             "custom_attributes": {},
@@ -116,11 +126,10 @@ class TestWorkflowsApiPost(TestCase):
             "context": None,
         }
     }
-    return data
 
   @staticmethod
   def get_task_group_dict(workflow):
-    data = {
+    return {
         "task_group": {
             "custom_attribute_definitions": [],
             "custom_attributes": {},
@@ -145,14 +154,12 @@ class TestWorkflowsApiPost(TestCase):
             "description": "",
         }
     }
-    return data
 
   @ddt.data({},
             {"repeat_every": 5,
              "unit": "month"})
   def test_repeat_multiplier_field(self, data):
-    """Check repeat_multiplier is set to 0 after wf creation.
-    """
+    """Check repeat_multiplier is set to 0 after wf creation."""
     with factories.single_commit():
       workflow = wf_factories.WorkflowFactory(**data)
     workflow_id = workflow.id
@@ -542,26 +549,50 @@ class TestStatusApiPatch(TestCase):
   IN_PROGRESS = all_models.CycleTaskGroupObjectTask.IN_PROGRESS
   FINISHED = all_models.CycleTaskGroupObjectTask.FINISHED
   DEPRECATED = all_models.CycleTaskGroupObjectTask.DEPRECATED
+  VERIFIED = all_models.CycleTaskGroupObjectTask.VERIFIED
+  DECLINED = all_models.CycleTaskGroupObjectTask.DECLINED
+
+  @staticmethod
+  def _create_cycle_structure():
+    """Create cycle structure.
+
+    It will create workflow, cycle, group and 3 tasks in that group.
+
+    Retruns tuple:
+        workflow, cycle, group and list of tasks.
+    """
+    workflow = wf_factories.WorkflowFactory(
+        status=all_models.Workflow.ACTIVE)
+    cycle = wf_factories.CycleFactory(workflow=workflow)
+    group = wf_factories.CycleTaskGroupFactory(
+        cycle=cycle,
+        context=cycle.workflow.context
+    )
+    tasks = []
+    for ind in xrange(3):
+      tasks.append(wf_factories.CycleTaskFactory(
+          title='task{}'.format(ind),
+          cycle=cycle,
+          cycle_task_group=group,
+          context=cycle.workflow.context,
+          start_date=datetime.datetime.now(),
+          end_date=datetime.datetime.now() + datetime.timedelta(7)
+      ))
+    return workflow, cycle, group, tasks
 
   def setUp(self):
     super(TestStatusApiPatch, self).setUp()
     self.api = Api()
+
     with factories.single_commit():
       self.assignee = factories.PersonFactory(email="assignee@example.com")
-      self.workflow = wf_factories.WorkflowFactory()
-      self.cycle = wf_factories.CycleFactory(workflow=self.workflow)
-      self.group = wf_factories.CycleTaskGroupFactory(
-          cycle=self.cycle,
-          context=self.cycle.workflow.context
-      )
-      self.tasks = []
-      for ind in xrange(3):
-        self.tasks.append(wf_factories.CycleTaskFactory(
-            title='task{}'.format(ind),
-            cycle=self.cycle,
-            cycle_task_group=self.group,
-            context=self.cycle.workflow.context
-        ))
+      (
+          self.workflow,
+          self.cycle,
+          self.group,
+          self.tasks,
+      ) = self._create_cycle_structure()
+    self.group_id = self.group.id
     # Emulate that current user is assignee for all test CycleTasks.
     all_models.CycleTaskGroupObjectTask.current_user_wfo_or_assignee = (
         MagicMock(return_value=True))
@@ -659,3 +690,275 @@ class TestStatusApiPatch(TestCase):
     self.assertItemsEqual(
         [self.ASSIGNED, self.ASSIGNED, self.ASSIGNED],
         [obj.status for obj in all_models.CycleTaskGroupObjectTask.query])
+
+  def refresh_set_up_instances(self):
+    """Update set up instances after request operation."""
+    self.tasks = all_models.CycleTaskGroupObjectTask.query.order_by(
+        all_models.CycleTaskGroupObjectTask.id
+    ).all()
+    self.group = all_models.CycleTaskGroup.query.get(self.group_id)
+    self.cycle = self.group.cycle
+    self.workflow = self.group.cycle.workflow
+
+  def assert_notifications_for_object(self, obj, *expected_notification_list):
+    """Assert object notifications are equal to expected notification list."""
+    active_notifications = all_models.Notification.query.filter(
+        all_models.Notification.object_id == obj.id,
+        all_models.Notification.object_type == obj.type,
+        sa.or_(all_models.Notification.sent_at.is_(None),
+               all_models.Notification.repeating == sa.true())
+    ).all()
+    self.assertEqual(
+        sorted(expected_notification_list),
+        sorted([n.notification_type.name for n in active_notifications])
+    )
+
+  def assert_latest_revision_status(self, *obj_status_chain):
+    """Assert last status for object and status chain."""
+    objs_status_dict = {(o.type, o.id): s for o, s in obj_status_chain}
+    revisions = []
+    for o_type, o_id in objs_status_dict:
+      revisions.append(all_models.Revision.query.filter(
+          all_models.Revision.resource_id == o_id,
+          all_models.Revision.resource_type == o_type
+      ))
+    revisions_query = revisions[0].union(
+        *revisions[1:]
+    ).order_by(
+        all_models.Revision.id
+    )
+    revisions_dict = collections.defaultdict(list)
+    for revision in revisions_query:
+      key = (revision.resource_type, revision.resource_id)
+      revisions_dict[key].append(revision.content)
+    for key, status in objs_status_dict.iteritems():
+      self.assertIn(key, revisions_dict)
+      content = revisions_dict[key][-1]
+      self.assertIn("status", content)
+      self.assertEqual(status, content["status"])
+
+  def assert_searchable_by_status(self, *obj_status_chain):
+    """Assert expected status in full text search."""
+    objs_status_dict = {(o.type, o.id): s for o, s in obj_status_chain}
+    full_text_properties = []
+    for o_type, o_id in objs_status_dict:
+      full_text_properties.append(
+          mysql.MysqlRecordProperty.query.filter(
+              mysql.MysqlRecordProperty.key == o_id,
+              mysql.MysqlRecordProperty.type == o_type,
+              mysql.MysqlRecordProperty.property == "task status",
+          )
+      )
+    query = full_text_properties[0].union(*full_text_properties[1:])
+    full_text_dict = {(f.type, f.key): f.content for f in query}
+    for key, status in objs_status_dict.iteritems():
+      self.assertIn(key, full_text_dict)
+      self.assertEqual(status, full_text_dict[key])
+
+  def assert_status_over_bulk_update(self, statuses, assert_statuses):
+    """Assertion cycle_task statuses over bulk update."""
+    self._update_ct_via_patch(statuses)
+    self.refresh_set_up_instances()
+    self.assertItemsEqual(assert_statuses, [obj.status for obj in self.tasks])
+    obj_status_chain = [
+        (t, assert_statuses[idx]) for idx, t in enumerate(self.tasks)
+    ]
+    self.assert_latest_revision_status(*obj_status_chain)
+    self.assert_searchable_by_status(*obj_status_chain)
+
+  def test_propagation_status_full(self):
+    """Task status propagation for required verification workflow."""
+    # all tasks in assigned state
+    self.assertEqual([self.ASSIGNED] * 3, [t.status for t in self.tasks])
+    # all tasks in progress state
+    self.assert_status_over_bulk_update([self.IN_PROGRESS] * 3,
+                                        [self.IN_PROGRESS] * 3)
+    self.assertEqual(self.IN_PROGRESS, self.group.status)
+    self.assertEqual(self.IN_PROGRESS, self.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+    # update 1 task to finished
+    self.assert_status_over_bulk_update(
+        [self.FINISHED],
+        [self.FINISHED, self.IN_PROGRESS, self.IN_PROGRESS])
+    self.assertEqual(self.IN_PROGRESS, self.group.status)
+    self.assertEqual(self.IN_PROGRESS, self.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+    # all tasks moved to finished
+    self.assert_status_over_bulk_update([self.FINISHED] * 3,
+                                        [self.FINISHED] * 3)
+    self.assertEqual(self.FINISHED, self.group.status)
+    self.assertEqual(self.FINISHED, self.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+    for task in self.tasks:
+      self.assert_notifications_for_object(task,
+                                           u'cycle_task_due_in',
+                                           u'cycle_task_due_today',
+                                           u'cycle_task_overdue')
+    self.cycle = self.tasks[0].cycle
+    self.assert_notifications_for_object(self.cycle)
+    # all tasks moved to verified
+    self.assert_status_over_bulk_update([self.VERIFIED] * 3,
+                                        [self.VERIFIED] * 3)
+    self.assertEqual(self.VERIFIED, self.group.status)
+    self.assertEqual(self.VERIFIED, self.cycle.status)
+    self.assertEqual(all_models.Workflow.INACTIVE, self.workflow.status)
+    for task in self.tasks:
+      self.assert_notifications_for_object(task)
+    self.cycle = self.tasks[0].cycle
+    self.assert_notifications_for_object(self.cycle,
+                                         "all_cycle_tasks_completed")
+
+  def test_propagation_status_short(self):
+    """Task status propagation for not required verification workflow."""
+    all_models.Cycle.query.filter(
+        all_models.Cycle.id == self.cycle.id
+    ).update({
+        all_models.Cycle.is_verification_needed: False
+    })
+    db.session.commit()
+    self.tasks = all_models.CycleTaskGroupObjectTask.query.order_by(
+        all_models.CycleTaskGroupObjectTask.id
+    ).all()
+    # all tasks in assigned state
+    self.assertEqual([self.ASSIGNED] * 3, [t.status for t in self.tasks])
+    # all tasks in progress state
+    self.assert_status_over_bulk_update([self.IN_PROGRESS] * 3,
+                                        [self.IN_PROGRESS] * 3)
+    self.assertEqual(self.IN_PROGRESS, self.group.status)
+    self.assertEqual(self.IN_PROGRESS, self.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+    # update 1 task to finished
+    self.assert_status_over_bulk_update(
+        [self.FINISHED],
+        [self.FINISHED, self.IN_PROGRESS, self.IN_PROGRESS])
+    self.assertEqual(self.IN_PROGRESS, self.group.status)
+    self.assertEqual(self.IN_PROGRESS, self.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+    self.assert_notifications_for_object(self.tasks[0])
+    for task in self.tasks[1:]:
+      self.assert_notifications_for_object(task,
+                                           u'cycle_task_due_in',
+                                           u'cycle_task_due_today',
+                                           u'cycle_task_overdue')
+    self.cycle = self.tasks[0].cycle
+    self.assert_notifications_for_object(self.cycle)
+    # all tasks moved to finished
+    self.assert_status_over_bulk_update([self.FINISHED] * 3,
+                                        [self.FINISHED] * 3)
+    self.assertEqual(self.FINISHED, self.group.status)
+    self.assertEqual(self.FINISHED, self.cycle.status)
+    self.assertEqual(all_models.Workflow.INACTIVE, self.workflow.status)
+    for task in self.tasks:
+      self.assert_notifications_for_object(task)
+    self.cycle = self.tasks[0].cycle
+    self.assert_notifications_for_object(self.cycle,
+                                         "all_cycle_tasks_completed")
+
+  def test_deprecated_final(self):
+    """Test task status propagation for deprecated workflow."""
+    self.assertEqual([self.ASSIGNED] * 3, [t.status for t in self.tasks])
+    # all tasks in progress state
+    self.assert_status_over_bulk_update([self.DEPRECATED] * 3,
+                                        [self.DEPRECATED] * 3)
+    self.assertEqual(self.DEPRECATED, self.group.status)
+    self.assertEqual(self.DEPRECATED, self.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+    self.assert_status_over_bulk_update(
+        [self.ASSIGNED, self.VERIFIED, self.FINISHED],
+        [self.DEPRECATED] * 3)
+    self.assertEqual(self.DEPRECATED, self.group.status)
+    self.assertEqual(self.DEPRECATED, self.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+
+  @ddt.data({"to_state": FINISHED, "success": True},
+            {"to_state": IN_PROGRESS, "success": False},
+            {"to_state": ASSIGNED, "success": False},
+            {"to_state": VERIFIED, "success": False})
+  @ddt.unpack
+  def test_move_from_declined(self, to_state, success):
+    """Test status propagation over update declined tasks to {to_state}."""
+    self.assertEqual([self.ASSIGNED] * len(self.tasks),
+                     [t.status for t in self.tasks])
+    start_state = self.DECLINED
+    start_statuses = [start_state] * len(self.tasks)
+    with factories.single_commit():
+      for idx, status in enumerate(start_statuses):
+        self.tasks[idx].status = status
+      self.group.status = self.IN_PROGRESS
+      self.cycle.status = self.IN_PROGRESS
+      self.workflow.status = all_models.Workflow.ACTIVE
+    self.assertEqual(start_statuses, [t.status for t in self.tasks])
+    # all tasks in progress state
+    to_states = [to_state] * len(self.tasks)
+    self._update_ct_via_patch(to_states)
+    self.refresh_set_up_instances()
+    if success:
+      task_state = group_state = cycle_state = to_state
+    else:
+      task_state = start_state
+      group_state = cycle_state = self.IN_PROGRESS
+    self.assertEqual([task_state] * len(self.tasks),
+                     [t.status for t in self.tasks])
+    self.assertEqual(group_state, self.group.status)
+    self.assertEqual(cycle_state, self.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+
+  def test_update_tasks_from_2_cycles(self):
+    """Test bulk update few cycles at the same time."""
+    with factories.single_commit():
+      _, _, group, _ = self._create_cycle_structure()
+    group_id = group.id
+    all_models.Cycle.query.update({
+        all_models.Cycle.is_verification_needed: False
+    })
+    db.session.commit()
+    self.tasks = all_models.CycleTaskGroupObjectTask.query.order_by(
+        all_models.CycleTaskGroupObjectTask.id
+    ).all()
+    # all tasks in assigned state
+    self.assertEqual([self.ASSIGNED] * 6, [t.status for t in self.tasks])
+    # all tasks in progress state
+    self.assert_status_over_bulk_update([self.IN_PROGRESS] * 6,
+                                        [self.IN_PROGRESS] * 6)
+    group = all_models.CycleTaskGroup.query.get(group_id)
+    self.assertEqual(self.IN_PROGRESS, self.group.status)
+    self.assertEqual(self.IN_PROGRESS, group.status)
+    self.assertEqual(self.IN_PROGRESS, self.cycle.status)
+    self.assertEqual(self.IN_PROGRESS, group.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, group.cycle.workflow.status)
+    # update 1 task to finished
+    self.assert_status_over_bulk_update(
+        [self.FINISHED],
+        [self.FINISHED] + [self.IN_PROGRESS] * 5)
+    group = all_models.CycleTaskGroup.query.get(group_id)
+    self.assertEqual(self.IN_PROGRESS, self.group.status)
+    self.assertEqual(self.IN_PROGRESS, group.status)
+    self.assertEqual(self.IN_PROGRESS, self.cycle.status)
+    self.assertEqual(self.IN_PROGRESS, group.cycle.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, self.workflow.status)
+    self.assertEqual(all_models.Workflow.ACTIVE, group.cycle.workflow.status)
+    self.assert_notifications_for_object(self.tasks[0])
+    for task in self.tasks[1:]:
+      self.assert_notifications_for_object(task,
+                                           u'cycle_task_due_in',
+                                           u'cycle_task_due_today',
+                                           u'cycle_task_overdue')
+    self.assert_notifications_for_object(self.group.cycle)
+    self.assert_notifications_for_object(group.cycle)
+    # all tasks moved to finished
+    self.assert_status_over_bulk_update([self.FINISHED] * 6,
+                                        [self.FINISHED] * 6)
+    group = all_models.CycleTaskGroup.query.get(group_id)
+    self.assertEqual(self.FINISHED, self.group.status)
+    self.assertEqual(self.FINISHED, group.status)
+    self.assertEqual(self.FINISHED, self.cycle.status)
+    self.assertEqual(self.FINISHED, group.cycle.status)
+    self.assertEqual(all_models.Workflow.INACTIVE, self.workflow.status)
+    self.assertEqual(all_models.Workflow.INACTIVE, group.cycle.workflow.status)
+    for task in self.tasks:
+      self.assert_notifications_for_object(task)
+    self.assert_notifications_for_object(self.cycle,
+                                         "all_cycle_tasks_completed")
+    self.assert_notifications_for_object(group.cycle,
+                                         "all_cycle_tasks_completed")

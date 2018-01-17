@@ -5,11 +5,12 @@
 # pylint: disable=too-few-public-methods
 
 import copy
-
 from datetime import datetime
+
 from dateutil import parser, tz
 
-from lib.utils import help_utils, string_utils
+from lib.utils import help_utils
+from lib.utils.string_utils import StringMethods
 
 
 class Representation(object):
@@ -31,7 +32,7 @@ class Representation(object):
     """
     all_entities_cls = (help_utils.convert_to_list(entity) if entity
                         else list(Entity.all_entities_classes()))
-    all_entities_attrs_names = string_utils.convert_list_elements_to_list(
+    all_entities_attrs_names = StringMethods.convert_list_elements_to_list(
         [entity_cls().__dict__.keys() for entity_cls in all_entities_cls])
     return list(set(all_entities_attrs_names))
 
@@ -63,9 +64,9 @@ class Representation(object):
         els.STATUS: "status", els.LAST_UPDATED: "updated_at",
         els.AUDIT_CAPTAIN: "contact", els.CAS: "custom_attributes",
         els.MAPPED_OBJECTS: "objects_under_assessment",
-        els.ASSIGNEES: "assessor", els.ASSIGNEES_: "assessor",
-        els.CREATORS: "creator", els.CREATORS_: "creator",
-        els.VERIFIERS: "verifier", els.VERIFIERS_: "verifier",
+        els.ASSIGNEES: "assignee",
+        els.CREATORS: "creator",
+        els.VERIFIERS: "verifier",
         element.AssessmentInfoWidget.COMMENTS_HEADER: "comments",
         els.PRIMARY_CONTACTS: "contact", els.CREATED_AT: "created_at",
         els.MODIFIED_BY: "modified_by", els.LAST_UPDATED_BY: "modified_by",
@@ -77,7 +78,7 @@ class Representation(object):
     }
     result_remap_items.update(ui_remap_items)
     result_remap_items.update(csv_remap_items)
-    return string_utils.dict_keys_to_upper_case(result_remap_items)
+    return StringMethods.dict_keys_to_upper_case(result_remap_items)
 
   @staticmethod
   def convert_objs_repr_to_dict(obj_or_objs):
@@ -137,8 +138,8 @@ class Representation(object):
         if isinstance(attr_value, dict):
           converted_attr_value = attr_value
           if attr_name in [
-              "contact", "manager", "owners", "assessor", "creator",
-              "verifier", "created_by", "modified_by", "Assessor", "Creator",
+              "contact", "manager", "owners", "assignee", "creator",
+              "verifier", "created_by", "modified_by", "Assignee", "Creator",
               "Verifier"
           ]:
             converted_attr_value = unicode(attr_value.get("email"))
@@ -163,7 +164,7 @@ class Representation(object):
       for obj_attr_name in obj.__dict__.keys():
         # 'Ex', u'Ex', 1, None to 'Ex', u'Ex', 1, None
         obj_attr_value = (obj.assignees.get(obj_attr_name.title()) if (
-            obj_attr_name in ["assessor", "creator", "verifier"] and
+            obj_attr_name in ["assignee", "creator", "verifier"] and
             "assignees" in obj.__dict__.keys())
             else getattr(obj, obj_attr_name))
         # REST like u'08-20-2017T04:30:45' to date=2017-08-20,
@@ -173,14 +174,14 @@ class Representation(object):
           obj_attr_value = (parser.parse(obj_attr_value).
                             replace(tzinfo=tz.tzutc()))
         if isinstance(obj_attr_value, dict) and obj_attr_value:
-          # to "assignees" = {"Assessor": [], "Creator": [], "Verifier": []}
+          # to "assignees" = {"Assignee": [], "Creator": [], "Verifier": []}
           if obj_attr_name == "assignees":
             obj_attr_value = {
                 k: ([convert_attr_value_from_dict_to_unicode(k, _v)
                      for _v in v] if isinstance(v, list) else
                     convert_attr_value_from_dict_to_unicode(k, v))
                 for k, v in obj_attr_value.iteritems()
-                if k in ["Assessor", "Creator", "Verifier"]}
+                if k in ["Assignee", "Creator", "Verifier"]}
           # "modified_by" {"type": "Person", "id": x} to u'user@example.com'
           if obj_attr_name == "modified_by":
             from lib.service import rest_service
@@ -230,7 +231,7 @@ class Representation(object):
             (isinstance(cas_def, list) and
              all(isinstance(_def, dict)
                  for _def in cas_def)) else {None: None})
-        cas = string_utils.merge_dicts_by_same_key(cas_def_dict, cas_val_dict)
+        cas = StringMethods.merge_dicts_by_same_key(cas_def_dict, cas_val_dict)
         setattr(obj, "custom_attributes", cas)
       return obj
     return help_utils.execute_method_according_to_plurality(
@@ -314,14 +315,14 @@ class Representation(object):
                   help_utils.convert_to_list(origin_obj_attr_value) +
                   help_utils.convert_to_list(obj_attr_value))
             setattr(obj, obj_attr_name, obj_attr_value)
-            if obj_attr_name in ["creator", "assessor", "verifier"]:
+            if obj_attr_name in ["creator", "assignee", "verifier"]:
               from lib.entities.entities_factory import ObjectPersonsFactory
               if not isinstance(obj.assignees, dict):
                 obj.assignees = dict()
               obj.assignees[obj_attr_name.capitalize()] = (
                   [ObjectPersonsFactory().default().__dict__])
           if is_replace_values_of_dicts and isinstance(_obj_attr_value, dict):
-            obj_attr_value = string_utils.exchange_dicts_items(
+            obj_attr_value = StringMethods.exchange_dicts_items(
                 transform_dict=_obj_attr_value,
                 dicts=help_utils.convert_to_list(
                     getattr(obj, obj_attr_name)),
@@ -397,7 +398,7 @@ class Representation(object):
   def compare_cas(self_cas, other_cas):
     """Compare entities' 'custom_attributes' attributes."""
     if isinstance(self_cas and other_cas, dict):
-      return string_utils.is_subset_of_dicts(self_cas, other_cas)
+      return StringMethods.is_subset_of_dicts(self_cas, other_cas)
     else:
       Representation.attrs_values_types_error(
           self_attr=self_cas, other_attr=other_cas,
@@ -421,7 +422,7 @@ class Representation(object):
     """
     # pylint: disable=no-else-return
     if help_utils.is_multiple_objs(
-        string_utils.convert_list_elements_to_list(
+        StringMethods.convert_list_elements_to_list(
             [self_comments, other_comments]), (dict, type(None))):
       if self_comments and other_comments:
         is_comments_equal_list = []
@@ -556,10 +557,10 @@ class Representation(object):
     '**attrs' - items of attributes' names and values.
     """
     list_objs = help_utils.convert_to_list(objs)
-    matched_objs = [obj for obj in list_objs
-                    if isinstance(obj, Entity.all_entities_classes()) and
-                    string_utils.is_subset_of_dicts(dict(**attrs),
-                                                    obj.__dict__)]
+    matched_objs = [
+        obj for obj in list_objs
+        if isinstance(obj, Entity.all_entities_classes()) and
+        StringMethods.is_subset_of_dicts(dict(**attrs), obj.__dict__)]
     return (help_utils.get_single_obj(matched_objs)
             if not help_utils.is_multiple_objs(matched_objs) else matched_objs)
 
@@ -844,7 +845,7 @@ class AssessmentTemplateEntity(Entity):
     super(AssessmentTemplateEntity, self).__init__()
     # REST and UI
     self.status = status  # state ("Active", "Draft", "Deprecated")
-    self.default_people = default_people  # {"verifiers": *, "assessors": *}
+    self.default_people = default_people  # {"verifiers": *, "assignees": *}
     self.template_object_type = template_object_type  # objs under asmt
     self.updated_at = updated_at  # last updated datetime
     self.modified_by = modified_by
@@ -865,23 +866,24 @@ class AssessmentEntity(Entity):
   __hash__ = None
 
   attrs_names_to_compare = [
-      "assessor", "creator", "verifier", "custom_attributes",
+      "assignee", "creator", "verifier", "custom_attributes",
       "objects_under_assessment", "slug", "status", "title", "type",
       "verified", "comments", "created_at", "updated_at", "modified_by"]
   attrs_names_to_repr = Representation.core_attrs_names_to_repr + [
-      "status", "audit", "assessor", "creator", "verifier", "verified",
+      "status", "audit", "assignee", "creator", "verifier", "verified",
       "updated_at", "objects_under_assessment", "custom_attributes",
       "comments", "modified_by"]
 
   def __init__(self, status=None, audit=None, owners=None, recipients=None,
-               assignees=None, assessor=None, creator=None, verifier=None,
+               assignees=None, assignee=None, creator=None, verifier=None,
                verified=None, updated_at=None, objects_under_assessment=None,
                custom_attribute_definitions=None, custom_attribute_values=None,
-               custom_attributes=None, comments=None, modified_by=None):
+               custom_attributes=None, comments=None, modified_by=None,
+               access_control_list=None):
     super(AssessmentEntity, self).__init__()
     # REST and UI
     self.status = status  # state (e.g. "Not Started")
-    self.assessor = assessor  # assignees
+    self.assignee = assignee  # assignees
     self.creator = creator  # creators
     self.verifier = verifier  # verifiers
     self.verified = verified
@@ -889,10 +891,10 @@ class AssessmentEntity(Entity):
     self.objects_under_assessment = objects_under_assessment  # mapped objs
     self.modified_by = modified_by
     # REST
-    # {"Assessor": [{}, {}], "Creator": [{}, {}], "Verifier": [{}, {}]}
+    # {"Assignee": [{}, {}], "Creator": [{}, {}], "Verifier": [{}, {}]}
     self.assignees = assignees
     self.owners = owners
-    self.recipients = recipients  # "Verifier,Assessor,Creator"
+    self.recipients = recipients  # "Verifiers,Assignees,Creators"
     self.custom_attribute_definitions = custom_attribute_definitions
     self.custom_attribute_values = custom_attribute_values
     # additional
@@ -900,6 +902,8 @@ class AssessmentEntity(Entity):
     self.custom_attributes = custom_attributes  # map of cas def and values
     # [{"modified_by": *, "created_at": *, "description": *}, {}]
     self.comments = comments
+    # ACL [{ac_role_id: *, person: {id: *}, ...]
+    self.access_control_list = access_control_list
 
 
 class IssueEntity(Entity):

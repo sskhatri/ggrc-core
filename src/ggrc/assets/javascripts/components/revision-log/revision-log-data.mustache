@@ -1,0 +1,16 @@
+{{!
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#if isLoading}}
+    <spinner toggle="isLoading"></spinner>
+{{else}}
+    {{#if isObject}}
+        {{#each data}}
+            <div>{{.}}</div>
+        {{/each}}
+    {{else}}
+        <div>{{data}}</div>
+    {{/if}}
+{{/if}}

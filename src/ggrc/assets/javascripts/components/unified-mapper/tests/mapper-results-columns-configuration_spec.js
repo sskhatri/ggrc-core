@@ -1,3 +1,10 @@
+/* !
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+*/
+
+import * as TreeViewUtils from '../../../plugins/utils/tree-view-utils';
+
 describe('GGRC.Components.mapperResultsColumnsConfiguration', function () {
   'use strict';
   var viewModel;
@@ -144,7 +151,7 @@ describe('GGRC.Components.mapperResultsColumnsConfiguration', function () {
         title: true,
         date: false
       }));
-      spyOn(GGRC.Utils.TreeView, 'setColumnsForModel')
+      spyOn(TreeViewUtils, 'setColumnsForModel')
         .and.returnValue({
           selected: 'selectedColumns'
         });

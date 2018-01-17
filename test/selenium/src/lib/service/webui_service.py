@@ -4,6 +4,7 @@
 
 import os
 import re
+
 from dateutil import parser, tz
 
 from lib import factory
@@ -11,8 +12,9 @@ from lib.constants import objects, url, path, messages, element, regex
 from lib.element.tab_containers import DashboardWidget
 from lib.entities.entity import Entity
 from lib.page import dashboard
-from lib.page.widget.info_widget import SnapshotableInfoPanel
-from lib.utils import selenium_utils, file_utils, string_utils
+from lib.page.widget.info_widget import SnapshotedInfoPanel
+from lib.utils import selenium_utils, file_utils
+from lib.utils.string_utils import StringMethods, Symbols
 
 
 class BaseWebUiService(object):
@@ -28,7 +30,8 @@ class BaseWebUiService(object):
     self.entities_factory_cls = factory.get_cls_entity_factory(
         object_name=self.obj_name)
     self.url_mapped_objs = (
-        "{src_obj_url}" + url.get_widget_name_of_mapped_objs(self.obj_name))
+        "{src_obj_url}" +
+        url.Utils.get_widget_name_of_mapped_objs(self.obj_name))
     self.url_obj_info_page = "{obj_url}" + url.Widget.INFO
     self._unified_mapper = None
 
@@ -41,19 +44,19 @@ class BaseWebUiService(object):
     list_factory_objs = [
         entity_factory.create_empty() for _ in xrange(len(list_scopes))]
     list_scopes_with_upper_keys = [
-        string_utils.dict_keys_to_upper_case(scope) for scope in list_scopes]
-    list_scopes_to_convert = string_utils.exchange_dicts_items(
+        StringMethods.dict_keys_to_upper_case(scope) for scope in list_scopes]
+    list_scopes_to_convert = StringMethods.exchange_dicts_items(
         transform_dict=Entity.items_of_remap_keys(),
         dicts=list_scopes_with_upper_keys, is_keys_not_values=True)
     # convert and represent values in scopes
     for scope in list_scopes_to_convert:
       # convert u'None', u'No person' to None type
-      string_utils.update_dicts_values(scope, ["None", "No person"], None)
+      StringMethods.update_dicts_values(scope, ["None", "No person"], None)
       for key, val in scope.iteritems():
         if val:
           if key in ["mandatory", "verified"]:
             # convert u'false', u'true' like to Boolean
-            scope[key] = string_utils.get_bool_value_from_arg(val)
+            scope[key] = StringMethods.get_bool_value_from_arg(val)
           if key in ["updated_at", "created_at"]:
             # UI like u'08/20/2017' to date=2017-08-20, timetz=00:00:00
             datetime_val = parser.parse(val)
@@ -71,12 +74,12 @@ class BaseWebUiService(object):
             # extract datetime from u'(Creator) 08/20/2017 07:30:45 AM +03:00'
             scope[key] = [
                 {k: (parser.parse(re.sub(regex.TEXT_W_PARENTHESES,
-                                         string_utils.BLANK, v)
+                                         Symbols.BLANK, v)
                                   ).astimezone(tz=tz.tzutc())
                      if k == "created_at" else v)
                  for k, v in comment.iteritems()} for comment in val]
           # convert multiple values to list of strings and split if need it
-          if (key in ["owners", "assessor", "creator", "verifier"] and
+          if (key in ["owners", "assignee", "creator", "verifier"] and
              not isinstance(val, list)):
             # split Tree View values if need 'Ex1, Ex2 F' to ['Ex1', 'Ex2 F']
             # Info Widget values will be represent by internal methods
@@ -84,8 +87,8 @@ class BaseWebUiService(object):
           # convert 'slug' from CSV for snapshoted objects u'*23eb72ac-4d9d'
           if (key == "slug" and
                   (self.obj_name in objects.ALL_SNAPSHOTABLE_OBJS) and
-                  string_utils.STAR in val):
-            scope[key] = val.replace(string_utils.STAR, string_utils.BLANK)
+                  Symbols.STAR in val):
+            scope[key] = val.replace(Symbols.STAR, Symbols.BLANK)
     return [
         Entity.update_objs_attrs_values_by_entered_data(
             obj_or_objs=factory_obj, is_allow_none_values=False, **scope) for
@@ -96,7 +99,8 @@ class BaseWebUiService(object):
     source object and return generic widget class of mapped objects.
     """
     generic_widget_url = self.url_mapped_objs.format(src_obj_url=src_obj.url)
-    selenium_utils.open_url(self.driver, generic_widget_url)
+    # todo fix freezing when navigate through tabs by URLs and using driver.get
+    selenium_utils.open_url(self.driver, generic_widget_url, is_via_js=True)
     return self.generic_widget_cls(self.driver, self.obj_name)
 
   def open_info_page_of_obj(self, obj):
@@ -165,7 +169,7 @@ class BaseWebUiService(object):
     dict_key = dict_list_objs_scopes.iterkeys().next()
     # 'Control' to 'controls', 'Control Snapshot' to 'controls'
     obj_name_from_dict = objects.get_plural(
-        string_utils.get_first_word_from_str(dict_key))
+        StringMethods.get_first_word_from_str(dict_key))
     if self.obj_name == obj_name_from_dict:
       return self._create_list_objs(
           entity_factory=self.entities_factory_cls,
@@ -402,7 +406,7 @@ class SnapshotsWebUiService(BaseWebUiService):
     self.is_versions_widget = is_versions_widget
     if self.is_versions_widget:
       self.url_mapped_objs = (
-          "{src_obj_url}" + url.get_widget_name_of_mapped_objs(
+          "{src_obj_url}" + url.Utils.get_widget_name_of_mapped_objs(
               self.obj_name, self.is_versions_widget))
 
   def update_obj_ver_via_info_panel(self, src_obj, obj):
@@ -415,7 +419,7 @@ class SnapshotsWebUiService(BaseWebUiService):
     obj_info_panel.open_link_get_latest_ver().confirm_update()
     objs_widget.tree_view.wait_loading_after_actions()
     selenium_utils.get_when_invisible(
-        self.driver, SnapshotableInfoPanel.locator_link_get_latest_ver)
+        self.driver, SnapshotedInfoPanel.locator_link_get_latest_ver)
 
   def is_obj_updateble_via_info_panel(self, src_obj, obj):
     """Open generic widget of mapped objects, select snapshotable object from
@@ -439,7 +443,7 @@ class AuditsService(BaseWebUiService):
     (audit_info_page.
      open_info_3bbs().select_clone().confirm_clone(is_full=True))
     cloned_audit_obj = self.entities_factory_cls().create_empty().update_attrs(
-        url=self.driver.current_url)
+        url=url.Utils.get_src_obj_url(self.driver.current_url))
     actual_cloned_audit_obj = self.get_obj_from_info_page(obj=cloned_audit_obj)
     self.driver.refresh()
     return actual_cloned_audit_obj.update_attrs(url=cloned_audit_obj.url)
@@ -463,7 +467,7 @@ class AssessmentTemplatesService(BaseWebUiService):
     Tree View, fill data according to object attributes and create new object.
     """
     (self._open_create_modal_and_fill_data(src_obj, obj).
-     select_assignee(obj.assessors).save_and_close())
+     select_assignee(obj.assignees).save_and_close())
 
 
 class AssessmentsService(BaseWebUiService):
@@ -477,8 +481,8 @@ class AssessmentsService(BaseWebUiService):
     add comments according to 'comment_objs' descriptions, return
     'CommentsPanel' class after adding of comments.
     """
-    comments_descriptions = [comment_obj.description for comment_obj in
-                             comment_objs]
+    comments_descriptions = tuple(
+        comment_obj.description for comment_obj in comment_objs)
     obj_info_panel = self.open_info_panel_of_obj_by_title(src_obj, obj)
     return obj_info_panel.comments_panel.add_comments(comments_descriptions)
 
@@ -513,7 +517,7 @@ class AssessmentsService(BaseWebUiService):
     And return result of validation of all items.
     """
     asmt_page = self.open_info_page_of_obj(obj)
-    return asmt_page.workflow_container.get_tab_object(
+    return asmt_page.tab_container.get_tab_object(
         element.AssessmentTabContainer.CHANGE_LOG_TAB)
 
   def get_related_asmts_titles(self, obj):
@@ -521,7 +525,7 @@ class AssessmentsService(BaseWebUiService):
     Info Page. And return list of related Assessments Titles.
     """
     asmt_page = self.open_info_page_of_obj(obj=obj)
-    related_asmts_tab = asmt_page.workflow_container.get_tab_object(
+    related_asmts_tab = asmt_page.tab_container.get_tab_object(
         element.AssessmentTabContainer.RELATED_ASMTS_TAB)
     return related_asmts_tab.get_related_titles()
 
@@ -530,7 +534,7 @@ class AssessmentsService(BaseWebUiService):
     Info Page. And return list of related Issues Titles.
     """
     asmt_page = self.open_info_page_of_obj(obj=obj)
-    related_issues_tab = asmt_page.workflow_container.get_tab_object(
+    related_issues_tab = asmt_page.tab_container.get_tab_object(
         element.AssessmentTabContainer.RELATED_ISSUES_TAB)
     return [issue[element.RelatedIssuesTab.TITLE.upper()]
             for issue in related_issues_tab.get_items()]
@@ -540,7 +544,7 @@ class AssessmentsService(BaseWebUiService):
     Assessment Info Page and raise Issue.
     """
     asmt_page = self.open_info_page_of_obj(obj=src_obj)
-    related_issues_tab = asmt_page.workflow_container.get_tab_object(
+    related_issues_tab = asmt_page.tab_container.get_tab_object(
         element.AssessmentTabContainer.RELATED_ISSUES_TAB)
     related_issues_tab.raise_issue(issue_entity=issue_obj)
 

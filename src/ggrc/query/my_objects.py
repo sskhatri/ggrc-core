@@ -127,11 +127,9 @@ def get_myobjects_query(types=None, contact_id=None, is_creator=False):  # noqa
     """Get query by models contacts fields.
 
     Objects for which the user is the 'contact' or 'secondary contact'.
-    Control also has 'principal_assessor' and 'secondary_assessor'.
     """
     model_type_queries = []
-    for attr in ('contact_id', 'secondary_contact_id',
-                 'principal_assessor_id', 'secondary_assessor_id'):
+    for attr in ('contact_id', 'secondary_contact_id'):
       if hasattr(model, attr):
         model_type_queries.append(getattr(model, attr) == contact_id)
     return model_type_queries

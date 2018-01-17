@@ -1,4 +1,4 @@
-/*!
+/*
  Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
@@ -17,17 +17,19 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
     destroy: 'DELETE /api/assessments/{id}',
     create: 'POST /api/assessments',
     mixins: [
-      'ownable', 'unique_title',
+      'ownable', 'unique_title', 'ca_update',
       'autoStatusChangeable', 'timeboxed', 'mapping-limit',
-      'inScopeObjects', 'accessControlList', 'refetchHash'
+      'inScopeObjects', 'accessControlList', 'refetchHash',
+      'issueTrackerIntegratable',
     ],
     is_custom_attributable: true,
     isRoleable: true,
     defaults: {
+      _copyAssessmentProcedure: true,
       assessment_type: 'Control',
       status: 'Not Started',
       send_by_default: true,  // notifications when a comment is added
-      recipients: 'Assessor,Creator,Verifier'  // user roles to be notified
+      recipients: 'Assignees,Creators,Verifiers'  // user roles to be notified
     },
     statuses: ['Not Started', 'In Progress', 'In Review',
       'Verified', 'Completed', 'Deprecated', 'Rework Needed'],
@@ -56,59 +58,56 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
         attr_name: 'slug',
         order: 5,
       }, {
-        attr_title: 'Creators',
-        attr_name: 'creators',
-        order: 6,
-      }, {
-        attr_title: 'Assignees',
-        attr_name: 'assignees',
-        order: 7,
-      }, {
-        attr_title: 'Verifiers',
-        attr_name: 'verifiers',
-        order: 8,
-      }, {
         attr_title: 'Due Date',
         attr_name: 'start_date',
-        order: 9,
+        order: 6,
       }, {
         attr_title: 'Created Date',
         attr_name: 'created_at',
-        order: 10,
+        order: 7,
       }, {
         attr_title: 'Last Updated',
         attr_name: 'updated_at',
-        order: 11,
+        order: 8,
       }, {
         attr_title: 'Last Updated By',
         attr_name: 'modified_by',
-        order: 12,
+        order: 9,
       }, {
         attr_title: 'Verified Date',
         attr_name: 'verified_date',
-        order: 13,
+        order: 10,
       }, {
         attr_title: 'Finished Date',
         attr_name: 'finished_date',
-        order: 14,
+        order: 11,
+      }, {
+        attr_title: 'Last Deprecated Date',
+        attr_name: 'end_date',
+        order: 12,
       }, {
         attr_title: 'Reference URL',
         attr_name: 'reference_url',
-        order: 15,
+        order: 13,
       }, {
         attr_title: 'Conclusion: Design',
         attr_name: 'design',
-        order: 16,
+        order: 14,
       }, {
         attr_title: 'Conclusion: Operation',
         attr_name: 'operationally',
-        order: 17,
+        order: 15,
       }, {
         attr_title: 'Archived',
         attr_name: 'archived',
-        order: 18,
+        order: 16,
+      }, {
+        attr_title: 'Buganizer',
+        attr_name: 'issue_url',
+        order: 17,
+        deny: !GGRC.ISSUE_TRACKER_ENABLED,
       }],
-      display_attr_names: ['title', 'status', 'label', 'assignees', 'verifiers',
+      display_attr_names: ['title', 'status', 'label', 'Assignees', 'Verifiers',
         'start_date', 'updated_at'],
     },
     sub_tree_view_options: {
@@ -122,25 +121,6 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
       '"{{status}}" to "In Progress" - are you sure about that?',
       button: 'Confirm'
     },
-    assignable_list: [{
-      title: 'Creator(s)',
-      type: 'creator',
-      mapping: 'related_creators',
-      required: true
-    }, {
-      title: 'Assignee(s)',
-      type: 'assessor',
-      mapping: 'related_assessors',
-      required: true
-    }, {
-      title: 'Verifier(s)',
-      type: 'verifier',
-      mapping: 'related_verifiers',
-      required: false
-    }],
-    conflicts: [
-      ['assessor', 'verifier']
-    ],
     conclusions: ['Effective', 'Ineffective', 'Needs improvement',
       'Not Applicable'],
     init: function () {
@@ -150,19 +130,24 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
       this.validatePresenceOf('audit');
       this.validateNonBlank('title');
 
+
       this.validate(
-        'validate_creator',
+        'issue_tracker_title',
         function () {
-          if (!this.validate_creator) {
-            return 'You need to specify at least one creator';
+          if (this.attr('can_use_issue_tracker') &&
+            this.attr('issue_tracker.enabled') &&
+            !this.attr('issue_tracker.title')) {
+            return 'Enter Issue Title';
           }
         }
       );
       this.validate(
-        'validate_assessor',
+        'issue_tracker_component_id',
         function () {
-          if (!this.validate_assessor) {
-            return 'You need to specify at least one assignee';
+          if (this.attr('can_use_issue_tracker') &&
+            this.attr('issue_tracker.enabled') &&
+            !this.attr('issue_tracker.component_id')) {
+            return 'Enter Component ID';
           }
         }
       );
@@ -234,28 +219,7 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
         model.attr('documents', attributes.documents, true);
       }
 
-      if (attributes.assignees) {
-        this.leaveUniqueAssignees(model, attributes, 'Verifier');
-        this.leaveUniqueAssignees(model, attributes, 'Assessor');
-        this.leaveUniqueAssignees(model, attributes, 'Creator');
-      }
-
       return model;
-    },
-    leaveUniqueAssignees: function (model, attributes, type) {
-      var assignees = attributes.assignees[type];
-      var unique = [];
-      if (assignees) {
-        unique = _.uniq(assignees, function (item) {
-          return item.id;
-        });
-      }
-
-      if (!model.attr('assignees')) {
-        model.attr('assignees', new can.Map());
-      }
-
-      model.assignees.attr(type, unique);
     },
     /**
      * Replace Cacheble#findInCacheById method with the latest feature of can.Model - store
@@ -271,6 +235,37 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
         this._super.apply(this, arguments);
       }
       this.bind('refreshInstance', this.refresh.bind(this));
+    },
+    _checkIssueTrackerWarnings: function () {
+      let warnings;
+      let warningMessage;
+
+      if (!this.issue_tracker) {
+        return;
+      }
+
+      warnings = this.issue_tracker._warnings;
+
+      if (warnings && warnings.length) {
+        warningMessage = warnings.join('; ');
+        $(document.body).trigger('ajax:flash', {warning: warningMessage});
+      }
+    },
+    after_update: function () {
+      this._checkIssueTrackerWarnings();
+    },
+    after_create: function () {
+      this._checkIssueTrackerWarnings();
+    },
+    before_save: function () {
+      var mappedObjectsChanges = this.attr('mappedObjectsChanges');
+      if ( mappedObjectsChanges ) {
+        mappedObjectsChanges.forEach((mo)=>{
+          mo.extra = {
+            copyAssessmentProcedure: this.attr('_copyAssessmentProcedure'),
+          };
+        });
+      }
     },
     before_create: function () {
       if (!this.audit) {
@@ -316,8 +311,6 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
       if (pageInstance && (!this.audit || !this.audit.id || !this.audit.type)) {
         if (pageInstance.type === 'Audit') {
           this.attr('audit', pageInstance);
-        } else if (this.scopeObject) {
-          this.audit = this.scopeObject;
         }
       }
 
@@ -331,20 +324,22 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
       if (this.audit) {
         auditLead = this.audit.contact.reify();
         if (currentUser === auditLead) {
-          markForAddition(this, auditLead, 'Creator,Assessor');
+          markForAddition(this, auditLead, 'Creators,Assignees');
         } else {
-          markForAddition(this, auditLead, 'Assessor');
-          markForAddition(this, currentUser, 'Creator');
+          markForAddition(this, auditLead, 'Assignees');
+          markForAddition(this, currentUser, 'Creators');
         }
+
+        this.initCanUseIssueTracker(this.audit.issue_tracker);
 
         return this.audit.findAuditors().then(function (list) {
           list.forEach(function (item) {
-            var type = 'Verifier';
+            var type = 'Verifiers';
             if (item.person === auditLead) {
-              type += ',Assessor';
+              type += ',Assignees';
             }
             if (item.person === currentUser) {
-              type += ',Creator';
+              type += ',Creators';
             }
             markForAddition(self, item.person, type);
           });
@@ -354,9 +349,25 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
       markForAddition(this, currentUser, 'Creator');
 
       function markForAddition(instance, user, type) {
-        instance.mark_for_addition('related_objects_as_destination', user, {
-          attrs: {
-            AssigneeType: type
+        var rolesNames = type.split(',');
+        var roles = GGRC.access_control_roles;
+        var acl = instance.attr('access_control_list');
+
+        rolesNames.forEach((roleName) => {
+          var role = _.head(
+            roles.filter((role) =>
+              role.object_type === 'Assessment' &&
+              role.name === roleName)
+          );
+
+          if (role) {
+            acl.push({
+              ac_role_id: role.id,
+              person: {
+                id: user.id,
+              },
+              person_id: user.id,
+            });
           }
         });
       }
@@ -400,8 +411,22 @@ import {prepareCustomAttributes} from '../plugins/utils/ca-utils';
       this._pending_refresh.fn();
       return dfd;
     },
-    info_pane_preload: function () {
-      this.refresh();
-    }
+    getRelatedObjects () {
+      return $.get(`/api/assessments/${this.attr('id')}/related_objects`)
+        .then((response) => {
+          let auditTitle = response.Audit.title;
+
+          if (this.attr('audit')) {
+            this.attr('audit.title', auditTitle);
+
+            if (this.attr('audit.issue_tracker')) {
+              this.attr('can_use_issue_tracker',
+                this.attr('audit.issue_tracker.enabled'));
+            }
+          }
+
+          return response;
+        });
+    },
   });
 })(window.can, window.GGRC, window.CMS);

@@ -36,7 +36,7 @@ class MysqlRecordProperty(db.Model):
   tags = db.Column(db.String)
   property = db.Column(db.String(250), primary_key=True)
   subproperty = db.Column(db.String(64), primary_key=True)
-  content = db.Column(db.Text)
+  content = db.Column(db.Text, nullable=False, default=u"")
 
   @declared_attr
   def __table_args__(cls):  # pylint: disable=no-self-argument
