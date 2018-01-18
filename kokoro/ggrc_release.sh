@@ -78,4 +78,4 @@ EOL
 echo "The settings file"
 cat "$SETTINGS_FILE"
 
-./bin/deploy $APPENGINE_INSTANCE $KOKORO_GITHUB_COMMIT
+./bin/deploy $APPENGINE_INSTANCE
