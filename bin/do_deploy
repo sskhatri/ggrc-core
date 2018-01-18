@@ -38,6 +38,8 @@ deploy_appengine "$SETTINGS_FILE"
 cat /vagrant/src/app.yaml
 
 source "$SETTINGS_FILE"
+echo "The settings file in do_deploy"
+cat "$SETTINGS_FILE"
 export GGRC_SETTINGS_MODULE="$SETTINGS_MODULE"
 
 write_visible_message 'Setting project into config'
