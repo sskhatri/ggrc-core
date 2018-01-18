@@ -50,7 +50,7 @@ gcloud auth activate-service-account "$ACCOUNT" --key-file="$KEY_FILE"
 
 version_script () {
   declare -r SETTINGS_FILE="src/ggrc/settings/default.py"
-  if [ -z ${$KOKORO_GITHUB_COMMIT+x} ]
+  if [ -z ${KOKORO_GITHUB_COMMIT+x} ]
   then
     declare -r TARGET_REF="FETCH_HEAD"
   else
@@ -67,7 +67,7 @@ EOF
 if [[ "$VERSION" == "AUTO" ]]
 then
   GGRC_VERSION=$(version_script | python -)
-  if [ -z ${$KOKORO_GITHUB_COMMIT+x} ]
+  if [ -z ${KOKORO_GITHUB_COMMIT+x} ]
   then
     GGRC_HASH="$(git rev-parse FETCH_HEAD)"
   else
