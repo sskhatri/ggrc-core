@@ -108,7 +108,7 @@ fi
 
 write_visible_message "Deploying src/app.yaml into version $VERSION"
 
-gcloud app deploy src/app.yaml --version="$VERSION"
+gcloud app deploy src/app.yaml --version="$VERSION" --verbosity=debug
 
 if [[ ! "${APPENGINE_INSTANCE}" == *"google.com:"* ]]
 then
