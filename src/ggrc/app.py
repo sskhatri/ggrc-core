@@ -48,7 +48,7 @@ db.init_app(app)
 # Imported so it can be used with getattr.
 from ggrc import contributions  # noqa  # pylint: disable=unused-import,wrong-import-position
 
-
+# This is executed before every request
 @app.before_request
 def _ensure_session_teardown():
   """Ensure db.session is correctly removed
@@ -59,7 +59,7 @@ def _ensure_session_teardown():
   if db.session.registry.has():
     db.session.remove()
 
-
+# This is executed before every request
 @app.before_request
 def setup_user_timezone_offset():
   """Setup user timezon for current request
@@ -70,7 +70,7 @@ def setup_user_timezone_offset():
   from flask import g
   g.user_timezone_offset = request.headers.get("X-UserTimezoneOffset")
 
-
+# For every request, check if maintenance bit is set. If yes the maintenance page will be shown
 @app.before_request
 def check_if_under_maintenance():
   """Check if the site is in maintenance mode."""
