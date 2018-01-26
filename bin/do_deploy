@@ -44,6 +44,7 @@ write_visible_message 'Setting project into config'
 gcloud config set project "$APPENGINE_INSTANCE"
 
 write_visible_message 'Authenticating'
+echo $ACCOUNT
 gcloud auth activate-service-account "$ACCOUNT" --key-file="$KEY_FILE"
 
 version_script () {
