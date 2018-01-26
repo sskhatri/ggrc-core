@@ -107,7 +107,7 @@ then
 fi
 
 write_visible_message "Deploying src/app.yaml into version $VERSION"
-
+echo "-- quiet flag set"
 gcloud app deploy src/app.yaml --version="$VERSION" --quiet
 
 if [[ ! "${APPENGINE_INSTANCE}" == *"google.com:"* ]]
