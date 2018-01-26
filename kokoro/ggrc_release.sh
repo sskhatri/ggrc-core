@@ -76,4 +76,5 @@ VERSION="$VERSION"
 KOKORO=true
 EOL
 
+# Need to pass tag or commit hash
 ./bin/deploy $APPENGINE_INSTANCE
