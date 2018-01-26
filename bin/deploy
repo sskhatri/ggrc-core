@@ -89,7 +89,7 @@ main () {
   PROJECT=$(clean_project_name "$PROJECT")
   ./bin/containers setup deploy "$PROJECT"
 
-  echo "Running deploy"
+  echo "Inside bin/deploy. Running deploy"
 
   docker exec -i "${PROJECT}_cleandev_1" su root -c "
     /vagrant/bin/do_deploy $SETTINGS_FILE $ACCOUNT $KEY_FILE
