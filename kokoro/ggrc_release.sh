@@ -15,6 +15,7 @@ CONFIG_DIR="$CONFIG_PREFIX/$PROJECT_NAME/"
 mkdir -p "$CONFIG_DIR"
 
 # Remove this
+echo "This is a test"
 echo $CONFIG_PREFIX
 
 SERVICE_ACCOUNT="$SERVICE_ACCOUNT"
