@@ -37,7 +37,7 @@ cat >"$KEY_FILE" <<EOL
 }
 EOL
 
-
+# Preparing settings file
 cat >"$SETTINGS_FILE" <<EOL
 #!/usr/bin/env bash
 APPENGINE_INSTANCE="$APPENGINE_INSTANCE"
