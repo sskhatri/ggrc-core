@@ -1,7 +1,6 @@
 # # Copyright (C) 2018 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 #
-# See https://developers.google.com/appengine/docs/python/config/appconfig
 
 cron:
 - description: GGRC workflow - starting point for all batch jobs
